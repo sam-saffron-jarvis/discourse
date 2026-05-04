@@ -62,7 +62,7 @@ RSpec.describe "Workflow Expression Editor" do
 
     it "marks unclosed expressions with error decoration" do
       expression_editor.type_in_editor("{{ $json.title")
-      find(".cm-content").send_keys(:right, :right, :right, :backspace, :backspace)
+      expression_editor.move_cursor_and_delete(3, 2)
 
       expect(expression_editor).to have_syntax_error
     end

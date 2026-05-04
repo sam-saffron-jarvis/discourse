@@ -43,6 +43,12 @@ module PageObjects
         self
       end
 
+      def move_cursor_and_delete(right_count, backspace_count)
+        keys = Array.new(right_count, :right) + Array.new(backspace_count, :backspace)
+        cm_content.send_keys(*keys)
+        self
+      end
+
       def has_autocomplete_dropdown?
         page.has_css?(AUTOCOMPLETE_SELECTOR, wait: 5)
       end
