@@ -107,7 +107,7 @@ module PageObjects
       def select_node_type(identifier, operation: nil)
         label = NODE_TYPE_LABELS.fetch(identifier, identifier)
         find(".workflows-node-panel__search-input").fill_in(with: label)
-        find(".workflows-node-panel__item-name", text: label).click
+        find(".workflows-node-panel__item-name", exact_text: label).click
         if operation
           operation_label = NODE_TYPE_OPERATION_LABELS.dig(identifier, operation) || operation
           find(".workflows-node-panel__item-name", text: operation_label).click
