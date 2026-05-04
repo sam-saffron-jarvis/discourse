@@ -6,6 +6,7 @@ RSpec.describe DiscourseWorkflows::Variable::Create do
     it { is_expected.to validate_presence_of(:value) }
     it { is_expected.to validate_length_of(:key).is_at_most(100) }
     it { is_expected.to validate_length_of(:value).is_at_most(1000) }
+    it { is_expected.to validate_length_of(:description).is_at_most(500) }
     it { is_expected.to allow_values("valid_key", "Key_123", "_underscore").for(:key) }
     it { is_expected.not_to allow_values("invalid key", "123start", "key!@#").for(:key) }
   end

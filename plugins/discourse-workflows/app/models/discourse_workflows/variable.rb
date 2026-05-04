@@ -14,6 +14,7 @@ module DiscourseWorkflows
                 with: /\A[a-zA-Z_][a-zA-Z0-9_]*\z/,
               }
     validates :value, length: { maximum: 1000 }
+    validates :description, length: { maximum: 500 }, allow_nil: true
   end
 end
 
