@@ -81,6 +81,24 @@ RSpec.describe DiscourseWorkflows::NormalizedFilter do
     end
   end
 
+  describe "with too many filter conditions" do
+    subject(:model) do
+      filters =
+        (described_class::MAX_FILTER_CONDITIONS + 1).times.map do
+          { "columnName" => "email", "condition" => "eq", "value" => "a@b.com" }
+        end
+
+      described_class.new(data_table:, filter: { "type" => "and", "filters" => filters })
+    end
+
+    it "is invalid" do
+      expect(model).not_to be_valid
+      expect(model.errors[:base]).to include(
+        match(/more than #{described_class::MAX_FILTER_CONDITIONS} conditions/),
+      )
+    end
+  end
+
   describe "with an ilike condition" do
     subject(:model) do
       described_class.new(

@@ -104,4 +104,13 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       expect(result[0]["json"]).to have_key("result")
     end
   end
+
+  describe "item limit" do
+    it "raises ArgumentError when array exceeds MAX_SPLIT_ITEMS" do
+      oversized_array = (1..(described_class::MAX_SPLIT_ITEMS + 1)).map { |n| { "n" => n } }
+      input = [{ "json" => { "items" => oversized_array } }]
+
+      expect { execute(input) }.to raise_error(ArgumentError, /Cannot split into more than/)
+    end
+  end
 end
