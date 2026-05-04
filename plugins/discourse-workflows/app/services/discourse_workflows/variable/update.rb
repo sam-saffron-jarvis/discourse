@@ -11,8 +11,15 @@ module DiscourseWorkflows
       attribute :description, :string
 
       validates :variable_id, presence: true
-      validates :key, presence: true
-      validates :value, presence: true
+      validates :key,
+                presence: true,
+                length: {
+                  maximum: 100,
+                },
+                format: {
+                  with: /\A[a-zA-Z_][a-zA-Z0-9_]*\z/,
+                }
+      validates :value, presence: true, length: { maximum: 1000 }
     end
 
     policy :can_manage_workflows, class_name: Policy::CanManageWorkflows
