@@ -23,7 +23,11 @@ module DiscourseWorkflows
         tracked_ids = DiscourseWorkflows::TriggerTracking.triggered_topic_ids(workflow, node["id"])
 
         newly_stale_topics =
-          stale_topics_scope(threshold).where.not(id: tracked_ids).limit(MAX_TOPICS_PER_CYCLE).to_a
+          stale_topics_scope(threshold)
+            .where.not(id: tracked_ids)
+            .includes(first_post: :user)
+            .limit(MAX_TOPICS_PER_CYCLE)
+            .to_a
 
         newly_stale_topics.each do |topic|
           trigger = DiscourseWorkflows::Nodes::StaleTopic::V1.new(topic)

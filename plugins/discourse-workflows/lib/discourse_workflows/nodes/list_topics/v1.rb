@@ -54,6 +54,11 @@ module DiscourseWorkflows
           topic_query = TopicQuery.new(exec_ctx.run_as_user, q: query, per_page: limit)
           topic_list = topic_query.list_filter
 
+          posts = topic_list.topics.map(&:first_post).compact
+          if posts.any?
+            ActiveRecord::Associations::Preloader.new(records: posts, associations: :user).call
+          end
+
           items = topic_list.topics.map { |topic| wrap(topic: Schemas::Topic.resolve(topic)) }
           [items]
         end
