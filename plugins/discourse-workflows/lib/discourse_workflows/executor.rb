@@ -265,15 +265,16 @@ module DiscourseWorkflows
     end
 
     def normalize_result(result, node, ports)
+      source = "#{node.name} (#{node.type})"
       normalized =
         if result.is_a?(NodeResult)
           result
         else
-          ItemContract.validate_output_arrays!(result, source: node.type)
+          ItemContract.validate_output_arrays!(result, source: source)
           NodeResult.from_output_arrays(result, ports: ports)
         end
 
-      ItemContract.validate_node_result!(normalized, source: node.type, ports: ports)
+      ItemContract.validate_node_result!(normalized, source: source, ports: ports)
       normalized
     end
 

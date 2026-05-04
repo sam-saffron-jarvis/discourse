@@ -20,7 +20,12 @@ module DiscourseWorkflows
         return unless eligible?(error_workflow)
 
         trigger_node = error_workflow.nodes.find { |n| n["type"] == "trigger:error" }
-        return unless trigger_node
+        unless trigger_node
+          Rails.logger.warn(
+            "discourse-workflows: error workflow #{error_workflow.id} has no trigger:error node, skipping error handling",
+          )
+          return
+        end
 
         Jobs.enqueue(
           Jobs::DiscourseWorkflows::ExecuteWorkflow,
