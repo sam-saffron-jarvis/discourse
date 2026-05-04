@@ -162,7 +162,7 @@ export default class Collection extends Component {
   }
 
   @action
-  toggleAttr(index, field, item) {
+  toggleAttr(index, field, item, close) {
     const active = this.isAttrActive(index, field, item);
     const newMap = new Map(this.activeAttrs);
     const set = new Set(newMap.get(index) || []);
@@ -181,6 +181,7 @@ export default class Collection extends Component {
 
     newMap.set(index, set);
     this.activeAttrs = newMap;
+    close?.();
   }
 
   @action
@@ -312,7 +313,7 @@ export default class Collection extends Component {
               {{#if this.hasExtraFields}}
                 <div class="workflows-property-engine__block-actions">
                   <DMenu
-                    class="btn-flat workflows-property-engine__add-attrs-btn"
+                    class="btn btn-default workflows-property-engine__add-attrs-btn"
                     @inline={{true}}
                     @modalForwardRecipient={{true}}
                   >
@@ -322,7 +323,7 @@ export default class Collection extends Component {
                       }}
                       {{icon "chevron-down"}}
                     </:trigger>
-                    <:content>
+                    <:content as |menu|>
                       <DropdownMenu as |dropdown|>
                         {{#each
                           (this.availableExtraFields item) key="name"
@@ -336,6 +337,7 @@ export default class Collection extends Component {
                                 index
                                 extraField
                                 item
+                                menu.close
                               }}
                               @translatedLabel={{this.fieldLabel
                                 extraField.name
