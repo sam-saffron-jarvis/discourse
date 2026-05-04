@@ -5,6 +5,8 @@ module DiscourseWorkflows
     include Service::Base
     include Concerns::DataTableServiceHelpers
 
+    MAX_BULK_DELETE = 500
+
     params do
       attribute :data_table_id, :integer
       attribute :row_id, :integer
@@ -14,6 +16,7 @@ module DiscourseWorkflows
       before_validation { self.row_ids = row_ids.map(&:to_i).uniq if row_ids.present? }
 
       validates :data_table_id, presence: true
+      validates :row_ids, length: { maximum: MAX_BULK_DELETE }, allow_nil: true
       validate :at_least_one_target
 
       def at_least_one_target

@@ -88,6 +88,17 @@ RSpec.describe DiscourseWorkflows::DataTableRow::Destroy do
           expect(result[:deleted_count]).to eq(2)
         end
       end
+
+      context "when row_ids exceeds the maximum" do
+        let(:params) do
+          {
+            data_table_id: data_table.id,
+            row_ids: (1..(DiscourseWorkflows::DataTableRow::Destroy::MAX_BULK_DELETE + 1)).to_a,
+          }
+        end
+
+        it { is_expected.to fail_a_contract }
+      end
     end
 
     context "with filter (query-based delete)" do
