@@ -64,7 +64,7 @@ RSpec.describe "Discourse Workflows" do
             "id" => "trigger-1",
             "client_id" => "trigger-1",
             "type" => "trigger:manual",
-            "type_version" => 1,
+            "type_version" => "1.0",
             "name" => "Manual trigger",
             "position" => {
               "x" => 100,

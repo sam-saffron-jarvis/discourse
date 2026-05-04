@@ -9,7 +9,7 @@ RSpec.describe DiscourseWorkflows::NodeIssues do
     DiscourseWorkflows::WorkflowSnapshot::SnapshotNode.new(
       id: "n1",
       type: "action:test",
-      type_version: 1,
+      type_version: "1.0",
       name: "Test",
       configuration: configuration,
     )
