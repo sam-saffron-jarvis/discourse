@@ -6,6 +6,26 @@ RSpec.describe DiscourseWorkflows::Variable::List do
     it { is_expected.to allow_value(42).for(:cursor) }
     it { is_expected.to allow_value(nil).for(:limit) }
     it { is_expected.to allow_value(10).for(:limit) }
+
+    describe "limit normalization" do
+      def contract(limit:)
+        c = described_class.new(limit: limit)
+        c.valid?
+        c
+      end
+
+      it "defaults to DEFAULT_LIMIT when nil" do
+        expect(contract(limit: nil).limit).to eq(DiscourseWorkflows::Pagination::DEFAULT_LIMIT)
+      end
+
+      it "clamps 0 to minimum of 1" do
+        expect(contract(limit: 0).limit).to eq(1)
+      end
+
+      it "clamps excess to MAX_LIMIT" do
+        expect(contract(limit: 999).limit).to eq(DiscourseWorkflows::Pagination::MAX_LIMIT)
+      end
+    end
   end
 
   describe ".call" do
