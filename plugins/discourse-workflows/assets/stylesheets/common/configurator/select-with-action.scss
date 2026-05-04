@@ -1,0 +1,11 @@
+.workflows-property-engine-credential,
+.workflows-property-engine-data-table-select,
+.workflows-property-engine-group-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .combo-box {
+    flex: 1;
+  }
+}

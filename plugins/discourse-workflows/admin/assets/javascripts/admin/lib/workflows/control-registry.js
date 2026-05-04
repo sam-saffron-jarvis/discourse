@@ -10,6 +10,7 @@ import DataTableConditionBuilder from "../../components/workflows/configurators/
 import DataTableSelect from "../../components/workflows/configurators/data-table-select";
 import DefaultInputControl from "../../components/workflows/configurators/default-input-control";
 import FilterQuery from "../../components/workflows/configurators/filter-query";
+import GroupSelect from "../../components/workflows/configurators/group-select";
 import IconControl from "../../components/workflows/configurators/icon-control";
 import MultiComboBox from "../../components/workflows/configurators/multi-combo-box";
 import NoticeControl from "../../components/workflows/configurators/notice-control";
@@ -39,6 +40,7 @@ const CONTROL_REGISTRY = {
     type: "custom",
     renderer: DataTableSelect,
   },
+  group_select: { kind: "field", type: "custom", renderer: GroupSelect },
   data_table_column_select: {
     kind: "field",
     type: "custom",

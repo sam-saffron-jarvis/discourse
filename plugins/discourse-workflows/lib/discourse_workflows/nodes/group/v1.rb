@@ -48,7 +48,7 @@ module DiscourseWorkflows
               required: true,
               options_source: "groups",
               ui: {
-                control: :combo_box,
+                control: :group_select,
               },
               control_options: {
                 value_property: "id",

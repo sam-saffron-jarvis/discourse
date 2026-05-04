@@ -197,6 +197,7 @@ en:
         username: "Username"
         group_id: "Group"
         group_id_placeholder: "Select a group"
+        manage_groups: "Manage groups"
       badge:
         operation: "Operation"
         grant: "Grant badge"
