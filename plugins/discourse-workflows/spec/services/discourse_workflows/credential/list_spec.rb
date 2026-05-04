@@ -5,6 +5,29 @@ RSpec.describe DiscourseWorkflows::Credential::List do
     it { is_expected.to allow_values(nil, 1, 50).for(:cursor) }
     it { is_expected.to allow_values(nil, 1, 25, 100).for(:limit) }
     it { is_expected.to allow_values(nil, "basic_auth", "bearer_token").for(:type) }
+
+    describe "limit normalization" do
+      def contract(limit:)
+        c = described_class.new(limit: limit)
+        c.valid?
+        c
+      end
+
+      it "leaves nil limit as nil (uses resolved_limit at query time)" do
+        expect(contract(limit: nil).limit).to be_nil
+        expect(contract(limit: nil).resolved_limit).to eq(
+          DiscourseWorkflows::Pagination::DEFAULT_LIMIT,
+        )
+      end
+
+      it "clamps 0 to minimum of 1" do
+        expect(contract(limit: 0).limit).to eq(1)
+      end
+
+      it "clamps excess to MAX_LIMIT" do
+        expect(contract(limit: 999).limit).to eq(DiscourseWorkflows::Pagination::MAX_LIMIT)
+      end
+    end
   end
 
   describe ".call" do
