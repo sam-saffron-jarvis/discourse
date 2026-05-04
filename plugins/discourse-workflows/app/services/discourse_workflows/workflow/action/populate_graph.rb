@@ -2,6 +2,8 @@
 
 module DiscourseWorkflows
   class Workflow::Action::PopulateGraph < Service::ActionBase
+    MAX_NODES = 50
+
     option :workflow
     option :nodes_data
     option :connections_data
@@ -66,6 +68,9 @@ module DiscourseWorkflows
     end
 
     def validate_nodes
+      validate_node_count
+      return false if workflow.errors.any?
+
       existing_nodes_index = workflow.nodes.index_by { |n| n["id"] }
 
       normalized_nodes_data.each do |node_data|
@@ -76,6 +81,15 @@ module DiscourseWorkflows
       end
 
       workflow.errors.empty?
+    end
+
+    def validate_node_count
+      if normalized_nodes_data.size > MAX_NODES
+        workflow.errors.add(
+          :base,
+          I18n.t("discourse_workflows.errors.max_nodes_exceeded", max: MAX_NODES),
+        )
+      end
     end
 
     def validate_node_type(node_data, type_version)

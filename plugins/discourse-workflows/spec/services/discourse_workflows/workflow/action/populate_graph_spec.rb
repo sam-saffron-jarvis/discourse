@@ -4,6 +4,36 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
   fab!(:workflow, :discourse_workflows_workflow)
 
   describe ".call" do
+    context "when node count exceeds the maximum" do
+      it "returns false and adds an error to the workflow" do
+        nodes_data =
+          (described_class::MAX_NODES + 1).times.map do |i|
+            { client_id: "node-#{i}", type: "trigger:topic_created", name: "Node #{i}" }
+          end
+
+        result =
+          described_class.call(workflow: workflow, nodes_data: nodes_data, connections_data: [])
+
+        expect(result).to eq(false)
+        expect(workflow.errors.full_messages).to include(
+          /cannot have more than #{described_class::MAX_NODES}/,
+        )
+      end
+
+      it "accepts exactly the maximum number of nodes" do
+        nodes_data =
+          described_class::MAX_NODES.times.map do |i|
+            { client_id: "node-#{i}", type: "trigger:topic_created", name: "Node #{i}" }
+          end
+
+        result =
+          described_class.call(workflow: workflow, nodes_data: nodes_data, connections_data: [])
+
+        expect(result).to eq(true)
+        expect(workflow.reload.nodes.size).to eq(described_class::MAX_NODES)
+      end
+    end
+
     context "when nodes have invalid versions" do
       it "returns false and adds errors to the workflow" do
         result =

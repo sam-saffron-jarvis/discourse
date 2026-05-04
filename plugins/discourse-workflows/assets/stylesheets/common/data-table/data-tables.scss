@@ -1,3 +1,13 @@
+.workflows-property-engine-data-table-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .combo-box {
+    flex: 1;
+  }
+}
+
 .workflows-data-tables-manager {
   &__name-link {
     background: none;

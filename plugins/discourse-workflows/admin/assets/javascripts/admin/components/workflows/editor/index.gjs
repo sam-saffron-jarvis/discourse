@@ -19,9 +19,12 @@ import { LOOP_NODE_TYPE, removeNodesFromGraph } from "./graph-utils";
 import { createNode, generateNodeName } from "./node-factory";
 import UndoManager from "./undo-manager";
 
+const MAX_NODES = 50;
+
 export default class WorkflowsEditor extends Component {
   @service router;
   @service modal;
+  @service toasts;
   @service workflowsNodeTypes;
   @service messageBus;
 
@@ -233,8 +236,18 @@ export default class WorkflowsEditor extends Component {
   }
 
   #addNewNode(nodeType, position, configOverrides, wireConnections) {
-    this.#captureUndo();
     const existingNodes = this.formApi.get("nodes");
+    if (existingNodes.length >= MAX_NODES) {
+      this.toasts.error({
+        data: {
+          message: i18n("discourse_workflows.canvas.max_nodes_reached", {
+            max: MAX_NODES,
+          }),
+        },
+      });
+      return;
+    }
+    this.#captureUndo();
     const newNode = createNode(nodeType.identifier, existingNodes, position, {
       typeVersion: nodeType.latest_version,
       configOverrides,
@@ -521,8 +534,18 @@ export default class WorkflowsEditor extends Component {
 
   @action
   addNodeToLoop(loopNodeClientId, nodeType, configOverrides = null) {
-    this.#captureUndo();
     const existingNodes = this.formApi.get("nodes");
+    if (existingNodes.length >= MAX_NODES) {
+      this.toasts.error({
+        data: {
+          message: i18n("discourse_workflows.canvas.max_nodes_reached", {
+            max: MAX_NODES,
+          }),
+        },
+      });
+      return;
+    }
+    this.#captureUndo();
     const loopNode = existingNodes.find((n) => n.clientId === loopNodeClientId);
     const position = loopNode?.position
       ? { x: loopNode.position.x, y: loopNode.position.y + 120 }
@@ -643,9 +666,18 @@ export default class WorkflowsEditor extends Component {
 
   @action
   importNodes(newNodes, newConnections, newStickyNotes) {
-    this.#captureUndo();
-
     const existingNodes = this.formApi.get("nodes");
+    if (existingNodes.length + newNodes.length > MAX_NODES) {
+      this.toasts.error({
+        data: {
+          message: i18n("discourse_workflows.canvas.max_nodes_reached", {
+            max: MAX_NODES,
+          }),
+        },
+      });
+      return;
+    }
+    this.#captureUndo();
     const existingConnections = this.formApi.get("connections");
 
     this.formApi.set("nodes", [...existingNodes, ...newNodes]);

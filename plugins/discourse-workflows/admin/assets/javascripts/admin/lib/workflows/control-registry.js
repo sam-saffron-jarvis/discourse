@@ -7,6 +7,7 @@ import Credential from "../../components/workflows/configurators/credential";
 import DataTableColumnSelect from "../../components/workflows/configurators/data-table-column-select";
 import DataTableColumns from "../../components/workflows/configurators/data-table-columns";
 import DataTableConditionBuilder from "../../components/workflows/configurators/data-table-condition-builder";
+import DataTableSelect from "../../components/workflows/configurators/data-table-select";
 import DefaultInputControl from "../../components/workflows/configurators/default-input-control";
 import FilterQuery from "../../components/workflows/configurators/filter-query";
 import IconControl from "../../components/workflows/configurators/icon-control";
@@ -33,6 +34,11 @@ const CONTROL_REGISTRY = {
   code: { kind: "field", type: "code", renderer: CodeControl },
   combo_box: { kind: "field", type: "custom", renderer: ComboBox },
   credential: { kind: "field", type: "custom", renderer: Credential },
+  data_table_select: {
+    kind: "field",
+    type: "custom",
+    renderer: DataTableSelect,
+  },
   data_table_column_select: {
     kind: "field",
     type: "custom",

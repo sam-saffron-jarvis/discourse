@@ -594,6 +594,7 @@ en:
         empty_title: "%{username}, let's set up a data table"
         empty_description: "Data tables can be used to store structured data that your workflows can read and write."
         add_first: "Add first data table"
+        manage_data_tables: "Manage data tables"
         columns: "Columns"
         size: "Size"
         rows: "Rows"
@@ -626,6 +627,7 @@ en:
         import_nodes: "Import"
         import_error: "Failed to import: invalid file format."
         import_version_error: "Failed to import: unsupported format version."
+        max_nodes_reached: "Workflows are limited to %{max} nodes"
         sync_error: "Failed to sync canvas changes. Please reload the page."
       sticky_note:
         add: "Add sticky note"
