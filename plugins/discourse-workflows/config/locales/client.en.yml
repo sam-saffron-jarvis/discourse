@@ -626,6 +626,7 @@ en:
         import_nodes: "Import"
         import_error: "Failed to import: invalid file format."
         import_version_error: "Failed to import: unsupported format version."
+        sync_error: "Failed to sync canvas changes. Please reload the page."
       sticky_note:
         add: "Add sticky note"
         delete: "Delete"

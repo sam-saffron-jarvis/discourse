@@ -228,6 +228,11 @@ export default class WorkflowCanvas extends Component {
         this.#pendingSync = false;
         await this.#performSync();
       }
+    } catch {
+      this.#pendingSync = false;
+      this.toasts.error({
+        data: { message: i18n("discourse_workflows.canvas.sync_error") },
+      });
     } finally {
       this.#syncTask = null;
     }
