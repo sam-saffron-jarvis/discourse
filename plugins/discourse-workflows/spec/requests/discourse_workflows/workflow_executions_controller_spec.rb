@@ -37,7 +37,6 @@ RSpec.describe DiscourseWorkflows::WorkflowExecutionsController do
       expect(response.status).to eq(200)
       json = response.parsed_body
       expect(json["executions"]).to be_empty
-      expect(json["meta"]["total_rows_executions"]).to eq(0)
     end
   end
 end

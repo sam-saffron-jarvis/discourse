@@ -22,7 +22,6 @@ module DiscourseWorkflows
     end
 
     model :executions, optional: true
-    model :total_rows, :compute_total_rows
     only_if(:has_more) { model :load_more_url, :compute_load_more_url, optional: true }
 
     private
@@ -43,10 +42,6 @@ module DiscourseWorkflows
 
     def has_more
       context[:has_more]
-    end
-
-    def compute_total_rows(params:)
-      DiscourseWorkflows::Execution.for_workflow(params.workflow_id).count
     end
 
     def compute_load_more_url(params:, executions:)

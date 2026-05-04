@@ -8,8 +8,6 @@ module DiscourseWorkflows
       attribute :workflow_id, :integer
       attribute :trigger_node_id, :string
       attribute :trigger_data, default: -> { {} }
-      attribute :execution_mode, :string, default: "normal"
-      attribute :error_depth, :integer, default: 0
       attribute :user_id, :integer
 
       validates :trigger_node_id, presence: true
@@ -31,7 +29,10 @@ module DiscourseWorkflows
     end
 
     def run_workflow(params:, guardian:)
-      Workflow::Execute.call(params: params.to_hash, guardian:).execution
+      Workflow::Execute.call(
+        params: params.to_hash.merge(execution_mode: "normal", error_depth: 0),
+        guardian:,
+      ).execution
     end
   end
 end

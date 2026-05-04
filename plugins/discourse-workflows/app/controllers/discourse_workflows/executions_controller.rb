@@ -26,14 +26,11 @@ module DiscourseWorkflows
 
     def index
       DiscourseWorkflows::Execution::List.call(service_params) do |result|
-        on_success do |executions:, total_rows:, load_more_url: nil|
+        on_success do |executions:, load_more_url: nil|
           render json: {
                    executions:
                      serialize_data(executions, DiscourseWorkflows::ExecutionListSerializer),
-                   meta: {
-                     total_rows_executions: total_rows,
-                     load_more_executions: load_more_url,
-                   }.compact,
+                   meta: { load_more_executions: load_more_url }.compact,
                  }
         end
         on_failure { render(json: failed_json, status: :unprocessable_entity) }
@@ -45,7 +42,7 @@ module DiscourseWorkflows
       DiscourseWorkflows::Execution::Destroy.call(
         service_params.deep_merge(params: { execution_ids: params[:ids] }),
       ) do |result|
-        on_success { |deleted_count:| render json: { deleted_count: deleted_count } }
+        on_success { head :no_content }
         on_failure { render(json: failed_json, status: :unprocessable_entity) }
         on_failed_policy(:can_manage_workflows) { raise Discourse::InvalidAccess }
       end

@@ -44,7 +44,6 @@ export default class ExecutionsManager extends Component {
 
   @tracked executions = null;
   @tracked loadMoreUrl = null;
-  @tracked totalRows = 0;
   @tracked loadingMore = false;
 
   constructor() {
@@ -60,15 +59,13 @@ export default class ExecutionsManager extends Component {
       const result = await ajax(url);
       this.executions = result.executions;
       this.loadMoreUrl = result.meta?.load_more_executions;
-      this.totalRows =
-        result.meta?.total_rows_executions ?? result.executions.length;
     } catch (e) {
       popupAjaxError(e);
     }
   }
 
   get canLoadMore() {
-    return this.executions && this.executions.length < this.totalRows;
+    return !!this.loadMoreUrl;
   }
 
   @action
@@ -82,7 +79,6 @@ export default class ExecutionsManager extends Component {
       const result = await ajax(this.loadMoreUrl);
       this.executions = [...this.executions, ...result.executions];
       this.loadMoreUrl = result.meta?.load_more_executions;
-      this.totalRows = result.meta?.total_rows_executions ?? this.totalRows;
     } catch (e) {
       popupAjaxError(e);
     } finally {

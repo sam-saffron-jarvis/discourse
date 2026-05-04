@@ -71,15 +71,6 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
       )
     end
 
-    it "returns meta with total rows" do
-      Fabricate(:discourse_workflows_execution, workflow: workflow)
-
-      get "/admin/plugins/discourse-workflows/executions.json"
-
-      json = response.parsed_body
-      expect(json["meta"]["total_rows_executions"]).to eq(1)
-    end
-
     it "paginates with cursor param" do
       execution_1 = Fabricate(:discourse_workflows_execution, workflow: workflow)
       execution_2 = Fabricate(:discourse_workflows_execution, workflow: workflow)
@@ -102,8 +93,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
     it "deletes executions" do
       delete "/admin/plugins/discourse-workflows/executions.json", params: { ids: [execution.id] }
 
-      expect(response.status).to eq(200)
-      expect(response.parsed_body["deleted_count"]).to eq(1)
+      expect(response.status).to eq(204)
       expect(DiscourseWorkflows::Execution.exists?(execution.id)).to be(false)
     end
   end

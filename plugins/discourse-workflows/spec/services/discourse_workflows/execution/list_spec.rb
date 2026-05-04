@@ -84,10 +84,6 @@ RSpec.describe DiscourseWorkflows::Execution::List do
         expect(result[:executions]).to be_empty
       end
 
-      it "returns zero total rows" do
-        expect(result[:total_rows]).to eq(0)
-      end
-
       it "does not return a load more url" do
         expect(result[:load_more_url]).to be_nil
       end
@@ -101,10 +97,6 @@ RSpec.describe DiscourseWorkflows::Execution::List do
 
       it "returns executions ordered by id descending" do
         expect(result[:executions].map(&:id)).to eq([execution_b.id, execution_a.id])
-      end
-
-      it "returns the total count" do
-        expect(result[:total_rows]).to eq(2)
       end
     end
 
@@ -149,10 +141,6 @@ RSpec.describe DiscourseWorkflows::Execution::List do
 
       it "returns only executions for the specified workflow" do
         expect(result[:executions].map(&:id)).to eq([execution_a.id])
-      end
-
-      it "returns the scoped total count" do
-        expect(result[:total_rows]).to eq(1)
       end
 
       context "with pagination" do
