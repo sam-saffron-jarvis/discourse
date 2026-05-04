@@ -354,15 +354,19 @@ module DiscourseWorkflows
           var trigger = __data["trigger"];
           var $execution = __data["$execution"];
           var __nodeCache = {};
-          function $(name) {
-            if (!(name in __nodeCache)) {
-              __nodeCache[name] = JSON.parse(__fetchExprNode(name));
-            }
-            return {
-              item: { json: __nodeCache[name] },
-              context: __data.__node_contexts[name] || {}
-            };
-          }
+          Object.defineProperty(this, '$', {
+            value: function(name) {
+              if (!(name in __nodeCache)) {
+                __nodeCache[name] = JSON.parse(__fetchExprNode(name));
+              }
+              return {
+                item: { json: __nodeCache[name] },
+                context: __data.__node_contexts[name] || {}
+              };
+            },
+            configurable: true,
+            writable: false
+          });
         JS
       end
     end
