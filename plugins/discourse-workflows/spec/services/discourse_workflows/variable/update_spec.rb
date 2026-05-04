@@ -5,6 +5,7 @@ RSpec.describe DiscourseWorkflows::Variable::Update do
     it { is_expected.to validate_presence_of(:variable_id) }
     it { is_expected.to validate_presence_of(:key) }
     it { is_expected.to validate_presence_of(:value) }
+    it { is_expected.to validate_length_of(:value).is_at_most(1000) }
     it { is_expected.to validate_length_of(:description).is_at_most(500) }
   end
 

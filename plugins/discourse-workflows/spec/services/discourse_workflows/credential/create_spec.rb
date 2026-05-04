@@ -3,7 +3,9 @@
 RSpec.describe DiscourseWorkflows::Credential::Create do
   describe described_class::Contract, type: :model do
     it { is_expected.to validate_presence_of(:name) }
+    it { is_expected.to validate_length_of(:name).is_at_most(128) }
     it { is_expected.to validate_presence_of(:credential_type) }
+    it { is_expected.to validate_length_of(:credential_type).is_at_most(64) }
   end
 
   describe ".call" do
