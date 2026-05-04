@@ -292,11 +292,19 @@ module DiscourseWorkflows
       def apply_ordering(query, sort_by, sort_direction)
         return query.order(@table[:id].asc) if sort_by.blank?
 
+        if valid_sort_columns.exclude?(sort_by.to_s)
+          raise ArgumentError, "Invalid sort column: #{sort_by.inspect}"
+        end
+
         direction = SORT_DIRECTIONS[sort_direction.to_s.downcase] || "ASC"
         query.order(
           Arel.sql("#{Storage.quoted_column(sort_by)} #{direction} NULLS LAST"),
           @table[:id].asc,
         )
+      end
+
+      def valid_sort_columns
+        @valid_sort_columns ||= @data_table.columns.map { |c| c["name"] }.to_set
       end
 
       def apply_pagination(query, limit, offset)

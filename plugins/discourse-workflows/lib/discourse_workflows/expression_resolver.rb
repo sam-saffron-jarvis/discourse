@@ -227,6 +227,8 @@ module DiscourseWorkflows
     end
 
     class JsEvaluator
+      BLOCKED_NODE_NAMES = %w[constructor prototype eval].freeze
+
       def initialize(context, sandbox:, user: nil)
         @context = context
         @user = user
@@ -301,8 +303,9 @@ module DiscourseWorkflows
       end
 
       def fetch_node_for_expression(name)
-        return {}.to_json if name.to_s.start_with?("_")
-        JsSandbox.extract_item_json(@context[name]).to_json
+        name_str = name.to_s
+        return {}.to_json if name_str.start_with?("_") || BLOCKED_NODE_NAMES.include?(name_str)
+        JsSandbox.extract_item_json(@context[name_str]).to_json
       end
 
       def fetch_input_items
