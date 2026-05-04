@@ -4,6 +4,7 @@ module DiscourseWorkflows
   module Nodes
     module SplitOut
       class V1 < NodeType
+        MAX_SPLIT_ITEMS = 1_000
         def self.identifier
           "action:split_out"
         end
@@ -115,6 +116,11 @@ module DiscourseWorkflows
 
           max_len = arrays.map(&:length).max || 0
           return [item] if max_len == 0
+
+          if max_len > MAX_SPLIT_ITEMS
+            raise ArgumentError,
+                  "Cannot split into more than #{MAX_SPLIT_ITEMS} items (array has #{max_len} elements)"
+          end
 
           (0...max_len).map do |i|
             entry = build_split_entry(i, field_names, arrays, dest_names)
