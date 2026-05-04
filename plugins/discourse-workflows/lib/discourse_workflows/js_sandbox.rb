@@ -144,8 +144,8 @@ module DiscourseWorkflows
             var data = JSON.parse(__getNodeOutput(name));
             return { item: { json: data } };
           },
-          configurable: true,
-          writable: true
+          configurable: false,
+          writable: false
         });
       JS
     end
