@@ -10,7 +10,7 @@ module DiscourseWorkflows
       attribute :data
 
       validates :credential_id, presence: true
-      validates :name, presence: true
+      validates :name, presence: true, length: { maximum: 128 }
       validate :data_must_be_hash
 
       def data_must_be_hash

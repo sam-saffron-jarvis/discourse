@@ -44,10 +44,10 @@ RSpec.describe DiscourseWorkflows::Credential::Update do
       it { is_expected.to fail_a_policy(:can_manage_workflows) }
     end
 
-    context "when credential is invalid after update" do
+    context "when name is too long" do
       let(:params) { super().merge(name: "x" * 200) }
 
-      it { is_expected.to fail_with_an_invalid_model(:credential) }
+      it { is_expected.to fail_a_contract }
     end
 
     context "when everything is valid" do
