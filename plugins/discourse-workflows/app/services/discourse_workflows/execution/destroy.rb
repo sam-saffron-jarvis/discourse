@@ -4,9 +4,11 @@ module DiscourseWorkflows
   class Execution::Destroy
     include Service::Base
 
+    MAX_BULK_DELETE = 500
+
     params do
       attribute :execution_ids, :array
-      validates :execution_ids, presence: true
+      validates :execution_ids, presence: true, length: { maximum: MAX_BULK_DELETE }
     end
 
     policy :can_manage_workflows, class_name: Policy::CanManageWorkflows

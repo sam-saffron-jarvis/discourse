@@ -8,6 +8,7 @@ module DiscourseWorkflows
     VALID_CONDITIONS = %w[eq neq like ilike not_ilike gt gte lt lte].freeze
     LIKE_CONDITIONS = %w[like ilike not_ilike].freeze
     COMPARISON_CONDITIONS = %w[gt gte lt lte].freeze
+    MAX_FILTER_CONDITIONS = 50
 
     attr_reader :value
 
@@ -57,6 +58,9 @@ module DiscourseWorkflows
       filters ||= []
       raise ArgumentError, "Filter filters must be an array" unless filters.is_a?(Array)
       raise ArgumentError, "Filter must not be empty" if filters.empty? && !optional
+      if filters.size > MAX_FILTER_CONDITIONS
+        raise ArgumentError, "Filter must not have more than #{MAX_FILTER_CONDITIONS} conditions"
+      end
       filters
     end
 
