@@ -1,18 +1,13 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::FormsController do
-  form_uuid = "a1b2c3d4-e5f6-7890-abcd-ef0123456789"
-
-  let(:uuid) { form_uuid }
-  let(:form_path) { "/workflows/form/#{uuid}.json" }
-
   fab!(:workflow) do
     graph =
       build_workflow_graph do |g|
         g.node "trigger-1",
                "trigger:form",
                configuration: {
-                 "uuid" => form_uuid,
+                 "uuid" => "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
                  "form_title" => "Test Form",
                  "form_fields" => [
                    { "field_label" => "Name", "field_type" => "text", "required" => true },
@@ -22,6 +17,11 @@ RSpec.describe DiscourseWorkflows::FormsController do
       end
     Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
   end
+
+  let(:form_uuid) do
+    workflow.nodes.find { |n| n["type"] == "trigger:form" }.dig("configuration", "uuid")
+  end
+  let(:form_path) { "/workflows/form/#{form_uuid}.json" }
 
   let(:origin_headers) { { "Origin" => "http://#{Discourse.current_hostname}" } }
   let(:initial_resume_token) do
@@ -61,6 +61,8 @@ RSpec.describe DiscourseWorkflows::FormsController do
     end
 
     context "when the form requires a logged-in user" do
+      fab!(:user)
+
       before do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
         trigger_node["configuration"]["authentication"] = "login_required"
@@ -74,7 +76,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
       end
 
       it "returns form schema for logged-in users" do
-        sign_in(Fabricate(:user))
+        sign_in(user)
         get form_path
         expect(response.status).to eq(200)
       end
@@ -122,6 +124,8 @@ RSpec.describe DiscourseWorkflows::FormsController do
     end
 
     context "when the form requires a logged-in user" do
+      fab!(:user)
+
       before do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
         trigger_node["configuration"]["authentication"] = "login_required"
@@ -135,7 +139,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
       end
 
       it "executes workflow for logged-in users" do
-        sign_in(Fabricate(:user))
+        sign_in(user)
         post form_path,
              params: {
                resume_token: initial_resume_token,
