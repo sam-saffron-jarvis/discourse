@@ -422,6 +422,13 @@ RSpec.describe DiscourseWorkflows::DataTables::Facade do
 
       expect(bob_idx).to be < dave_idx
     end
+
+    it "raises ArgumentError for unknown sort column" do
+      expect { facade.query(build_query(sort_by: "'; DROP TABLE users; --")) }.to raise_error(
+        ArgumentError,
+        /Invalid sort column/,
+      )
+    end
   end
 
   describe "pagination" do
