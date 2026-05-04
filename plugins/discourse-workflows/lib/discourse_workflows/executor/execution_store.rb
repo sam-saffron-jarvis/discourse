@@ -181,6 +181,22 @@ module DiscourseWorkflows
           }.to_json
         end
 
+        if json_data.bytesize > MAX_EXECUTION_DATA_SIZE
+          Rails.logger.warn(
+            "discourse-workflows: execution data for execution #{execution.id} " \
+              "still exceeds #{MAX_EXECUTION_DATA_SIZE} bytes after all truncation attempts, storing minimal record",
+          )
+          json_data = {
+            "entries" => {
+            },
+            "context" => {
+              "__truncated" => true,
+            },
+            "node_contexts" => {
+            },
+          }.to_json
+        end
+
         ed.update!(data: json_data, workflow_data: @workflow_snapshot_data)
       end
 

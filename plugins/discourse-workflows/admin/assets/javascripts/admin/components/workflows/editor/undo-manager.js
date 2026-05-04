@@ -43,7 +43,7 @@ export default class UndoManager {
   }
 
   captureBeforeState(snapshot) {
-    this.#pendingBefore = snapshot;
+    this.#pendingBefore = structuredClone(snapshot);
   }
 
   commitAction(afterSnapshot) {
