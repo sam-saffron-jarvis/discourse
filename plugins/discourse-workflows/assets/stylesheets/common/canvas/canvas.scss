@@ -302,7 +302,7 @@
   }
 
   &__issues-title {
-    padding: var(--space-2) var(--space-3) var(--space-half);
+    padding: var(--space-1) var(--space-2) var(--space-half);
     font-size: var(--font-down-2);
     font-weight: bold;
     color: var(--primary);
@@ -310,7 +310,7 @@
 
   &__issues-list {
     margin: 0;
-    padding: 0 var(--space-3) var(--space-2);
+    padding: 0 var(--space-2) var(--space-1);
     font-size: var(--font-down-2);
     list-style: none;
     max-width: 260px;
@@ -438,8 +438,8 @@
   z-index: var(--z-canvas-elements);
 }
 
-// Output handle styles (unlinked output -> [+] button)
-.workflow-output-handle {
+// Handle styles (unlinked input/output -> [+] button)
+.workflow-handle {
   &__button-fo {
     pointer-events: all;
   }

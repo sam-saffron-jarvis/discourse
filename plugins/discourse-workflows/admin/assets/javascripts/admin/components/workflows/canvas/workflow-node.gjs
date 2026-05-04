@@ -5,7 +5,7 @@ import { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { service } from "@ember/service";
 import { trustHTML } from "@ember/template";
-import DMenu from "discourse/float-kit/components/d-menu";
+import DTooltip from "discourse/float-kit/components/d-tooltip";
 import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
 import { eq } from "discourse/truth-helpers";
@@ -198,7 +198,7 @@ export default class WorkflowNode extends Component {
           {{/if}}
 
           {{#if this.issues.length}}
-            <DMenu
+            <DTooltip
               @identifier="workflow-node-issues"
               class="workflow-rete-node__issues-badge"
               {{on "pointerdown" this.stopPropagation}}
@@ -218,7 +218,7 @@ export default class WorkflowNode extends Component {
                   </ul>
                 </div>
               </:content>
-            </DMenu>
+            </DTooltip>
           {{/if}}
         </div>
 
