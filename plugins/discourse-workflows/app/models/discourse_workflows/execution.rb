@@ -133,3 +133,34 @@ module DiscourseWorkflows
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: discourse_workflows_executions
+#
+#  id              :bigint           not null, primary key
+#  error           :text
+#  execution_mode  :integer          default("normal"), not null
+#  finished_at     :datetime
+#  resume_token    :string
+#  run_time_ms     :integer
+#  started_at      :datetime
+#  status          :integer          default("pending"), not null
+#  timeout_action  :string
+#  trigger_data    :jsonb
+#  waiting_until   :datetime
+#  created_at      :datetime         not null
+#  updated_at      :datetime         not null
+#  trigger_node_id :string
+#  waiting_node_id :string
+#  workflow_id     :integer          not null
+#
+# Indexes
+#
+#  idx_dwf_executions_workflow_created_at_id_desc           (workflow_id,created_at DESC,id DESC)
+#  idx_executions_waiting_until                             (waiting_until) WHERE ((waiting_until IS NOT NULL) AND (status = 4))
+#  index_discourse_workflows_executions_on_resume_token     (resume_token) WHERE (resume_token IS NOT NULL)
+#  index_discourse_workflows_executions_on_status           (status)
+#  index_discourse_workflows_executions_on_waiting_node_id  (waiting_node_id)
+#  index_discourse_workflows_executions_on_workflow_id      (workflow_id)
+#

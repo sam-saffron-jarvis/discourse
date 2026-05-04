@@ -56,3 +56,12 @@ module DiscourseWorkflows
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: discourse_workflows_execution_data
+#
+#  data          :text
+#  workflow_data :jsonb            not null
+#  execution_id  :bigint           not null, primary key
+#

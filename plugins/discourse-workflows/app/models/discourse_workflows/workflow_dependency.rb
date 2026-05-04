@@ -79,3 +79,20 @@ module DiscourseWorkflows
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: discourse_workflows_workflow_dependencies
+#
+#  id              :bigint           not null, primary key
+#  dependency_key  :string(500)      not null
+#  dependency_type :string(50)       not null
+#  created_at      :datetime         not null
+#  node_id         :string(100)
+#  workflow_id     :integer          not null
+#
+# Indexes
+#
+#  idx_workflow_deps_type_key                                      (dependency_type,dependency_key)
+#  index_discourse_workflows_workflow_dependencies_on_workflow_id  (workflow_id)
+#

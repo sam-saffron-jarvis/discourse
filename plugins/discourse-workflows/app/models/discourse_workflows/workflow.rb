@@ -147,7 +147,6 @@ end
 # Table name: discourse_workflows_workflows
 #
 #  id                :bigint           not null, primary key
-#  allowed_group_ids :integer          default([]), is an Array
 #  connections       :jsonb
 #  enabled           :boolean          default(FALSE), not null
 #  name              :string           not null
