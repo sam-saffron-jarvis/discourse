@@ -96,13 +96,8 @@ module DiscourseWorkflows
 
     def verify_request_origin
       origin = request.origin || request.headers["Origin"]
-      referer = request.referer
-
-      expected_host = Discourse.current_hostname
-      return if origin.present? && URI.parse(origin).host == expected_host
-      return if referer.present? && URI.parse(referer).host == expected_host
-
-      raise Discourse::InvalidAccess
+      raise Discourse::InvalidAccess if origin.blank?
+      raise Discourse::InvalidAccess if URI.parse(origin).host != Discourse.current_hostname
     rescue URI::InvalidURIError
       raise Discourse::InvalidAccess
     end
