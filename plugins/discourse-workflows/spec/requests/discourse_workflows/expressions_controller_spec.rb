@@ -2,6 +2,7 @@
 
 RSpec.describe DiscourseWorkflows::ExpressionsController do
   fab!(:admin)
+  fab!(:user_1, :user)
 
   before { sign_in(admin) }
 
@@ -36,7 +37,7 @@ RSpec.describe DiscourseWorkflows::ExpressionsController do
     end
 
     it "requires admin access" do
-      sign_in(Fabricate(:user))
+      sign_in(user_1)
       post endpoint, params: { template: "test" }
       expect(response.status).to eq(404)
     end
