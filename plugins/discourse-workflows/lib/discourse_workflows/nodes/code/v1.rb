@@ -105,7 +105,14 @@ module DiscourseWorkflows
         end
 
         def normalize_code_result(raw)
-          result = raw.is_a?(Hash) ? raw : { "result" => raw.to_s }
+          result =
+            if raw.is_a?(Hash)
+              raw
+            elsif raw.is_a?(MiniRacer::JavaScriptFunction)
+              { "result" => nil }
+            else
+              { "result" => raw }
+            end
           result.deep_stringify_keys
         end
 
