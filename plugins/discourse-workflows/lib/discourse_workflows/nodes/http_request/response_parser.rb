@@ -39,7 +39,7 @@ module DiscourseWorkflows
             log&.warn(
               "Response body truncated from #{raw_body.bytesize} bytes to #{max_size} bytes",
             )
-            raw_body.byteslice(0, max_size).scrub("")
+            raw_body.scrub("").byteslice(0, max_size).scrub("")
           else
             raw_body.to_s
           end
