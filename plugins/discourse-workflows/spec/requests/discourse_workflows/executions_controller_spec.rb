@@ -30,7 +30,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
              trigger_node_id: "trigger-1",
            }
 
-      expect(response.status).to eq(200)
+      expect(response.status).to eq(201)
     end
 
     it "returns 404 when trigger node does not exist" do

@@ -31,6 +31,7 @@ module DiscourseWorkflows
             credential,
             DiscourseWorkflows::CredentialSerializer,
             root: "credential",
+            status: :created,
           )
         end
         on_failure { render(json: failed_json, status: :unprocessable_entity) }

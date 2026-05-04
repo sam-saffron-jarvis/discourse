@@ -67,7 +67,7 @@ RSpec.describe DiscourseWorkflows::VariablesController do
              description: "API base",
            }
 
-      expect(response.status).to eq(200)
+      expect(response.status).to eq(201)
       json = response.parsed_body
       expect(json["variable"]).to include("key" => "API_URL", "value" => "https://example.com")
     end

@@ -23,7 +23,12 @@ module DiscourseWorkflows
     def create
       DiscourseWorkflows::Variable::Create.call(service_params) do |result|
         on_success do |variable:|
-          render_serialized(variable, DiscourseWorkflows::VariableSerializer, root: "variable")
+          render_serialized(
+            variable,
+            DiscourseWorkflows::VariableSerializer,
+            root: "variable",
+            status: :created,
+          )
         end
         on_failure { render(json: failed_json, status: :unprocessable_entity) }
         on_failed_policy(:can_manage_workflows) { raise Discourse::InvalidAccess }

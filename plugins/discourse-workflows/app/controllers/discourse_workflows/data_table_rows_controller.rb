@@ -28,7 +28,7 @@ module DiscourseWorkflows
       DiscourseWorkflows::DataTableRow::Insert.call(
         service_params.deep_merge(params: { data_table_id: params[:data_table_id] }),
       ) do |result|
-        on_success { |row:| render json: { row: row } }
+        on_success { |row:| render json: { row: row }, status: :created }
         on_failure { render(json: failed_json, status: :unprocessable_entity) }
         on_failed_contract do |contract|
           render(

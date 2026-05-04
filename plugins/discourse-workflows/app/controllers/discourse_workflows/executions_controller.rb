@@ -9,7 +9,13 @@ module DiscourseWorkflows
         service_params.deep_merge(params: { user_id: current_user.id }),
       ) do |result|
         on_success do |execution:|
-          render json: { execution: { id: execution.id, workflow_id: execution.workflow_id } }
+          render json: {
+                   execution: {
+                     id: execution.id,
+                     workflow_id: execution.workflow_id,
+                   },
+                 },
+                 status: :created
         end
         on_failure { render(json: failed_json, status: :unprocessable_entity) }
         on_failed_policy(:can_manage_workflows) { raise Discourse::InvalidAccess }

@@ -112,7 +112,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
              },
            }
 
-      expect(response.status).to eq(200)
+      expect(response.status).to eq(201)
       json = response.parsed_body
       expect(json["workflow"]["name"]).to eq("My Workflow")
       expect(json["workflow"]["nodes"].length).to eq(2)

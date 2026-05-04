@@ -51,7 +51,7 @@ RSpec.describe DiscourseWorkflows::DataTableColumnsController do
              column_type: "number",
            }
 
-      expect(response.status).to eq(200)
+      expect(response.status).to eq(201)
       column_names = response.parsed_body["data_table"]["columns"].map { |column| column["name"] }
       expect(column_names).to include("email", "score")
       expect(find_data_table_row(data_table, row["id"])).to include(

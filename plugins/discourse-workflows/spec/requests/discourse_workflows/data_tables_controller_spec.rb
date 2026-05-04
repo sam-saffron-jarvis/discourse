@@ -98,7 +98,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
              columns: [{ "name" => "email", "type" => "string" }],
            },
            as: :json
-      expect(response.status).to eq(200)
+      expect(response.status).to eq(201)
       json = response.parsed_body
       expect(json["data_table"]["name"]).to eq("users")
       expect(json["data_table"]["columns"]).to include(
@@ -109,7 +109,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
     it "creates a data table when the modal submits only a name" do
       post "/admin/plugins/discourse-workflows/data-tables.json", params: { name: "empty_table" }
 
-      expect(response.status).to eq(200)
+      expect(response.status).to eq(201)
       body = response.parsed_body["data_table"]
       expect(body["name"]).to eq("empty_table")
       expect(body["columns"].map { |c| c["name"] }).to eq(%w[id created_at updated_at])

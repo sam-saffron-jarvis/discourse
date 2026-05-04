@@ -38,7 +38,12 @@ module DiscourseWorkflows
         service_params.deep_merge(params: workflow_params),
       ) do |result|
         on_success do |workflow:|
-          render_serialized(workflow, DiscourseWorkflows::WorkflowSerializer, root: "workflow")
+          render_serialized(
+            workflow,
+            DiscourseWorkflows::WorkflowSerializer,
+            root: "workflow",
+            status: :created,
+          )
         end
         on_failure { render(json: failed_json, status: :unprocessable_entity) }
         on_failed_contract do |contract|

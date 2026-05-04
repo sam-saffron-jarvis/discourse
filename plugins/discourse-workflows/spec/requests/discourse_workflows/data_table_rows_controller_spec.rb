@@ -95,7 +95,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
                email: "new@test.com",
              },
            }
-      expect(response.status).to eq(200)
+      expect(response.status).to eq(201)
       expect(response.parsed_body["row"]["email"]).to eq("new@test.com")
     end
   end

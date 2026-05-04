@@ -41,7 +41,12 @@ module DiscourseWorkflows
     def create
       DiscourseWorkflows::DataTable::Create.call(service_params) do |result|
         on_success do |data_table:|
-          render_serialized(data_table, DiscourseWorkflows::DataTableSerializer, root: "data_table")
+          render_serialized(
+            data_table,
+            DiscourseWorkflows::DataTableSerializer,
+            root: "data_table",
+            status: :created,
+          )
         end
         on_failure { render(json: failed_json, status: :unprocessable_entity) }
         on_failed_contract do |contract|

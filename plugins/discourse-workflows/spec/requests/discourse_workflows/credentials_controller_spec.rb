@@ -65,7 +65,7 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
              },
            }
 
-      expect(response.status).to eq(200)
+      expect(response.status).to eq(201)
       json = response.parsed_body
       expect(json["credential"]["name"]).to eq("My Auth")
       expect(json["credential"]["data"]["user"]).to eq("admin")
