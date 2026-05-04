@@ -4,6 +4,7 @@ module DiscourseWorkflows
   class Webhook::Action::AuthenticateNode < Service::ActionBase
     option :node
     option :params
+    option :credentials, default: -> { {} }
 
     def call
       config = node["configuration"] || {}
@@ -21,7 +22,7 @@ module DiscourseWorkflows
     private
 
     def authenticate_basic_auth(config)
-      credential = DiscourseWorkflows::Credential.find_by(id: config["credential_id"])
+      credential = credentials[config["credential_id"].to_i]
       unless credential
         Rails.logger.warn(
           "Workflow credential not found (id=#{config["credential_id"]}) for node #{node["id"]}",

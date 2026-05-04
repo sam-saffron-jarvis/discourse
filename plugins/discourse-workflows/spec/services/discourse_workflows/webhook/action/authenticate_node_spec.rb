@@ -12,7 +12,9 @@ RSpec.describe DiscourseWorkflows::Webhook::Action::AuthenticateNode do
     )
   end
 
-  subject(:result) { described_class.call(node:, params:) }
+  subject(:result) { described_class.call(node:, params:, credentials:) }
+
+  let(:credentials) { { credential.id => credential } }
 
   let(:node) do
     {
@@ -57,7 +59,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Action::AuthenticateNode do
       let(:auth_mode) { "basic_auth" }
 
       context "when credential is not found" do
-        before { credential.destroy! }
+        let(:credentials) { {} }
 
         it "logs a warning and returns false" do
           Rails.logger.expects(:warn).with(regexp_matches(/credential not found/i))

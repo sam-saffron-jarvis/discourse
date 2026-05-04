@@ -173,8 +173,16 @@ module DiscourseWorkflows
     end
 
     def filter_authenticated_nodes(webhook_nodes:, params:)
+      credential_ids =
+        webhook_nodes.filter_map do |_, node|
+          config = node["configuration"] || {}
+          config["credential_id"].to_i if (config["authentication"] || "none") == "basic_auth"
+        end
+
+      credentials = DiscourseWorkflows::Credential.where(id: credential_ids).index_by(&:id)
+
       webhook_nodes.select do |_workflow, node|
-        Webhook::Action::AuthenticateNode.call(node:, params:)
+        Webhook::Action::AuthenticateNode.call(node:, params:, credentials:)
       end
     end
 
