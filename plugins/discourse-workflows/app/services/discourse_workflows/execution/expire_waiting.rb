@@ -14,7 +14,7 @@ module DiscourseWorkflows
     private
 
     def fetch_expired_executions
-      DiscourseWorkflows::Execution.expired_waiting
+      DiscourseWorkflows::Execution.expired_waiting.includes(:execution_data)
     end
 
     def expire_execution(expired_execution:)
