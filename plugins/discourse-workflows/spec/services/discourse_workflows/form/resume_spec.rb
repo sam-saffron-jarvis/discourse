@@ -37,7 +37,7 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
 
     let(:resume_token) { SecureRandom.uuid }
 
-    let(:execution) do
+    let!(:execution) do
       allow(MessageBus).to receive(:publish)
       exec = DiscourseWorkflows::Executor.new(workflow, "trigger-1", {}).run
       exec.update!(resume_token: resume_token)
@@ -46,8 +46,6 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
 
     let(:form_data) { { "feedback" => "Looks good" } }
     let(:params) { { resume_token: resume_token, form_data: form_data } }
-
-    before { execution }
 
     context "when workflows are disabled" do
       before { SiteSetting.discourse_workflows_enabled = false }

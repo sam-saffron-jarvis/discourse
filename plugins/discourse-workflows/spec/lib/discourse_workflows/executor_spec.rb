@@ -26,7 +26,7 @@ RSpec.describe DiscourseWorkflows::Executor do
 
   describe "#run" do
     context "with a simple trigger -> action workflow" do
-      let(:workflow) { build_workflow }
+      fab!(:workflow) { build_workflow }
       let(:trigger_data) { { topic_id: topic.id, tags: topic.tags.pluck(:name) } }
 
       it "executes successfully and tags the topic" do

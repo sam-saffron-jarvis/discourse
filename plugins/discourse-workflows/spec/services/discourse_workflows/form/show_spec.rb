@@ -165,7 +165,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
 
       let(:resume_token) { SecureRandom.uuid }
 
-      let(:execution) do
+      let!(:execution) do
         allow(MessageBus).to receive(:publish)
         exec = DiscourseWorkflows::Executor.new(waiting_workflow, "trigger-1", {}).run
         exec.update!(resume_token: resume_token)
@@ -173,8 +173,6 @@ RSpec.describe DiscourseWorkflows::Form::Show do
       end
 
       let(:params) { { uuid: uuid, resume_token: resume_token } }
-
-      before { execution }
 
       it { is_expected.to run_successfully }
 
