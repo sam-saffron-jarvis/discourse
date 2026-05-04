@@ -10,7 +10,14 @@ module DiscourseWorkflows
       attribute :name, :string
 
       validates :data_table_id, presence: true
-      validates :name, presence: true
+      validates :name,
+                presence: true,
+                length: {
+                  maximum: 100,
+                },
+                format: {
+                  with: /\A[a-zA-Z_][a-zA-Z0-9_ ]*\z/,
+                }
     end
 
     policy :can_manage_workflows, class_name: Policy::CanManageWorkflows

@@ -3,6 +3,7 @@
 RSpec.describe DiscourseWorkflows::Workflow::Create do
   describe described_class::Contract, type: :model do
     it { is_expected.to validate_presence_of(:name) }
+    it { is_expected.to validate_length_of(:name).is_at_most(100) }
   end
 
   describe ".call" do
@@ -18,6 +19,12 @@ RSpec.describe DiscourseWorkflows::Workflow::Create do
 
     context "when contract is invalid" do
       let(:name) { nil }
+
+      it { is_expected.to fail_a_contract }
+    end
+
+    context "when name is too long" do
+      let(:name) { "a" * 101 }
 
       it { is_expected.to fail_a_contract }
     end

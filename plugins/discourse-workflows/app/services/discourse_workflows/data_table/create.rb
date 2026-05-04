@@ -10,7 +10,14 @@ module DiscourseWorkflows
       attribute :name, :string
       attribute :columns, :array, default: []
 
-      validates :name, presence: true
+      validates :name,
+                presence: true,
+                length: {
+                  maximum: 100,
+                },
+                format: {
+                  with: /\A[a-zA-Z_][a-zA-Z0-9_ ]*\z/,
+                }
 
       def normalized_columns
         columns.filter_map do |column|

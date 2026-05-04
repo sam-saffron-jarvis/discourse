@@ -12,7 +12,7 @@ module DiscourseWorkflows
       before_validation { self.nodes = Array.wrap(nodes).select { it.is_a?(Hash) } }
       before_validation { self.connections = Array.wrap(connections).select { it.is_a?(Hash) } }
 
-      validates :name, presence: true
+      validates :name, presence: true, length: { maximum: 100 }
     end
 
     policy :can_manage_workflows, class_name: Policy::CanManageWorkflows

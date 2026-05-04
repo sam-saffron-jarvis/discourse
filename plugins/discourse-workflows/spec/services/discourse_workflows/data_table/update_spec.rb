@@ -4,6 +4,7 @@ RSpec.describe DiscourseWorkflows::DataTable::Update do
   describe described_class::Contract, type: :model do
     it { is_expected.to validate_presence_of(:data_table_id) }
     it { is_expected.to validate_presence_of(:name) }
+    it { is_expected.to validate_length_of(:name).is_at_most(100) }
   end
 
   describe ".call" do
@@ -41,10 +42,16 @@ RSpec.describe DiscourseWorkflows::DataTable::Update do
       it { is_expected.to fail_a_policy(:can_manage_workflows) }
     end
 
-    context "when name fails model validation" do
+    context "when name has invalid format" do
       let(:params) { { data_table_id: data_table.id, name: "invalid-name!" } }
 
-      it { is_expected.to fail_with_an_invalid_model(:data_table) }
+      it { is_expected.to fail_a_contract }
+    end
+
+    context "when name is too long" do
+      let(:params) { { data_table_id: data_table.id, name: "a" * 101 } }
+
+      it { is_expected.to fail_a_contract }
     end
 
     context "when everything is ok" do
