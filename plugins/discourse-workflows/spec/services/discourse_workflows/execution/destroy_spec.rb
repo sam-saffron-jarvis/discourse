@@ -21,6 +21,14 @@ RSpec.describe DiscourseWorkflows::Execution::Destroy do
       it { is_expected.to fail_a_contract }
     end
 
+    context "when execution_ids exceeds the maximum" do
+      let(:params) do
+        { execution_ids: (1..(DiscourseWorkflows::Execution::Destroy::MAX_BULK_DELETE + 1)).to_a }
+      end
+
+      it { is_expected.to fail_a_contract }
+    end
+
     context "when user is not admin" do
       fab!(:user)
 
