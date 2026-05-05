@@ -22,6 +22,7 @@ module DiscourseWorkflows
     end
 
     model :executions, optional: true
+    model :has_more, :compute_has_more, optional: true
     only_if(:has_more) { model :load_more_url, :compute_load_more_url, optional: true }
 
     private
@@ -34,14 +35,13 @@ module DiscourseWorkflows
           .includes(:workflow)
       scope = scope.where("discourse_workflows_executions.id < ?", params.cursor) if params.cursor
 
-      results = scope.limit(params.effective_limit + 1).to_a
-      context[:has_more] = results.size > params.effective_limit
-
-      context[:has_more] ? results.first(params.effective_limit) : results
+      scope.limit(params.effective_limit + 1).to_a
     end
 
-    def has_more
-      context[:has_more]
+    def compute_has_more(executions:, params:)
+      has_more = executions.size > params.effective_limit
+      executions.pop if has_more
+      has_more
     end
 
     def compute_load_more_url(params:, executions:)
