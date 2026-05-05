@@ -2,6 +2,7 @@ import { buildConnectedOutputsIndex } from "../../../lib/workflows/graph-constan
 
 const HANDLE_LENGTH = 30;
 const HANDLE_TOTAL = HANDLE_LENGTH + 14;
+const SOCKET_RADIUS = 5;
 
 function buildHandleEntry(
   nodeEntry,
@@ -12,6 +13,7 @@ function buildHandleEntry(
   areaElement
 ) {
   // SVG positioned at button's canvas location so foreignObject x is always positive (outside viewport = no pointer events).
+  // Paths start at socket edge (not center) to avoid drawing inside the socket circle.
   if (toRight) {
     return {
       areaElement,
@@ -19,7 +21,7 @@ function buildHandleEntry(
       outputKey,
       svgLeft: startPos.x,
       svgTop: startPos.y - 7,
-      pathD: `M 0 7 L ${HANDLE_LENGTH} 7`,
+      pathD: `M ${SOCKET_RADIUS} 7 L ${HANDLE_LENGTH} 7`,
       buttonX: HANDLE_LENGTH,
       buttonY: 0,
     };
@@ -30,7 +32,7 @@ function buildHandleEntry(
       outputKey,
       svgLeft: startPos.x - HANDLE_TOTAL,
       svgTop: startPos.y - 7,
-      pathD: `M ${HANDLE_TOTAL} 7 L 14 7`,
+      pathD: `M ${HANDLE_TOTAL - SOCKET_RADIUS} 7 L 14 7`,
       buttonX: 0,
       buttonY: 0,
     };

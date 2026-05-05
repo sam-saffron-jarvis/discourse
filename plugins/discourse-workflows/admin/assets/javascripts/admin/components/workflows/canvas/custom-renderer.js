@@ -127,6 +127,7 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
           });
           break;
         case "connection":
+          data.element.style.zIndex = "0";
           await this.renderConnection(data);
           break;
         case "socket":
