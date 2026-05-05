@@ -20,10 +20,10 @@ module DiscourseWorkflows
     end
 
     model :variables, optional: true
-    step :trim_to_page_size
+    model :has_more, :compute_has_more, optional: true
     model :total_rows, :count_total_rows
 
-    only_if(:has_more_variables) { model :load_more_url, :build_load_more_url, optional: true }
+    only_if(:has_more) { model :load_more_url, :build_load_more_url, optional: true }
 
     private
 
@@ -33,12 +33,13 @@ module DiscourseWorkflows
       scope.limit(params.limit + 1).to_a
     end
 
-    def trim_to_page_size(params:, variables:)
-      context[:has_more] = variables.size > params.limit
-      variables.pop if context[:has_more]
+    def compute_has_more(params:, variables:)
+      has_more = variables.size > params.limit
+      variables.pop if has_more
+      has_more
     end
 
-    def has_more_variables
+    def has_more
       context[:has_more]
     end
 

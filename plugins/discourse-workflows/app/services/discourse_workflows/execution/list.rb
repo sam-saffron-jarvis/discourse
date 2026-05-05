@@ -44,6 +44,10 @@ module DiscourseWorkflows
       has_more
     end
 
+    def has_more
+      context[:has_more]
+    end
+
     def compute_load_more_url(params:, executions:)
       path =
         if params.workflow_id
