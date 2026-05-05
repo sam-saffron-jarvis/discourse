@@ -52,6 +52,18 @@ RSpec.describe DiscourseWorkflows::FormsController do
       expect(response.status).to eq(404)
     end
 
+    it "returns 404 when resume token points to a non-form action node" do
+      Fabricate(
+        :discourse_workflows_waiting_execution,
+        workflow: workflow,
+        waiting_node_id: "trigger-1",
+        resume_token: "test-resume-token",
+      )
+
+      get form_path, params: { resume_token: "test-resume-token" }
+      expect(response.status).to eq(404)
+    end
+
     it "rate limits repeated show requests" do
       RateLimiter.any_instance.expects(:performed!).raises(RateLimiter::LimitExceeded.new(60))
 
@@ -156,6 +168,24 @@ RSpec.describe DiscourseWorkflows::FormsController do
   describe "PUT /workflows/form/:uuid.json" do
     it "returns 404 when no waiting execution matches the resume token" do
       put form_path, params: { resume_token: "nonexistent-token" }, headers: origin_headers
+      expect(response.status).to eq(404)
+    end
+
+    it "returns 404 when resume token points to a non-form action node" do
+      Fabricate(
+        :discourse_workflows_waiting_execution,
+        workflow: workflow,
+        waiting_node_id: "trigger-1",
+        resume_token: "test-resume-token",
+      )
+
+      put form_path,
+          params: {
+            resume_token: "test-resume-token",
+            form_data: {
+            },
+          },
+          headers: origin_headers
       expect(response.status).to eq(404)
     end
 
