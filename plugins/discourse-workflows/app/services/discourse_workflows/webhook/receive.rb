@@ -56,6 +56,7 @@ module DiscourseWorkflows
     step :validate_resume_request
 
     only_if(:resuming_execution) do
+      model :waiting_node
       step :validate_waiting_http_method
 
       only_if(:async_resume?) { step :enqueue_async_resume }
@@ -82,7 +83,11 @@ module DiscourseWorkflows
     def fetch_waiting_execution(params:)
       return nil if params.execution_id.blank? || params.token.blank?
 
-      execution = DiscourseWorkflows::Execution.find_by(id: params.execution_id, status: :waiting)
+      execution =
+        DiscourseWorkflows::Execution.includes(:workflow).find_by(
+          id: params.execution_id,
+          status: :waiting,
+        )
       return nil unless execution
       unless ActiveSupport::SecurityUtils.secure_compare(execution.resume_token, params.token)
         return nil
@@ -110,22 +115,25 @@ module DiscourseWorkflows
       waiting_execution.nil? && params.execution_id.blank?
     end
 
-    def validate_waiting_http_method(waiting_execution:, params:)
-      node = waiting_execution.workflow.find_node(waiting_execution.waiting_node_id)
-      unless node&.dig("configuration", "http_method") == params.http_method
+    def fetch_waiting_node(waiting_execution:)
+      waiting_execution.workflow.find_node(waiting_execution.waiting_node_id)
+    end
+
+    def validate_waiting_http_method(waiting_node:, params:)
+      unless waiting_node.dig("configuration", "http_method") == params.http_method
         fail!("HTTP method mismatch")
       end
     end
 
-    def async_resume?(waiting_execution:)
-      node = waiting_execution.workflow.find_node(waiting_execution.waiting_node_id)
+    def async_resume?(waiting_node:)
       response_mode =
-        node&.dig("configuration", "response_mode") || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
+        waiting_node.dig("configuration", "response_mode") ||
+          Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
       response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
     end
 
-    def sync_resume?(waiting_execution:)
-      !async_resume?(waiting_execution:)
+    def sync_resume?(waiting_node:)
+      !async_resume?(waiting_node:)
     end
 
     def enqueue_async_resume(waiting_execution:, params:)
@@ -136,9 +144,8 @@ module DiscourseWorkflows
       )
     end
 
-    def resume_execution_synchronously(claimed_execution:, params:)
-      node = claimed_execution.workflow.find_node(claimed_execution.waiting_node_id)
-      config = node&.dig("configuration") || {}
+    def resume_execution_synchronously(claimed_execution:, waiting_node:, params:)
+      config = waiting_node.dig("configuration") || {}
 
       context[:sync_execution] = DiscourseWorkflows::Executor.resume(
         claimed_execution,
@@ -149,15 +156,15 @@ module DiscourseWorkflows
     end
 
     def find_webhook_nodes(params:)
-      workflow_ids =
+      dependency_workflow_ids =
         DiscourseWorkflows::WorkflowDependency.where(
           dependency_type: "webhook_path",
           dependency_key: params.path,
-        ).pluck(:workflow_id)
+        ).select(:workflow_id)
 
       DiscourseWorkflows::Workflow
         .enabled
-        .where(id: workflow_ids)
+        .where(id: dependency_workflow_ids)
         .flat_map do |workflow|
           workflow
             .nodes_of_type("trigger:webhook")
