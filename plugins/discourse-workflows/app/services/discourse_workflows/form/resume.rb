@@ -38,7 +38,8 @@ module DiscourseWorkflows
     end
 
     def fetch_execution(params:)
-      execution = DiscourseWorkflows::Execution.by_resume_token(params.resume_token).first
+      execution =
+        DiscourseWorkflows::Execution.by_resume_token(params.resume_token).includes(:workflow).first
       return unless execution
 
       node = execution.workflow.find_node(execution.waiting_node_id)
