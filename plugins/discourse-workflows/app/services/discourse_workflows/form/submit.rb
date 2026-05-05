@@ -44,13 +44,10 @@ module DiscourseWorkflows
     end
 
     def fetch_workflow(params:)
-      DiscourseWorkflows::WorkflowDependency
-        .enabled_workflows_with_node_type("trigger:form")
-        .each do |workflow, node|
-          config = node["configuration"] || {}
-          return workflow if config["uuid"] == params.uuid
-        end
-      nil
+      DiscourseWorkflows::Workflow.where(enabled: true).find_by(
+        "nodes @> ?",
+        [{ type: "trigger:form", configuration: { uuid: params.uuid } }].to_json,
+      )
     end
 
     def fetch_trigger_node(workflow:, params:)
