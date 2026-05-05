@@ -127,13 +127,13 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
         let(:webhook_suffix) { "after-approval" }
         let(:params) { super().merge(webhook_suffix: "wrong-suffix") }
 
-        it { is_expected.to fail_a_step(:validate_resume_request) }
+        it { is_expected.to fail_a_policy(:valid_resume_request) }
       end
 
       context "when token does not match" do
         let(:params) { super().merge(token: "wrong-token") }
 
-        it { is_expected.to fail_a_step(:validate_resume_request) }
+        it { is_expected.to fail_a_policy(:valid_resume_request) }
       end
 
       context "when response mode is synchronous" do

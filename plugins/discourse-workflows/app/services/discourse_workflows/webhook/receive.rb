@@ -53,7 +53,7 @@ module DiscourseWorkflows
     end
 
     model :waiting_execution, optional: true
-    step :validate_resume_request
+    policy :valid_resume_request
 
     only_if(:resuming_execution) do
       model :waiting_node
@@ -76,8 +76,8 @@ module DiscourseWorkflows
 
     private
 
-    def validate_resume_request(waiting_execution:, params:)
-      fail!("invalid resume request") if params.execution_id.present? && waiting_execution.nil?
+    def valid_resume_request(waiting_execution:, params:)
+      params.execution_id.blank? || waiting_execution.present?
     end
 
     def fetch_waiting_execution(params:)
