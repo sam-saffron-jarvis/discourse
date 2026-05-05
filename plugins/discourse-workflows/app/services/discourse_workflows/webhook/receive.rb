@@ -63,7 +63,7 @@ module DiscourseWorkflows
 
       only_if(:sync_resume?) do
         model :claimed_execution
-        step :resume_execution_synchronously
+        model :sync_result, :resume_execution_synchronously
       end
     end
 
@@ -71,7 +71,7 @@ module DiscourseWorkflows
       model :webhook_nodes, :find_webhook_nodes
       model :authenticated_nodes, :filter_authenticated_nodes
       step :enqueue_async_workflows
-      step :execute_sync_workflows
+      model :sync_result, :execute_sync_workflows, optional: true
     end
 
     private
@@ -144,13 +144,12 @@ module DiscourseWorkflows
 
     def resume_execution_synchronously(claimed_execution:, waiting_node:, params:)
       config = waiting_node.dig("configuration") || {}
-
-      context[:sync_execution] = DiscourseWorkflows::Executor.resume(
-        claimed_execution,
-        params.response_items,
-      )
-      context[:sync_response_mode] = config["response_mode"]
-      context[:sync_response_code] = config["response_code"]
+      execution = DiscourseWorkflows::Executor.resume(claimed_execution, params.response_items)
+      {
+        execution: execution,
+        response_mode: config["response_mode"],
+        response_code: config["response_code"],
+      }
     end
 
     def find_webhook_nodes(params:)
@@ -204,18 +203,20 @@ module DiscourseWorkflows
     end
 
     def execute_sync_workflows(authenticated_nodes:, params:)
+      first = nil
       authenticated_nodes.each do |workflow, node|
         response_mode =
           node.dig("configuration", "response_mode") || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
         next if response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
 
-        executor = DiscourseWorkflows::Executor.new(workflow, node["id"], params.trigger_data)
-        execution = executor.run
-
-        context[:sync_execution] ||= execution
-        context[:sync_response_mode] ||= response_mode
-        context[:sync_response_code] ||= node.dig("configuration", "response_code")
+        execution = DiscourseWorkflows::Executor.new(workflow, node["id"], params.trigger_data).run
+        first ||= {
+          execution: execution,
+          response_mode: response_mode,
+          response_code: node.dig("configuration", "response_code"),
+        }
       end
+      first
     end
   end
 end

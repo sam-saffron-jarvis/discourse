@@ -146,10 +146,10 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
 
         it { is_expected.to run_successfully }
 
-        it "sets sync execution on the context" do
-          expect(result[:sync_execution]).to eq(resumed_execution)
-          expect(result[:sync_response_mode]).to eq("when_last_node_finishes")
-          expect(result[:sync_response_code]).to eq("200")
+        it "sets sync_result on the context" do
+          expect(result[:sync_result][:execution]).to eq(resumed_execution)
+          expect(result[:sync_result][:response_mode]).to eq("when_last_node_finishes")
+          expect(result[:sync_result][:response_code]).to eq("200")
         end
 
         context "when the execution has already been claimed for resume" do
@@ -401,10 +401,10 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
           expect(Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs).to be_empty
         end
 
-        it "sets sync execution on the context" do
-          expect(result[:sync_execution]).to be_a(DiscourseWorkflows::Execution)
-          expect(result[:sync_response_mode]).to eq("when_last_node_finishes")
-          expect(result[:sync_response_code]).to eq("201")
+        it "sets sync_result on the context" do
+          expect(result[:sync_result][:execution]).to be_a(DiscourseWorkflows::Execution)
+          expect(result[:sync_result][:response_mode]).to eq("when_last_node_finishes")
+          expect(result[:sync_result][:response_code]).to eq("201")
         end
       end
     end

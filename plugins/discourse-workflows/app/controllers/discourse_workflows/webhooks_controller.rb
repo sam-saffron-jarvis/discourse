@@ -18,8 +18,8 @@ module DiscourseWorkflows
         service_params.deep_merge(params: webhook_params),
       ) do |result|
         on_success do
-          if result[:sync_execution]
-            render_sync_response(result)
+          if result[:sync_result]
+            render_sync_response(result[:sync_result])
           else
             render json: { success: true }
           end
@@ -27,10 +27,10 @@ module DiscourseWorkflows
         on_model_not_found(:webhook_nodes) do
           render json: { error: "not_found" }, status: :not_found
         end
-        on_failed_step(:validate_resume_request) do
+        on_failed_policy(:valid_resume_request) do
           render json: { error: "not_found" }, status: :not_found
         end
-        on_failed_step(:validate_waiting_http_method) do
+        on_failed_policy(:valid_http_method) do
           render json: { error: "not_found" }, status: :not_found
         end
         on_model_not_found(:authenticated_nodes) do
@@ -49,12 +49,12 @@ module DiscourseWorkflows
 
     private
 
-    def render_sync_response(result)
-      case result[:sync_response_mode]
+    def render_sync_response(sync_result)
+      case sync_result[:response_mode]
       when Schemas::Webhook::RESPONSE_MODE_RESPOND_TO_WEBHOOK
-        render_respond_to_webhook(result[:sync_execution])
+        render_respond_to_webhook(sync_result[:execution])
       when Schemas::Webhook::RESPONSE_MODE_WHEN_LAST_NODE
-        render_last_node_output(result[:sync_execution], result[:sync_response_code])
+        render_last_node_output(sync_result[:execution], sync_result[:response_code])
       end
     end
 
