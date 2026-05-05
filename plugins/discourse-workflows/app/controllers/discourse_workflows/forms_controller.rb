@@ -21,6 +21,7 @@ module DiscourseWorkflows
         DiscourseWorkflows::Form::Show.call(service_params) do
           on_success { |form_data:| render json: form_data }
           on_failed_policy(:authenticated_if_required) { raise Discourse::NotLoggedIn }
+          on_failed_policy(:action_form) { raise Discourse::NotFound }
           on_failure { render(json: failed_json, status: :unprocessable_entity) }
           on_model_not_found(:workflow) { raise Discourse::NotFound }
           on_model_not_found(:form_node) { raise Discourse::NotFound }
@@ -63,6 +64,7 @@ module DiscourseWorkflows
         on_failed_step(:ensure_form_valid) do |form_validation:|
           render json: { errors: form_validation.errors.map(&:to_h) }, status: :unprocessable_entity
         end
+        on_failed_policy(:action_form) { raise Discourse::NotFound }
         on_model_not_found(:claimed_execution) do
           render json: {
                    error: I18n.t("discourse_workflows.errors.already_resumed"),
