@@ -7,10 +7,17 @@ RSpec.describe DiscourseWorkflows::Nodes::Badge::V1 do
   describe ".load_options" do
     fab!(:badge_2) { Fabricate(:badge, name: "A badge") }
 
-    it "returns badges for the chooser" do
+    it "returns enabled badges for the chooser" do
       expect(described_class.load_options("badges")).to include(
         { id: badge_2.id, name: badge_2.name },
         { id: badge.id, name: badge.name },
+      )
+    end
+
+    it "excludes disabled badges" do
+      disabled_badge = Fabricate(:badge, name: "Disabled Badge", enabled: false)
+      expect(described_class.load_options("badges")).not_to include(
+        { id: disabled_badge.id, name: disabled_badge.name },
       )
     end
   end

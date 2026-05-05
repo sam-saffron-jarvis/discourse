@@ -60,7 +60,11 @@ module DiscourseWorkflows
         def self.load_options(source_key)
           case source_key
           when "badges"
-            ::Badge.order(:name).pluck(:id, :name).map { |id, name| { id:, name: } }
+            ::Badge
+              .where(enabled: true)
+              .order(:name)
+              .pluck(:id, :name)
+              .map { |id, name| { id:, name: } }
           end
         end
 
