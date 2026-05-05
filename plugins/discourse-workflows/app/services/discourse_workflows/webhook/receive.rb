@@ -57,7 +57,7 @@ module DiscourseWorkflows
 
     only_if(:resuming_execution) do
       model :waiting_node
-      step :validate_waiting_http_method
+      policy :valid_http_method
 
       only_if(:async_resume?) { step :enqueue_async_resume }
 
@@ -119,10 +119,8 @@ module DiscourseWorkflows
       waiting_execution.workflow.find_node(waiting_execution.waiting_node_id)
     end
 
-    def validate_waiting_http_method(waiting_node:, params:)
-      unless waiting_node.dig("configuration", "http_method") == params.http_method
-        fail!("HTTP method mismatch")
-      end
+    def valid_http_method(waiting_node:, params:)
+      waiting_node.dig("configuration", "http_method") == params.http_method
     end
 
     def async_resume?(waiting_node:)

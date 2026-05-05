@@ -96,7 +96,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
       context "when HTTP method does not match waiting execution" do
         let(:params) { super().merge(http_method: "GET") }
 
-        it { is_expected.to fail_a_step(:validate_waiting_http_method) }
+        it { is_expected.to fail_a_policy(:valid_http_method) }
       end
 
       context "when response mode is immediately" do
