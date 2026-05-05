@@ -22,9 +22,17 @@ module DiscourseWorkflows
 
     def fetch_workflow(params:)
       DiscourseWorkflows::WorkflowDependency
-        .enabled_workflows_with_node_type("trigger:topic_admin_button")
-        .find { |_, node| node["id"] == params.trigger_node_id }
-        &.first
+        .joins(:workflow)
+        .where(
+          dependency_type: "node_type",
+          dependency_key: "trigger:topic_admin_button",
+          node_id: params.trigger_node_id,
+          discourse_workflows_workflows: {
+            enabled: true,
+          },
+        )
+        .first
+        &.workflow
     end
 
     def fetch_trigger_node(params:, workflow:)

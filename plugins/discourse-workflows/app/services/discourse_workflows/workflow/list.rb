@@ -33,8 +33,9 @@ module DiscourseWorkflows
     end
 
     model :workflows, optional: true
+    model :has_more, :compute_has_more, optional: true
     model :total_rows, optional: true
-    model :load_more_url, :build_load_more_url, optional: true
+    only_if(:has_more) { model :load_more_url, :build_load_more_url, optional: true }
 
     private
 
@@ -57,10 +58,18 @@ module DiscourseWorkflows
 
       scope = scope.where("discourse_workflows_workflows.id < ?", params.cursor) if params.cursor
 
-      results = scope.limit(params.limit + 1).to_a
-      context[:has_more] = results.size > params.limit
+      scope.limit(params.limit + 1).to_a
+    end
 
-      context[:has_more] ? results.first(params.limit) : results
+    def compute_has_more(workflows:, params:)
+      has_more = workflows.size > params.limit
+      workflows.pop if has_more
+      context[:has_more] = has_more
+      has_more
+    end
+
+    def has_more
+      context[:has_more]
     end
 
     def fetch_total_rows(params:)
@@ -72,7 +81,7 @@ module DiscourseWorkflows
     end
 
     def build_load_more_url(params:, workflows:)
-      return unless context[:has_more] && workflows.present?
+      return if workflows.blank?
 
       query = {
         cursor: workflows.last.id,
