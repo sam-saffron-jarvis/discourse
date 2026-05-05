@@ -354,10 +354,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
       context "when the waiting node is not a form action" do
         before { execution.update!(waiting_node_id: "trigger-1") }
 
-        it "falls back to initial form request path" do
-          expect(result).to run_successfully
-          expect(result[:form_data][:form_title]).to eq("Test Form")
-        end
+        it { is_expected.to fail_a_policy(:action_form) }
       end
     end
   end

@@ -20,6 +20,7 @@ module DiscourseWorkflows
 
     model :execution
     model :waiting_node
+    policy :action_form
     model :form_validation, :validate_form
     step :ensure_form_valid
     model :claimed_execution
@@ -38,14 +39,11 @@ module DiscourseWorkflows
     end
 
     def fetch_execution(params:)
-      execution =
-        DiscourseWorkflows::Execution.by_resume_token(params.resume_token).includes(:workflow).first
-      return unless execution
+      DiscourseWorkflows::Execution.by_resume_token(params.resume_token).includes(:workflow).first
+    end
 
-      node = execution.workflow.find_node(execution.waiting_node_id)
-      return unless node&.dig("type") == "action:form"
-
-      execution
+    def action_form(waiting_node:)
+      waiting_node.dig("type") == "action:form"
     end
 
     def fetch_waiting_node(execution:)

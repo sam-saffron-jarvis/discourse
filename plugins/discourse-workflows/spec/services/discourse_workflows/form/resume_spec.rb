@@ -87,13 +87,13 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
         Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
       end
 
-      it { is_expected.to fail_to_find_a_model(:execution) }
+      it { is_expected.to fail_a_policy(:action_form) }
     end
 
     context "when waiting node id no longer resolves in the workflow" do
       before { execution.update!(waiting_node_id: "nonexistent") }
 
-      it { is_expected.to fail_to_find_a_model(:execution) }
+      it { is_expected.to fail_to_find_a_model(:waiting_node) }
     end
 
     context "when required form fields are missing" do

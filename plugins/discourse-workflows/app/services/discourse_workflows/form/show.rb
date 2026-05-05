@@ -16,6 +16,7 @@ module DiscourseWorkflows
     only_if(:resuming?) do
       model :workflow, :fetch_workflow_from_execution
       model :form_node, :fetch_form_node_from_execution
+      policy :action_form
       model :form_data, :build_form_data_from_execution
     end
 
@@ -43,15 +44,11 @@ module DiscourseWorkflows
 
     def fetch_waiting_execution(params:)
       return unless params.resume_token
+      DiscourseWorkflows::Execution.by_resume_token(params.resume_token).includes(:workflow).first
+    end
 
-      execution =
-        DiscourseWorkflows::Execution.by_resume_token(params.resume_token).includes(:workflow).first
-      return unless execution
-
-      node = execution.workflow.find_node(execution.waiting_node_id)
-      return unless node&.dig("type") == "action:form"
-
-      execution
+    def action_form(form_node:)
+      form_node.dig("type") == "action:form"
     end
 
     def fetch_workflow_from_execution(waiting_execution:)
