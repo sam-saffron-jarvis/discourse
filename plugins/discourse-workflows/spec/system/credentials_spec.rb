@@ -3,7 +3,7 @@
 RSpec.describe "Discourse Workflows - Credentials" do
   fab!(:admin)
 
-  let(:credentials_page) { PageObjects::Pages::Credentials.new }
+  let(:credentials_page) { PageObjects::Pages::DiscourseWorkflows::Credentials.new }
 
   before { sign_in(admin) }
 

@@ -3,8 +3,8 @@
 RSpec.describe "Workflow Expression Editor" do
   fab!(:admin)
 
-  let(:editor_page) { PageObjects::Pages::WorkflowEditor.new }
-  let(:expression_editor) { PageObjects::Pages::ExpressionEditor.new }
+  let(:editor_page) { PageObjects::Pages::DiscourseWorkflows::WorkflowEditor.new }
+  let(:expression_editor) { PageObjects::Pages::DiscourseWorkflows::ExpressionEditor.new }
 
   before { sign_in(admin) }
 

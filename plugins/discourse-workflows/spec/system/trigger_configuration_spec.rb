@@ -3,7 +3,7 @@
 RSpec.describe "Discourse Workflows - Trigger Configuration" do
   fab!(:admin)
 
-  let(:editor_page) { PageObjects::Pages::WorkflowEditor.new }
+  let(:editor_page) { PageObjects::Pages::DiscourseWorkflows::WorkflowEditor.new }
 
   before { sign_in(admin) }
 

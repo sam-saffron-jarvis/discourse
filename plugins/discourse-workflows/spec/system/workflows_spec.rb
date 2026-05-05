@@ -3,8 +3,8 @@
 RSpec.describe "Discourse Workflows" do
   fab!(:admin)
 
-  let(:workflows_page) { PageObjects::Pages::Workflows.new }
-  let(:editor_page) { PageObjects::Pages::WorkflowEditor.new }
+  let(:workflows_page) { PageObjects::Pages::DiscourseWorkflows::Workflows.new }
+  let(:editor_page) { PageObjects::Pages::DiscourseWorkflows::WorkflowEditor.new }
 
   before do
     SiteSetting.tagging_enabled = true

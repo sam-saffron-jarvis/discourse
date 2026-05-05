@@ -3,7 +3,7 @@
 RSpec.describe "Discourse Workflows - Variables" do
   fab!(:admin)
 
-  let(:variables_page) { PageObjects::Pages::Variables.new }
+  let(:variables_page) { PageObjects::Pages::DiscourseWorkflows::Variables.new }
 
   before { sign_in(admin) }
 

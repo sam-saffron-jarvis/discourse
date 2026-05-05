@@ -4,7 +4,7 @@ RSpec.describe "Discourse Workflows - Executions" do
   fab!(:admin)
   fab!(:workflow) { Fabricate(:discourse_workflows_workflow, created_by: admin) }
 
-  let(:executions_page) { PageObjects::Pages::Executions.new }
+  let(:executions_page) { PageObjects::Pages::DiscourseWorkflows::Executions.new }
 
   before { sign_in(admin) }
 

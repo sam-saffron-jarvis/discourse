@@ -3,7 +3,7 @@
 RSpec.describe "Discourse Workflows - Data Tables" do
   fab!(:admin)
 
-  let(:data_tables_page) { PageObjects::Pages::DataTables.new }
+  let(:data_tables_page) { PageObjects::Pages::DiscourseWorkflows::DataTables.new }
 
   before { sign_in(admin) }
 
