@@ -70,7 +70,9 @@ module DiscourseWorkflows
       data_table_column_select
       data_table_columns
       data_table_condition_builder
+      data_table_select
       filter_query
+      group_select
       icon
       multi_combo_box
       notice
