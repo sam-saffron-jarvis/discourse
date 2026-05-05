@@ -44,7 +44,8 @@ module DiscourseWorkflows
     def fetch_waiting_execution(params:)
       return unless params.resume_token
 
-      execution = DiscourseWorkflows::Execution.by_resume_token(params.resume_token).first
+      execution =
+        DiscourseWorkflows::Execution.by_resume_token(params.resume_token).includes(:workflow).first
       return unless execution
 
       node = execution.workflow.find_node(execution.waiting_node_id)
@@ -57,27 +58,21 @@ module DiscourseWorkflows
       waiting_execution.workflow
     end
 
-    def fetch_form_node_from_execution(waiting_execution:)
-      waiting_execution.workflow.find_node(waiting_execution.waiting_node_id)
+    def fetch_form_node_from_execution(waiting_execution:, workflow:)
+      workflow.find_node(waiting_execution.waiting_node_id)
     end
 
     def fetch_workflow_by_uuid(params:)
-      DiscourseWorkflows::WorkflowDependency
-        .enabled_workflows_with_node_type("trigger:form")
-        .each do |workflow, node|
-          config = node["configuration"] || {}
-          return workflow if config["uuid"] == params.uuid
-        end
-      nil
+      DiscourseWorkflows::Workflow.where(enabled: true).find_by(
+        "nodes @> ?",
+        [{ type: "trigger:form", configuration: { uuid: params.uuid } }].to_json,
+      )
     end
 
     def fetch_form_node_from_workflow(params:, workflow:)
       workflow
         .nodes_of_type("trigger:form")
-        .find do |node|
-          config = node["configuration"] || {}
-          config["uuid"] == params.uuid
-        end
+        .find { |node| node.dig("configuration", "uuid") == params.uuid }
     end
 
     def build_form_data_from_execution(
@@ -88,12 +83,11 @@ module DiscourseWorkflows
       guardian:
     )
       resume_token = waiting_execution.resume_token
-      context_data = waiting_execution.execution_data&.context_data || {}
+      execution_data = waiting_execution.execution_data
+      context_data = execution_data&.context_data || {}
 
       node_contexts_by_name =
-        (waiting_execution.execution_data&.node_contexts || {}).each_with_object(
-          {},
-        ) do |(id, value), acc|
+        (execution_data&.node_contexts || {}).each_with_object({}) do |(id, value), acc|
           name = workflow.find_node(id)&.dig("name").presence || id.to_s
           acc[name] = value
         end
