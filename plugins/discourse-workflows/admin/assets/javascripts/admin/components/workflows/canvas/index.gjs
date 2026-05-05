@@ -31,9 +31,6 @@ import WorkflowNode from "./workflow-node";
 const SVG_STYLE = trustHTML(
   "overflow:visible;position:absolute;pointer-events:none;width:9999px;height:9999px"
 );
-const SVG_STYLE_Z0 = trustHTML(
-  "overflow:visible;position:absolute;pointer-events:none;width:9999px;height:9999px;z-index:0"
-);
 
 export default class WorkflowCanvas extends Component {
   @service keyboardShortcuts;
@@ -296,8 +293,16 @@ export default class WorkflowCanvas extends Component {
     return this.rete?.renderer.connectionEntryList ?? [];
   }
 
-  get outputHandleEntries() {
-    return this.rete?.renderer.outputHandleEntryList ?? [];
+  get handleEntries() {
+    return [
+      ...(this.rete?.renderer.outputHandleEntryList ?? []),
+      ...(this.rete?.renderer.inputHandleEntryList ?? []),
+    ].map((entry) => ({
+      ...entry,
+      svgStyle: trustHTML(
+        `overflow:visible;position:absolute;pointer-events:none;z-index:2;left:${entry.svgLeft}px;top:${entry.svgTop}px;width:50px;height:20px`
+      ),
+    }));
   }
 
   get areaContentElement() {
@@ -330,12 +335,13 @@ export default class WorkflowCanvas extends Component {
   }
 
   @action
-  handleOutputHandleAdd(nodeClientId, outputKey, e) {
+  handleHandleAdd(nodeClientId, outputKey, e) {
     e.stopPropagation();
-    this.args.onOpenNodePanel?.({
-      sourceClientId: nodeClientId,
-      sourceOutput: outputKey,
-    });
+    this.args.onOpenNodePanel?.(
+      outputKey !== null
+        ? { sourceClientId: nodeClientId, sourceOutput: outputKey }
+        : { targetClientId: nodeClientId }
+    );
   }
 
   get showEmptyState() {
@@ -708,10 +714,10 @@ export default class WorkflowCanvas extends Component {
         {{/in-element}}
       {{/each}}
 
-      {{#each this.outputHandleEntries as |entry|}}
+      {{#each this.handleEntries as |entry|}}
         {{#in-element entry.areaElement insertBefore=null}}
           {{! template-lint-disable no-forbidden-elements }}
-          <svg class="workflow-output-handle" style={{SVG_STYLE_Z0}}>
+          <svg class="workflow-handle" style={{entry.svgStyle}}>
             <path
               fill="none"
               stroke="var(--primary-low-mid)"
@@ -719,7 +725,7 @@ export default class WorkflowCanvas extends Component {
               d={{entry.pathD}}
             />
             <foreignObject
-              class="workflow-output-handle__button-fo"
+              class="workflow-handle__button-fo"
               width="14"
               height="14"
               x={{entry.buttonX}}
@@ -727,14 +733,10 @@ export default class WorkflowCanvas extends Component {
             >
               <button
                 type="button"
-                class="workflow-output-handle__add-btn"
+                class="workflow-handle__add-btn"
                 {{on
                   "click"
-                  (fn
-                    this.handleOutputHandleAdd
-                    entry.nodeClientId
-                    entry.outputKey
-                  )
+                  (fn this.handleHandleAdd entry.nodeClientId entry.outputKey)
                 }}
               >
                 {{icon "plus"}}

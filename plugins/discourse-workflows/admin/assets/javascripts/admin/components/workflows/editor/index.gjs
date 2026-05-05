@@ -387,6 +387,30 @@ export default class WorkflowsEditor extends Component {
   }
 
   @action
+  addNodeBeforeTarget(targetClientId, nodeType, configOverrides = null) {
+    const targetNode = this.formApi
+      .get("nodes")
+      .find((n) => n.clientId === targetClientId);
+    const position = targetNode?.position
+      ? { x: targetNode.position.x - 200, y: targetNode.position.y }
+      : null;
+
+    this.#addNewNode(
+      nodeType,
+      position,
+      configOverrides,
+      (connections, newNode, nt) => {
+        connections.push({
+          sourceClientId: newNode.clientId,
+          targetClientId,
+          sourceOutput: nodeTypePrimaryOutputKey(nt),
+        });
+        return !position;
+      }
+    );
+  }
+
+  @action
   updateNodePosition(clientId, position) {
     this.#captureUndo();
     const nodes = this.formApi.get("nodes");
@@ -882,6 +906,8 @@ export default class WorkflowsEditor extends Component {
           configOverrides
         );
       }
+    } else if (ctx.targetClientId) {
+      this.addNodeBeforeTarget(ctx.targetClientId, nodeType, configOverrides);
     } else if (ctx.connectionSource) {
       this.insertNodeOnConnection(
         ctx.connectionSource,

@@ -4,7 +4,7 @@ import {
   getConnectionKind,
   normalizeSourceOutput,
 } from "../../../lib/workflows/graph-constants";
-import { updateOutputHandles } from "./output-handles";
+import { updateInputHandles, updateOutputHandles } from "./handles";
 import { loopBackLayout, loopBodyPath } from "./rete-path-utils";
 
 function resolveCurve(classicPath, kind) {
@@ -24,6 +24,8 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
     connectionEntries = trackedMap();
 
     outputHandleEntries = trackedMap();
+
+    inputHandleEntries = trackedMap();
 
     onSocketRendered = (nodeId, side, key, socketOrOutputs, element) => {
       const socket =
@@ -72,6 +74,7 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
                     this.outputHandleEntries.delete(handleKey);
                   }
                 }
+                this.inputHandleEntries.delete(id);
                 break;
               }
             }
@@ -103,6 +106,10 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
 
     get outputHandleEntryList() {
       return [...this.outputHandleEntries.values()];
+    }
+
+    get inputHandleEntryList() {
+      return [...this.inputHandleEntries.values()];
     }
 
     async #handleRender(context) {
@@ -396,6 +403,16 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
         this.connectionElements,
         (nodeId, side, key) => this.getSocketCanvasPos(nodeId, side, key),
         dirtyNodeIds
+      );
+
+      await updateInputHandles(
+        this.inputHandleEntries,
+        this.nodeEntries,
+        this.connectionElements,
+        (nodeId, side, key) => this.getSocketCanvasPos(nodeId, side, key),
+        dirtyNodeIds,
+        this.graphIndex,
+        this.parentScope().area.content.holder
       );
     }
   };
