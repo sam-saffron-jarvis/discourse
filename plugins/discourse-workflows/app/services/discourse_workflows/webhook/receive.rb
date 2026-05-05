@@ -99,10 +99,7 @@ module DiscourseWorkflows
     end
 
     def fetch_claimed_execution(waiting_execution:, params:)
-      DiscourseWorkflows::Execution.claim_for_resume(
-        id: waiting_execution.id,
-        resume_token: params.token,
-      )
+      DiscourseWorkflows::Execution.claim_for_resume(waiting_execution, resume_token: params.token)
     end
 
     def resuming_execution(waiting_execution:)

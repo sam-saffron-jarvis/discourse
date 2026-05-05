@@ -25,14 +25,17 @@ module DiscourseWorkflows
 
     scope :by_resume_token, ->(token) { where(status: :waiting, resume_token: token.to_s) }
 
-    def self.claim_for_resume(id:, resume_token: nil)
-      scope = where(id: id, status: :waiting)
+    def self.claim_for_resume(execution, resume_token: nil)
+      scope = where(id: execution.id, status: :waiting)
       scope = scope.where(resume_token: resume_token) if resume_token
 
-      affected = scope.update_all(status: statuses[:running], updated_at: Time.current)
+      now = Time.current
+      affected = scope.update_all(status: statuses[:running], updated_at: now)
       return nil if affected.zero?
 
-      find_by(id: id)
+      execution.status = :running
+      execution.updated_at = now
+      execution
     end
 
     def self.compute_run_time_ms(steps)
@@ -82,7 +85,6 @@ module DiscourseWorkflows
         next if affected.zero?
 
         claimed = true
-        reload
         update_step_status_in_data!(
           node_id,
           Executor::Step::WAITING,
@@ -159,6 +161,7 @@ end
 #
 #  idx_dwf_executions_workflow_created_at_id_desc           (workflow_id,created_at DESC,id DESC)
 #  idx_executions_waiting_until                             (waiting_until) WHERE ((waiting_until IS NOT NULL) AND (status = 4))
+#  idx_on_status_waiting_until_a4b17cf9af                   (status,waiting_until)
 #  index_discourse_workflows_executions_on_resume_token     (resume_token) WHERE (resume_token IS NOT NULL)
 #  index_discourse_workflows_executions_on_status           (status)
 #  index_discourse_workflows_executions_on_waiting_node_id  (waiting_node_id)

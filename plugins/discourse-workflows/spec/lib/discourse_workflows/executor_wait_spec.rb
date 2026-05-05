@@ -142,7 +142,7 @@ RSpec.describe DiscourseWorkflows::Executor do
       expect(execution.status).to eq("waiting")
 
       response_items = [{ "json" => { "approved" => true } }]
-      claimed = DiscourseWorkflows::Execution.claim_for_resume(id: execution.id)
+      claimed = DiscourseWorkflows::Execution.claim_for_resume(execution)
       resumed = DiscourseWorkflows::Executor.resume(claimed, response_items)
 
       expect(resumed).to have_attributes(

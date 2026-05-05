@@ -52,10 +52,7 @@ module DiscourseWorkflows
     end
 
     def fetch_claimed_execution(execution:, params:)
-      DiscourseWorkflows::Execution.claim_for_resume(
-        id: execution.id,
-        resume_token: params.resume_token,
-      )
+      DiscourseWorkflows::Execution.claim_for_resume(execution, resume_token: params.resume_token)
     end
 
     def resume_execution(execution:, claimed_execution:, form_validation:, guardian:)

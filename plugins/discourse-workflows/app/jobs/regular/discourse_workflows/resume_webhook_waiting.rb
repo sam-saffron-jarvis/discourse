@@ -6,7 +6,11 @@ module Jobs
       def execute(args)
         return unless SiteSetting.discourse_workflows_enabled
 
-        claimed = ::DiscourseWorkflows::Execution.claim_for_resume(id: args[:execution_id])
+        execution =
+          ::DiscourseWorkflows::Execution.find_by(id: args[:execution_id], status: :waiting)
+        return if execution.nil?
+
+        claimed = ::DiscourseWorkflows::Execution.claim_for_resume(execution)
         return if claimed.nil?
 
         response_items = args[:response_items] || [{ "json" => {} }]

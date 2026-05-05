@@ -13,7 +13,7 @@ module Jobs
         if execution.timeout_action == "fail"
           execution.fail_with_timeout!
         else
-          claimed = ::DiscourseWorkflows::Execution.claim_for_resume(id: execution.id)
+          claimed = ::DiscourseWorkflows::Execution.claim_for_resume(execution)
           return if claimed.nil?
 
           ::DiscourseWorkflows::Executor.resume(claimed, claimed.waiting_step_input_items)
