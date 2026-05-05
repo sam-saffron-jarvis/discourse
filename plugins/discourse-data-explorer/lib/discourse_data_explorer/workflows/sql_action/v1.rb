@@ -110,6 +110,13 @@ module DiscourseDataExplorer
           }
         end
 
+        def self.load_options(source_key)
+          case source_key
+          when "queries"
+            metadata[:queries]
+          end
+        end
+
         def self.metadata
           persisted = DiscourseDataExplorer::Query.where(hidden: false).order(:name).to_a
 
