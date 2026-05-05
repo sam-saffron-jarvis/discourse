@@ -21,6 +21,7 @@ module DiscourseWorkflows
     end
 
     model :data_tables, optional: true
+    model :has_more, :compute_has_more, optional: true
     model :table_sizes, :compute_table_sizes, optional: true
     model :total_rows, :compute_total_rows
     only_if(:has_more) { model :load_more_url, :compute_load_more_url, optional: true }
@@ -30,10 +31,13 @@ module DiscourseWorkflows
     def fetch_data_tables(params:)
       scope = DiscourseWorkflows::DataTable.order(id: :desc)
       scope = scope.where("id < ?", params.cursor) if params.cursor
-      results = scope.limit(params.normalized_limit + 1).to_a
+      scope.limit(params.normalized_limit + 1).to_a
+    end
 
-      context[:has_more] = results.size > params.normalized_limit
-      context[:has_more] ? results.first(params.normalized_limit) : results
+    def compute_has_more(data_tables:, params:)
+      has_more = data_tables.size > params.normalized_limit
+      data_tables.pop if has_more
+      has_more
     end
 
     def compute_table_sizes(data_tables:)
