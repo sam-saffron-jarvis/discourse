@@ -1,13 +1,32 @@
 import Component from "@glimmer/component";
+import { tracked } from "@glimmer/tracking";
 import { concat } from "@ember/helper";
+import { service } from "@ember/service";
 import Field from "./field";
 
 const PARAM_SCHEMA = { type: "string", ui: { expression: true } };
 
 export default class QueryParams extends Component {
+  @service workflowsNodeTypes;
+
+  @tracked _loadedQueries = null;
+
+  constructor(owner, args) {
+    super(owner, args);
+    const identifier = args.nodeDefinition?.identifier;
+    if (identifier) {
+      this.workflowsNodeTypes
+        .loadSourceOptions(identifier, "queries")
+        .then((queries) => {
+          this._loadedQueries = queries;
+        });
+    }
+  }
+
   get params() {
     const id = parseInt(this.args.configuration?.query_id, 10);
-    const query = this.args.metadata?.queries?.find((q) => q.id === id) || null;
+    const queries = this.args.metadata?.queries || this._loadedQueries || [];
+    const query = queries.find((q) => q.id === id) || null;
 
     return (query?.params ?? []).filter((p) => !p.internal);
   }
