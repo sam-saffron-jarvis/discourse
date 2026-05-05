@@ -6,7 +6,7 @@ module DiscourseWorkflows
 
     def index
       DiscourseWorkflows::Workflow::List.call(service_params) do |result|
-        on_success do |workflows:, load_more_url:, total_rows:|
+        on_success do |workflows:, total_rows:, load_more_url: nil|
           render json: {
                    workflows: serialize_data(workflows, DiscourseWorkflows::WorkflowSerializer),
                    meta: {
