@@ -37,7 +37,7 @@ module Chat
           )
         return nil unless found
 
-        ::DiscourseWorkflows::Execution.claim_for_resume(id: found.id, resume_token: resume_token)
+        ::DiscourseWorkflows::Execution.claim_for_resume(found, resume_token: resume_token)
       end
 
       def resume_execution(execution:, params:)
