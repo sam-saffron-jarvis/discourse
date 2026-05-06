@@ -1,47 +1,37 @@
 .workflows-execution-detail {
   padding: var(--space-4);
 
-  &__error {
-    background: var(--danger-low);
-    color: var(--danger);
-    padding: var(--space-3);
-    border-radius: 0.25em;
-    margin-bottom: var(--space-4);
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow: auto;
-    max-height: 300px;
-    font-size: var(--font-down-1);
-    margin-top: 0;
-  }
-
   &__step {
-    border-left: 3px solid var(--primary-low);
-    padding: var(--space-2) var(--space-4);
-    margin-bottom: var(--space-2);
+    border: 1.5px solid var(--primary-low);
+    border-radius: 0.375em;
+    padding: var(--space-3) var(--space-3);
+    margin-bottom: var(--space-3);
 
     &.--success {
-      border-left-color: var(--success);
+      border-color: var(--success);
+      background: color-mix(in srgb, var(--success-low) 40%, transparent);
     }
 
     &.--error {
-      border-left-color: var(--danger);
+      border-color: var(--danger);
     }
 
     &.--running {
-      border-left-color: var(--highlight);
+      border-color: var(--highlight);
     }
 
     &.--skipped {
-      border-left-color: var(--primary-low);
+      border-color: var(--primary-low);
+      opacity: 0.7;
     }
 
     &.--filtered {
-      border-left-color: var(--highlight);
+      border-color: var(--primary-medium);
+      opacity: 0.7;
     }
 
     &.--waiting {
-      border-left-color: var(--workflow-status-waiting);
+      border-color: var(--workflow-status-waiting);
     }
   }
 
@@ -51,8 +41,84 @@
     gap: var(--space-2);
   }
 
+  &__step-icon {
+    flex-shrink: 0;
+    width: 1.25em;
+    text-align: center;
+    color: var(--primary-medium);
+
+    .--kind-trigger & {
+      color: var(--workflow-node-color-orange);
+    }
+
+    .--kind-condition & {
+      color: var(--workflow-node-color-teal);
+    }
+
+    .--kind-action & {
+      color: var(--workflow-node-color-purple);
+    }
+
+    .--kind-flow & {
+      color: var(--workflow-node-color-indigo);
+    }
+  }
+
   &__step-name {
     font-weight: bold;
+  }
+
+  &__kind-badge {
+    font-size: var(--font-down-2);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15em 0.45em;
+    border-radius: 0.25em;
+
+    &.--trigger {
+      background: color-mix(
+        in srgb,
+        var(--workflow-node-color-orange) 15%,
+        transparent
+      );
+      color: var(--workflow-node-color-orange);
+    }
+
+    &.--condition {
+      background: color-mix(
+        in srgb,
+        var(--workflow-node-color-teal) 15%,
+        transparent
+      );
+      color: var(--workflow-node-color-teal);
+    }
+
+    &.--action {
+      background: color-mix(
+        in srgb,
+        var(--workflow-node-color-purple) 15%,
+        transparent
+      );
+      color: var(--workflow-node-color-purple);
+    }
+
+    &.--flow {
+      background: color-mix(
+        in srgb,
+        var(--workflow-node-color-indigo) 15%,
+        transparent
+      );
+      color: var(--workflow-node-color-indigo);
+    }
+  }
+
+  &__step-summary {
+    font-size: var(--font-down-1);
+    color: var(--primary-medium);
+    margin-top: var(--space-1);
+    padding-left: calc(1.25em + var(--space-2));
+    font-family: var(--d-font-family--monospace);
   }
 
   &__step-type {
@@ -171,6 +237,7 @@
     margin-top: var(--space-2);
     padding-top: var(--space-2);
     border-top: 1px solid var(--primary-low);
+    font-size: var(--font-down-1);
   }
 
   &__item-count {
@@ -191,18 +258,6 @@
       overflow: auto;
       white-space: pre-wrap;
       word-break: break-all;
-    }
-  }
-
-  &__step-error {
-    background: var(--danger-low);
-    color: var(--danger);
-    padding: var(--space-2);
-    border-radius: 0.25em;
-
-    &.--skipped {
-      background: var(--primary-low);
-      color: var(--primary-high);
     }
   }
 

@@ -544,6 +544,11 @@ en:
           kept: "Kept"
           rejected: "Rejected"
           rate_limited: "Rate limited"
+        kinds:
+          trigger: "Trigger"
+          condition: "Condition"
+          action: "Action"
+          flow: "Flow"
       stats:
         executions: "Executions"
         failures: "Failures"

@@ -3,7 +3,7 @@ import { concat } from "@ember/helper";
 import { action } from "@ember/object";
 import DButton from "discourse/components/d-button";
 import concatClass from "discourse/helpers/concat-class";
-import { eq } from "discourse/truth-helpers";
+import icon from "discourse/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 
 function formatJson(data) {
@@ -141,6 +141,29 @@ function formatLogs(logs) {
     .join("\n");
 }
 
+function nodeKind(nodeType) {
+  return nodeType?.split(":")[0] || "action";
+}
+
+const KIND_ICONS = {
+  trigger: "bolt",
+  condition: "arrows-split-up-and-left",
+  action: "gear",
+  flow: "arrows-split-up-and-left",
+};
+
+function kindIcon(nodeType) {
+  return KIND_ICONS[nodeKind(nodeType)] || "gear";
+}
+
+function stepSummary(step) {
+  if (!step.error) {
+    return null;
+  }
+  const msg = String(step.error);
+  return msg.length > 100 ? msg.slice(0, 100) + "…" : msg;
+}
+
 function isFilterStep(step) {
   return step.node_type === "condition:filter";
 }
@@ -234,18 +257,30 @@ export default class ExecutionDetail extends Component {
 
   <template>
     <div class="workflows-execution-detail">
-      {{#if @execution.error}}
-        <pre
-          class="workflows-execution-detail__error"
-        >{{@execution.error}}</pre>
-      {{/if}}
-
       <div class="workflows-execution-detail__steps">
         {{#each @execution.steps as |step|}}
-          <div class="workflows-execution-detail__step --{{step.status}}">
+          <div
+            class="workflows-execution-detail__step --{{step.status}}
+              --kind-{{nodeKind step.node_type}}"
+          >
             <div class="workflows-execution-detail__step-header">
+              <span class="workflows-execution-detail__step-icon">
+                {{icon (kindIcon step.node_type)}}
+              </span>
               <span class="workflows-execution-detail__step-name">
                 {{step.node_name}}
+              </span>
+              <span
+                class="workflows-execution-detail__kind-badge --{{nodeKind
+                    step.node_type
+                  }}"
+              >
+                {{i18n
+                  (concat
+                    "discourse_workflows.executions.kinds."
+                    (nodeKind step.node_type)
+                  )
+                }}
               </span>
               <span
                 class="workflows-execution-detail__step-badge --{{step.status}}"
@@ -279,6 +314,12 @@ export default class ExecutionDetail extends Component {
                 {{/if}}
               </span>
             </div>
+
+            {{#if (stepSummary step)}}
+              <div class="workflows-execution-detail__step-summary">
+                {{stepSummary step}}
+              </div>
+            {{/if}}
 
             <div class="workflows-execution-detail__step-body">
               {{#if step.metadata.conditions}}
@@ -359,20 +400,6 @@ export default class ExecutionDetail extends Component {
                 </summary>
                 <pre>{{formatOutputData step.output}}</pre>
               </details>
-              {{#if step.error}}
-                <div
-                  class="workflows-execution-detail__step-error --{{step.status}}"
-                >
-                  <strong>{{i18n
-                      (if
-                        (eq step.status "skipped")
-                        "discourse_workflows.executions.reason"
-                        "discourse_workflows.executions.error"
-                      )
-                    }}:</strong>
-                  {{step.error}}
-                </div>
-              {{/if}}
             </div>
           </div>
         {{/each}}
