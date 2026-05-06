@@ -37,10 +37,6 @@ module DiscourseWorkflows
         schema_extensions_index[schema_name] || []
       end
 
-      def all_node_types
-        nodes
-      end
-
       def find_node_type(identifier, version: nil)
         version ||= DEFAULT_VERSION
         node_type_index[[identifier, version]]
@@ -64,7 +60,7 @@ module DiscourseWorkflows
 
       def node_type_index
         @node_type_index ||=
-          all_node_types.each_with_object({}) do |klass, h|
+          nodes.each_with_object({}) do |klass, h|
             version = klass.respond_to?(:version) ? klass.version : DEFAULT_VERSION
             h[[klass.identifier, version]] = klass
           end
@@ -76,7 +72,7 @@ module DiscourseWorkflows
 
       def schema_extensions_index
         @schema_extensions_index ||=
-          all_node_types.each_with_object(Hash.new { |h, k| h[k] = [] }) do |klass, h|
+          nodes.each_with_object(Hash.new { |h, k| h[k] = [] }) do |klass, h|
             next unless klass.respond_to?(:schema_extensions)
             klass.schema_extensions.each { |ext| h[ext[:name]] << ext }
           end

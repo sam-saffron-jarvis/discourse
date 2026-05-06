@@ -15,7 +15,7 @@ module DiscourseWorkflows
     def fetch_node_types
       seen = Set.new
 
-      DiscourseWorkflows::Registry.all_node_types.filter_map do |klass|
+      DiscourseWorkflows::Registry.nodes.filter_map do |klass|
         identifier = klass.identifier
         next if seen.include?(identifier)
         seen.add(identifier)
