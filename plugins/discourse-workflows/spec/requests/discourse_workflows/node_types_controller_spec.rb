@@ -12,7 +12,7 @@ RSpec.describe DiscourseWorkflows::NodeTypesController do
 
     it "returns 404" do
       get "/admin/plugins/discourse-workflows/node-types.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -20,7 +20,7 @@ RSpec.describe DiscourseWorkflows::NodeTypesController do
     it "returns all registered node types" do
       get "/admin/plugins/discourse-workflows/node-types.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       identifiers = json["node_types"].map { |nt| nt["identifier"] }
 
@@ -70,25 +70,25 @@ RSpec.describe DiscourseWorkflows::NodeTypesController do
     it "returns options for a known source key" do
       get "/admin/plugins/discourse-workflows/node-types/action%3Abadge/options/badges.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["options"]).to include("id" => badge.id, "name" => badge.name)
     end
 
     it "returns groups for the group node" do
       get "/admin/plugins/discourse-workflows/node-types/action%3Agroup/options/groups.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["options"]).to include("id" => group_1.id, "name" => group_1.name)
     end
 
     it "returns 404 for an unknown node type" do
       get "/admin/plugins/discourse-workflows/node-types/action%3Aunknown/options/badges.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 for an unknown source key" do
       get "/admin/plugins/discourse-workflows/node-types/action%3Abadge/options/nonexistent.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

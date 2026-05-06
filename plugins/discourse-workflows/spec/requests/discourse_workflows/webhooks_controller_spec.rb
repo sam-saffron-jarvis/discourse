@@ -24,7 +24,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
              "CONTENT_TYPE" => "application/json",
            }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["success"]).to be(true)
 
       job = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last
@@ -42,24 +42,24 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
 
     it "returns 404 when no matching webhook exists" do
       post "/workflows/webhooks/unknown-path.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 when HTTP method does not match" do
       get "/workflows/webhooks/my-hook.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 when workflow is disabled" do
       workflow.update!(enabled: false)
       post "/workflows/webhooks/my-hook.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 when plugin is disabled" do
       SiteSetting.discourse_workflows_enabled = false
       post "/workflows/webhooks/my-hook.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "works without authentication" do
@@ -69,7 +69,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
              "CONTENT_TYPE" => "application/json",
            }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
     end
 
     it "passes query parameters in trigger data" do
@@ -79,7 +79,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
              "CONTENT_TYPE" => "application/json",
            }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
 
       trigger_data = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last["args"][0]["trigger_data"]
       expect(trigger_data["query"]).to include("source" => "github", "ref" => "main")
@@ -103,7 +103,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
             "CONTENT_TYPE" => "application/json",
           }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
     end
 
     it "rate limits webhook requests" do
@@ -115,14 +115,14 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
              headers: {
                "CONTENT_TYPE" => "application/json",
              }
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
 
         post "/workflows/webhooks/my-hook.json",
              params: {}.to_json,
              headers: {
                "CONTENT_TYPE" => "application/json",
              }
-        expect(response.status).to eq(429)
+        expect(response).to have_http_status(:too_many_requests)
       end
     ensure
       RateLimiter.disable
@@ -135,13 +135,13 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
              "CONTENT_TYPE" => "application/json",
            }
 
-      expect(response.status).to eq(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "handles non-JSON content type" do
       post "/workflows/webhooks/my-hook.json", params: { data: "test" }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
 
       trigger_data = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last["args"][0]["trigger_data"]
       expect(trigger_data["body"]).to eq({ "data" => "test" })
@@ -191,7 +191,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
         expect(response.parsed_body["success"]).to eq(true)
 
         job = Jobs::DiscourseWorkflows::ResumeWebhookWaiting.jobs.last
@@ -208,7 +208,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(404)
+        expect(response).to have_http_status(:not_found)
       end
 
       it "redirects when the resumed workflow responds to webhook with a redirect" do
@@ -249,7 +249,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(302)
+        expect(response).to have_http_status(:found)
         expect(response.headers["Location"]).to eq("https://example.com/thanks")
       end
     end
@@ -304,7 +304,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(302)
+        expect(response).to have_http_status(:found)
         expect(response.headers["Location"]).to eq("https://example.com/thanks")
       end
 
@@ -330,7 +330,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(400)
+        expect(response).to have_http_status(:bad_request)
         expect(response.parsed_body["error"]).to eq("invalid_redirect_url")
       end
 
@@ -357,7 +357,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(302)
+        expect(response).to have_http_status(:found)
         expect(response.headers["Location"]).to eq("https://docs.example.com/thanks")
       end
 
@@ -384,7 +384,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(400)
+        expect(response).to have_http_status(:bad_request)
         expect(response.parsed_body["error"]).to eq("invalid_redirect_url")
       end
 
@@ -411,7 +411,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(201)
+        expect(response).to have_http_status(:created)
         expect(response.parsed_body).to eq("created" => true)
       end
 
@@ -438,7 +438,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
         expect(response.body).to eq("OK thanks")
       end
 
@@ -464,7 +464,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(204)
+        expect(response).to have_http_status(:no_content)
       end
 
       it "returns last node output as JSON when mode is when_last_node_finishes" do
@@ -492,7 +492,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
         expect(response.parsed_body).to be_a(Hash)
       end
     end
@@ -537,7 +537,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "CONTENT_TYPE" => "application/json",
              }
 
-        expect(response.status).to eq(401)
+        expect(response).to have_http_status(:unauthorized)
         expect(response.headers["WWW-Authenticate"]).to eq('Basic realm="Webhook"')
       end
 
@@ -549,7 +549,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                "HTTP_AUTHORIZATION" => "Basic #{Base64.strict_encode64("hook_user:hook_pass")}",
              }
 
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
       end
     end
   end

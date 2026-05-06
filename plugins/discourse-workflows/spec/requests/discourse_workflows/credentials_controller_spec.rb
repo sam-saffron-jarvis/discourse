@@ -12,7 +12,7 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
 
     it "returns 404" do
       get "/admin/plugins/discourse-workflows/credentials.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -22,7 +22,7 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
 
       get "/admin/plugins/discourse-workflows/credentials.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["credentials"].length).to eq(1)
       expect(json["credentials"][0]["name"]).to eq("Test Auth")
@@ -65,7 +65,7 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
              },
            }
 
-      expect(response.status).to eq(201)
+      expect(response).to have_http_status(:created)
       json = response.parsed_body
       expect(json["credential"]["name"]).to eq("My Auth")
       expect(json["credential"]["data"]["user"]).to eq("admin")
@@ -79,7 +79,7 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
              },
            }
 
-      expect(response.status).to eq(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
@@ -96,7 +96,7 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
             },
           }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["credential"]["name"]).to eq("Updated")
       expect(credential.reload.decrypted_data["user"]).to eq("new_user")
       expect(credential.reload.decrypted_data["password"]).to eq("secret")
@@ -105,7 +105,7 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
     it "returns 404 when credential does not exist" do
       put "/admin/plugins/discourse-workflows/credentials/-1.json", params: { name: "X" }
 
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -115,13 +115,13 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
 
       delete "/admin/plugins/discourse-workflows/credentials/#{credential.id}.json"
 
-      expect(response.status).to eq(204)
+      expect(response).to have_http_status(:no_content)
       expect(DiscourseWorkflows::Credential.exists?(credential.id)).to be(false)
     end
 
     it "returns 404 when credential does not exist" do
       delete "/admin/plugins/discourse-workflows/credentials/-1.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 422 when credential is referenced by a node" do
@@ -134,7 +134,7 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
 
       delete "/admin/plugins/discourse-workflows/credentials/#{credential.id}.json"
 
-      expect(response.status).to eq(422)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 end

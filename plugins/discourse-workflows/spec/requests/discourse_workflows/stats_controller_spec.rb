@@ -12,7 +12,7 @@ RSpec.describe DiscourseWorkflows::StatsController do
 
     it "returns 404" do
       get "/admin/plugins/discourse-workflows/stats.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -20,7 +20,7 @@ RSpec.describe DiscourseWorkflows::StatsController do
     it "returns stats JSON" do
       get "/admin/plugins/discourse-workflows/stats.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
     end
   end
 
@@ -30,7 +30,7 @@ RSpec.describe DiscourseWorkflows::StatsController do
     it "returns stats JSON scoped to the workflow" do
       get "/admin/plugins/discourse-workflows/stats/#{workflow.id}.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
     end
   end
 end

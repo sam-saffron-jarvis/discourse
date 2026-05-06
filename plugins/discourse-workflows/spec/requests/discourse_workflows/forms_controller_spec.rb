@@ -26,7 +26,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
   let(:origin_headers) { { "Origin" => "http://#{Discourse.current_hostname}" } }
   let(:initial_resume_token) do
     get form_path
-    expect(response.status).to eq(200)
+    expect(response).to have_http_status(:ok)
     response.parsed_body["resume_token"]
   end
 
@@ -34,7 +34,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
     it "returns form schema" do
       expect { get form_path }.not_to change { DiscourseWorkflows::Execution.count }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["form_title"]).to eq("Test Form")
       expect(json["form_fields"].length).to eq(1)
@@ -43,13 +43,13 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
     it "returns 404 for unknown uuid" do
       get "/workflows/form/00000000-0000-0000-0000-000000000000.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 for disabled workflow" do
       workflow.update!(enabled: false)
       get form_path
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 when resume token points to a non-form action node" do
@@ -61,7 +61,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
       )
 
       get form_path, params: { resume_token: "test-resume-token" }
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "rate limits repeated show requests" do
@@ -69,7 +69,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
       get form_path
 
-      expect(response.status).to eq(429)
+      expect(response).to have_http_status(:too_many_requests)
     end
 
     context "when the form requires a logged-in user" do
@@ -84,13 +84,13 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
       it "returns 403 for anonymous users" do
         get form_path
-        expect(response.status).to eq(403)
+        expect(response).to have_http_status(:forbidden)
       end
 
       it "returns form schema for logged-in users" do
         sign_in(user)
         get form_path
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
       end
     end
   end
@@ -105,7 +105,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
              },
            },
            headers: origin_headers
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
 
       json = response.parsed_body
       expect(json["resume_token"]).to be_present
@@ -118,7 +118,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
     it "returns 422 when the initial submission token is missing" do
       post form_path, params: { form_data: { name: "Test User" } }, headers: origin_headers
 
-      expect(response.status).to eq(422)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
 
     it "returns 422 with structured errors when required fields are omitted" do
@@ -129,7 +129,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
              },
            },
            headers: origin_headers
-      expect(response.status).to eq(422)
+      expect(response).to have_http_status(:unprocessable_entity)
       expect(response.parsed_body["errors"]).to eq(
         [{ "field_label" => "Name", "code" => "missing" }],
       )
@@ -147,7 +147,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
       it "returns 403 for anonymous users" do
         post form_path, params: { form_data: { name: "Test User" } }, headers: origin_headers
-        expect(response.status).to eq(403)
+        expect(response).to have_http_status(:forbidden)
       end
 
       it "executes workflow for logged-in users" do
@@ -160,7 +160,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
                },
              },
              headers: origin_headers
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
       end
     end
   end
@@ -168,7 +168,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
   describe "PUT /workflows/form/:uuid.json" do
     it "returns 404 when no waiting execution matches the resume token" do
       put form_path, params: { resume_token: "nonexistent-token" }, headers: origin_headers
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 when resume token points to a non-form action node" do
@@ -186,12 +186,12 @@ RSpec.describe DiscourseWorkflows::FormsController do
             },
           },
           headers: origin_headers
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 422 when resume_token is missing" do
       put form_path, params: { form_data: {} }, headers: origin_headers
-      expect(response.status).to eq(422)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
 
     context "with a workflow containing a downstream form action" do
@@ -243,7 +243,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
                },
              },
              headers: origin_headers
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
 
         resume_token = response.parsed_body["resume_token"]
         expect(resume_token).to be_present
@@ -260,7 +260,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
               },
             },
             headers: origin_headers
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
 
         execution.reload
         expect(execution.status).to eq("success")
@@ -285,7 +285,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
               },
             },
             headers: origin_headers
-        expect(response.status).to eq(200)
+        expect(response).to have_http_status(:ok)
 
         put form_path,
             params: {
@@ -295,7 +295,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
               },
             },
             headers: origin_headers
-        expect(response.status).to eq(404)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

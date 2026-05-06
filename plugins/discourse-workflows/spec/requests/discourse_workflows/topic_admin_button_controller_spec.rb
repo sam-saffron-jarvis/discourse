@@ -25,7 +25,7 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
              topic_id: topic.id,
            }
 
-      expect(response.status).to eq(403)
+      expect(response).to have_http_status(:forbidden)
     end
 
     it "returns 403 when user is not an admin" do
@@ -37,7 +37,7 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
              topic_id: topic.id,
            }
 
-      expect(response.status).to eq(403)
+      expect(response).to have_http_status(:forbidden)
     end
 
     context "when signed in as admin" do
@@ -50,7 +50,7 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
                topic_id: topic.id,
              }
 
-        expect(response.status).to eq(204)
+        expect(response).to have_http_status(:no_content)
       end
 
       it "enqueues an ExecuteWorkflow job" do
@@ -67,7 +67,7 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
       it "returns 400 when contract is invalid" do
         post "/discourse-workflows/trigger-topic-admin-button.json", params: {}
 
-        expect(response.status).to eq(400)
+        expect(response).to have_http_status(:bad_request)
       end
 
       it "returns 404 when trigger node does not exist" do
@@ -77,7 +77,7 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
                topic_id: topic.id,
              }
 
-        expect(response.status).to eq(404)
+        expect(response).to have_http_status(:not_found)
       end
 
       it "returns 404 when workflow is disabled" do
@@ -89,7 +89,7 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
                topic_id: topic.id,
              }
 
-        expect(response.status).to eq(404)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

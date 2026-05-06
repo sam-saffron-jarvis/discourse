@@ -23,7 +23,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
         instance_exec(&path_proc),
         params: params_proc&.then { instance_exec(&_1) },
       )
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 when not admin" do
@@ -33,7 +33,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
         instance_exec(&path_proc),
         params: params_proc&.then { instance_exec(&_1) },
       )
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -48,7 +48,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
 
     it "lists rows" do
       get "/admin/plugins/discourse-workflows/data-tables/#{data_table.id}/rows.json"
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["rows"].length).to eq(1)
       expect(json["rows"][0]["email"]).to eq("test@test.com")
@@ -63,7 +63,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
               filters: [{ columnName: "email", condition: "eq", value: "nope@test.com" }],
             },
           }
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["rows"].length).to eq(0)
     end
 
@@ -76,7 +76,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
             },
           }
 
-      expect(response.status).to eq(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
@@ -95,7 +95,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
                email: "new@test.com",
              },
            }
-      expect(response.status).to eq(201)
+      expect(response).to have_http_status(:created)
       expect(response.parsed_body["row"]["email"]).to eq("new@test.com")
     end
   end
@@ -121,7 +121,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
               score: 99,
             },
           }
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["updated_count"]).to eq(1)
       expect(find_data_table_row(data_table, row["id"])["score"]).to eq(99)
     end
@@ -138,7 +138,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
             },
           }
 
-      expect(response.status).to eq(422)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 
@@ -162,7 +162,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
                  filters: [{ columnName: "email", condition: "eq", value: "del@test.com" }],
                },
              }
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["deleted_count"]).to eq(1)
       expect(find_data_table_row(data_table, row_id)).to be_nil
     end
@@ -174,7 +174,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
              params: {
                row_ids: [id_1, id_2],
              }
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["deleted_count"]).to eq(2)
       expect(find_data_table_row(data_table, id_1)).to be_nil
       expect(find_data_table_row(data_table, id_2)).to be_nil
@@ -185,12 +185,12 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
              params: {
                row_ids: [row_1["id"]],
              }
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 400 when no target is provided" do
       delete "/admin/plugins/discourse-workflows/data-tables/#{data_table.id}/rows.json", params: {}
-      expect(response.status).to eq(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
@@ -211,7 +211,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
               score: 42,
             },
           }
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["row"]["score"]).to eq(42)
       expect(find_data_table_row(data_table, row["id"])["email"]).to eq("cell@test.com")
     end
@@ -223,7 +223,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
               score: 1,
             },
           }
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 for non-existent data table" do
@@ -233,7 +233,7 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
               score: 1,
             },
           }
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -249,18 +249,18 @@ RSpec.describe DiscourseWorkflows::DataTableRowsController do
     it "deletes a single row by id" do
       row_id = row["id"]
       delete "/admin/plugins/discourse-workflows/data-tables/#{data_table.id}/rows/#{row_id}.json"
-      expect(response.status).to eq(204)
+      expect(response).to have_http_status(:no_content)
       expect(find_data_table_row(data_table, row_id)).to be_nil
     end
 
     it "returns 404 for non-existent row" do
       delete "/admin/plugins/discourse-workflows/data-tables/#{data_table.id}/rows/999999.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 for non-existent data table" do
       delete "/admin/plugins/discourse-workflows/data-tables/999999/rows/#{row["id"]}.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

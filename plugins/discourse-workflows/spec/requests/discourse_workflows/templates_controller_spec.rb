@@ -12,7 +12,7 @@ RSpec.describe DiscourseWorkflows::TemplatesController do
 
     it "returns 404" do
       get "/admin/plugins/discourse-workflows/templates.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -20,7 +20,7 @@ RSpec.describe DiscourseWorkflows::TemplatesController do
     it "returns a list of templates" do
       get "/admin/plugins/discourse-workflows/templates.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["templates"]).to be_an(Array)
       expect(json["templates"].size).to be >= 1
@@ -41,7 +41,7 @@ RSpec.describe DiscourseWorkflows::TemplatesController do
     it "returns the template" do
       get "/admin/plugins/discourse-workflows/templates/auto-tag-topics.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["template"]["name"]).to eq("Auto-tag new topics")
       expect(json["template"]["nodes"]).to be_an(Array)
@@ -50,7 +50,7 @@ RSpec.describe DiscourseWorkflows::TemplatesController do
     it "returns 404 when template does not exist" do
       get "/admin/plugins/discourse-workflows/templates/nonexistent.json"
 
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

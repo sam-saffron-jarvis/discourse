@@ -13,7 +13,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
 
     it "returns 404" do
       get "/admin/plugins/discourse-workflows/executions.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -30,7 +30,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
              trigger_node_id: "trigger-1",
            }
 
-      expect(response.status).to eq(201)
+      expect(response).to have_http_status(:created)
     end
 
     it "returns 404 when trigger node does not exist" do
@@ -39,7 +39,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
              workflow_id: workflow.id,
              trigger_node_id: "nonexistent",
            }
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "passes current user to execution" do
@@ -62,7 +62,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
 
       get "/admin/plugins/discourse-workflows/executions.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["executions"].length).to eq(1)
       expect(json["executions"][0]).to include(
@@ -93,7 +93,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
     it "deletes executions" do
       delete "/admin/plugins/discourse-workflows/executions.json", params: { ids: [execution.id] }
 
-      expect(response.status).to eq(204)
+      expect(response).to have_http_status(:no_content)
       expect(DiscourseWorkflows::Execution.exists?(execution.id)).to be(false)
     end
   end
@@ -113,7 +113,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
     it "returns the execution with steps" do
       get "/admin/plugins/discourse-workflows/executions/#{execution.id}.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["execution"]["id"]).to eq(execution.id)
       expect(json["execution"]["steps"].length).to eq(1)
@@ -121,7 +121,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
 
     it "returns 404 when execution does not exist" do
       get "/admin/plugins/discourse-workflows/executions/-1.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

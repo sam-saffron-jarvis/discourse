@@ -14,7 +14,7 @@ RSpec.describe DiscourseWorkflows::DataTableColumnsController do
         instance_exec(&path_proc),
         params: params_proc&.then { instance_exec(&_1) },
       )
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 when not admin" do
@@ -24,7 +24,7 @@ RSpec.describe DiscourseWorkflows::DataTableColumnsController do
         instance_exec(&path_proc),
         params: params_proc&.then { instance_exec(&_1) },
       )
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -51,7 +51,7 @@ RSpec.describe DiscourseWorkflows::DataTableColumnsController do
              column_type: "number",
            }
 
-      expect(response.status).to eq(201)
+      expect(response).to have_http_status(:created)
       column_names = response.parsed_body["data_table"]["columns"].map { |column| column["name"] }
       expect(column_names).to include("email", "score")
       expect(find_data_table_row(data_table, row["id"])).to include(
@@ -83,7 +83,7 @@ RSpec.describe DiscourseWorkflows::DataTableColumnsController do
               name: "contact_email",
             }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["data_table"]["columns"]).to include(
         include("name" => "contact_email", "type" => "string"),
       )
@@ -115,7 +115,7 @@ RSpec.describe DiscourseWorkflows::DataTableColumnsController do
     it "deletes the column and preserves remaining row data" do
       delete "/admin/plugins/discourse-workflows/data-tables/#{data_table.id}/columns/email.json"
 
-      expect(response.status).to eq(204)
+      expect(response).to have_http_status(:no_content)
       expect(find_data_table_row(data_table, row["id"])).to include("score" => 7)
     end
   end

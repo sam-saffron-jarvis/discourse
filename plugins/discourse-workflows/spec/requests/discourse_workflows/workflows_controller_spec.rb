@@ -15,7 +15,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
 
     it "returns 404 for index" do
       get "/admin/plugins/discourse-workflows/workflows.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -25,7 +25,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
 
       get "/admin/plugins/discourse-workflows/workflows.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["workflows"].length).to eq(1)
       expect(json["workflows"][0]["name"]).to eq(workflow.name)
@@ -43,7 +43,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
 
       get "/admin/plugins/discourse-workflows/workflows.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["workflows"][0]["last_execution_status"]).to eq("success")
     end
@@ -112,7 +112,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
              },
            }
 
-      expect(response.status).to eq(201)
+      expect(response).to have_http_status(:created)
       json = response.parsed_body
       expect(json["workflow"]["name"]).to eq("My Workflow")
       expect(json["workflow"]["nodes"].length).to eq(2)
@@ -121,7 +121,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
 
     it "returns 400 when name is missing" do
       post "/admin/plugins/discourse-workflows/workflows.json", params: { workflow: { nodes: [] } }
-      expect(response.status).to eq(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns 422 when node validation fails" do
@@ -143,7 +143,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
              },
            }
 
-      expect(response.status).to eq(422)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 
@@ -161,7 +161,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
             },
           }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["workflow"]).to include(
         "name" => "Updated Name",
         "enabled" => true,
@@ -180,7 +180,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
             },
           }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["workflow"]["error_workflow_id"]).to eq(error_wf.id)
       expect(workflow.reload.error_workflow_id).to eq(error_wf.id)
     end
@@ -198,7 +198,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
             },
           }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["workflow"]["error_workflow_id"]).to be_nil
       expect(workflow.reload.error_workflow_id).to be_nil
     end
@@ -213,7 +213,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
             },
           }
 
-      expect(response.status).to eq(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns 404 when workflow does not exist" do
@@ -224,7 +224,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
             },
           }
 
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 422 when graph population fails" do
@@ -248,7 +248,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
             },
           }
 
-      expect(response.status).to eq(422)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 
@@ -258,13 +258,13 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
 
       delete "/admin/plugins/discourse-workflows/workflows/#{workflow.id}.json"
 
-      expect(response.status).to eq(204)
+      expect(response).to have_http_status(:no_content)
       expect(DiscourseWorkflows::Workflow.exists?(workflow.id)).to be(false)
     end
 
     it "returns 404 when workflow does not exist" do
       delete "/admin/plugins/discourse-workflows/workflows/-1.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -275,14 +275,14 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
 
       get "/admin/plugins/discourse-workflows/workflows/#{workflow.id}.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["workflow"]["nodes"].length).to eq(1)
     end
 
     it "returns 404 when workflow does not exist" do
       get "/admin/plugins/discourse-workflows/workflows/-1.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "includes error_workflow_name when error workflow is set" do
@@ -292,7 +292,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
 
       get "/admin/plugins/discourse-workflows/workflows/#{workflow.id}.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["workflow"]["error_workflow_name"]).to eq("Error handler")
     end
 
@@ -301,7 +301,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
 
       get "/admin/plugins/discourse-workflows/workflows/#{workflow.id}.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["workflow"]).not_to have_key("error_workflow_name")
     end
   end

@@ -13,7 +13,7 @@ RSpec.describe DiscourseWorkflows::WorkflowExecutionsController do
 
     it "returns 404" do
       get "/admin/plugins/discourse-workflows/workflows/#{workflow.id}/executions.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -23,7 +23,7 @@ RSpec.describe DiscourseWorkflows::WorkflowExecutionsController do
     it "returns executions for the workflow" do
       get "/admin/plugins/discourse-workflows/workflows/#{workflow.id}/executions.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["executions"].length).to eq(1)
       expect(json["executions"][0]["id"]).to eq(execution.id)
@@ -34,7 +34,7 @@ RSpec.describe DiscourseWorkflows::WorkflowExecutionsController do
     it "returns empty when no executions exist" do
       get "/admin/plugins/discourse-workflows/workflows/#{workflow.id}/executions.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["executions"]).to be_empty
     end

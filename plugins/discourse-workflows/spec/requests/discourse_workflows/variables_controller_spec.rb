@@ -12,12 +12,12 @@ RSpec.describe DiscourseWorkflows::VariablesController do
 
     it "returns 404 for index" do
       get "/admin/plugins/discourse-workflows/variables.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 for create" do
       post "/admin/plugins/discourse-workflows/variables.json", params: { key: "X", value: "Y" }
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -27,7 +27,7 @@ RSpec.describe DiscourseWorkflows::VariablesController do
 
       get "/admin/plugins/discourse-workflows/variables.json"
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["variables"].length).to eq(1)
       expect(json["variables"][0]["key"]).to eq(variable.key)
@@ -67,14 +67,14 @@ RSpec.describe DiscourseWorkflows::VariablesController do
              description: "API base",
            }
 
-      expect(response.status).to eq(201)
+      expect(response).to have_http_status(:created)
       json = response.parsed_body
       expect(json["variable"]).to include("key" => "API_URL", "value" => "https://example.com")
     end
 
     it "returns 400 when key is missing" do
       post "/admin/plugins/discourse-workflows/variables.json", params: { value: "test" }
-      expect(response.status).to eq(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
@@ -88,13 +88,13 @@ RSpec.describe DiscourseWorkflows::VariablesController do
             value: "updated",
           }
 
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["variable"]["key"]).to eq("UPDATED_KEY")
     end
 
     it "returns 404 when variable does not exist" do
       put "/admin/plugins/discourse-workflows/variables/-1.json", params: { key: "X", value: "Y" }
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -104,13 +104,13 @@ RSpec.describe DiscourseWorkflows::VariablesController do
 
       delete "/admin/plugins/discourse-workflows/variables/#{variable.id}.json"
 
-      expect(response.status).to eq(204)
+      expect(response).to have_http_status(:no_content)
       expect(DiscourseWorkflows::Variable.exists?(variable.id)).to be(false)
     end
 
     it "returns 404 when variable does not exist" do
       delete "/admin/plugins/discourse-workflows/variables/-1.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

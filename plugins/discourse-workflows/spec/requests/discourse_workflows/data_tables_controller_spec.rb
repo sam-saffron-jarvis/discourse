@@ -14,7 +14,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
         instance_exec(&path_proc),
         params: params_proc&.then { instance_exec(&_1) },
       )
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns 404 when not admin" do
@@ -24,7 +24,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
         instance_exec(&path_proc),
         params: params_proc&.then { instance_exec(&_1) },
       )
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -37,7 +37,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
 
     it "lists data tables" do
       get "/admin/plugins/discourse-workflows/data-tables.json"
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["data_tables"].length).to eq(1)
       expect(json["data_tables"][0]["name"]).to eq(data_table.name)
@@ -74,14 +74,14 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
 
     it "returns the data table" do
       get "/admin/plugins/discourse-workflows/data-tables/#{data_table.id}.json"
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["data_table"]).to include("id" => data_table.id, "name" => data_table.name)
     end
 
     it "returns 404 for non-existent data table" do
       get "/admin/plugins/discourse-workflows/data-tables/999999.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -98,7 +98,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
              columns: [{ "name" => "email", "type" => "string" }],
            },
            as: :json
-      expect(response.status).to eq(201)
+      expect(response).to have_http_status(:created)
       json = response.parsed_body
       expect(json["data_table"]["name"]).to eq("users")
       expect(json["data_table"]["columns"]).to include(
@@ -109,7 +109,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
     it "creates a data table when the modal submits only a name" do
       post "/admin/plugins/discourse-workflows/data-tables.json", params: { name: "empty_table" }
 
-      expect(response.status).to eq(201)
+      expect(response).to have_http_status(:created)
       body = response.parsed_body["data_table"]
       expect(body["name"]).to eq("empty_table")
       expect(body["columns"].map { |c| c["name"] }).to eq(%w[id created_at updated_at])
@@ -129,13 +129,13 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
           params: {
             name: "renamed",
           }
-      expect(response.status).to eq(200)
+      expect(response).to have_http_status(:ok)
       expect(response.parsed_body["data_table"]["name"]).to eq("renamed")
     end
 
     it "returns 404 for non-existent data table" do
       put "/admin/plugins/discourse-workflows/data-tables/999999.json", params: { name: "test" }
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -148,7 +148,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
 
     it "deletes a data table" do
       delete "/admin/plugins/discourse-workflows/data-tables/#{data_table.id}.json"
-      expect(response.status).to eq(204)
+      expect(response).to have_http_status(:no_content)
     end
 
     context "when data table is referenced by a workflow" do
@@ -182,7 +182,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
       it "returns 422 with referencing workflow details" do
         delete "/admin/plugins/discourse-workflows/data-tables/#{data_table.id}.json"
 
-        expect(response.status).to eq(422)
+        expect(response).to have_http_status(:unprocessable_entity)
         body = response.parsed_body
         expect(body["type"]).to eq("data_table_in_use")
         expect(body["referencing_workflows"]).to contain_exactly(
@@ -193,7 +193,7 @@ RSpec.describe DiscourseWorkflows::DataTablesController do
 
     it "returns 404 for non-existent data table" do
       delete "/admin/plugins/discourse-workflows/data-tables/999999.json"
-      expect(response.status).to eq(404)
+      expect(response).to have_http_status(:not_found)
     end
   end
 end
