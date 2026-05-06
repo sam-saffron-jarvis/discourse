@@ -13,7 +13,6 @@ module Jobs
               :execution_mode,
               :error_depth,
               :user_id,
-              :workflow_execution_chain,
             ).compact,
         )
       end

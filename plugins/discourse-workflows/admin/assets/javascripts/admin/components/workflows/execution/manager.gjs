@@ -16,6 +16,7 @@ const STATUS_ICONS = {
   error: "circle-xmark",
   running: "spinner",
   waiting: "clock",
+
 };
 
 function statusIcon(status) {
