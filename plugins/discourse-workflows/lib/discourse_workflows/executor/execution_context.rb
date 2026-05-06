@@ -61,9 +61,9 @@ module DiscourseWorkflows
 
       def resolver_context(extra_context = {})
         @context.merge(
+          **extra_context,
           "__node_contexts" => resolver_node_contexts,
           "__execution" => execution_variables(extra_context),
-          **extra_context,
         )
       end
 
@@ -86,14 +86,16 @@ module DiscourseWorkflows
       private
 
       EXECUTION_VALUE_SOURCES = {
-        "id" => ->(execution_context) { execution_context.execution&.id },
-        "workflow_id" => ->(execution_context) { execution_context.workflow&.id },
-        "workflow_name" => ->(execution_context) { execution_context.workflow&.name },
+        "id" => ->(execution_context, _extra_context) { execution_context.execution&.id },
+        "workflow_id" => ->(execution_context, _extra_context) { execution_context.workflow&.id },
+        "workflow_name" => ->(execution_context, _extra_context) do
+          execution_context.workflow&.name
+        end,
         "resume_url" =>
           lambda do |execution_context, extra_context|
             token = execution_context.resume_token
             execution_id = execution_context.execution&.id
-            next if token.blank? || execution_id.blank?
+            return if token.blank? || execution_id.blank?
 
             suffix = extra_context&.dig("__webhook_suffix")
             base = "#{Discourse.base_url}/workflows/webhooks/#{execution_id}"
@@ -107,7 +109,7 @@ module DiscourseWorkflows
         schema_fields.each_with_object({}) do |(field_name, _), vars|
           source = EXECUTION_VALUE_SOURCES[field_name]
           next unless source
-          value = source.arity > 1 ? source.call(self, extra_context) : source.call(self)
+          value = source.call(self, extra_context)
           vars[field_name] = value unless value.nil?
         end
       end
@@ -124,10 +126,10 @@ module DiscourseWorkflows
         node_id = node_key.to_s
         return node_id if nodes_by_id.key?(node_id)
 
-        named_node = nodes_by_name[node_key.to_s]
+        named_node = nodes_by_name[node_id]
         return named_node["id"].to_s if named_node
 
-        node_key.to_s
+        node_id
       end
 
       def resolver_node_contexts
