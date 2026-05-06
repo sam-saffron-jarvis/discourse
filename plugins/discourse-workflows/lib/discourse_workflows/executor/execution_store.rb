@@ -62,7 +62,7 @@ module DiscourseWorkflows
         execution
       end
 
-      def create_execution_with_status(status)
+      def create_execution_with_status(status, trigger_data: self.trigger_data)
         now = Time.current
 
         DiscourseWorkflows::Execution.create!(
@@ -77,19 +77,7 @@ module DiscourseWorkflows
       end
 
       def create_rate_limited_execution
-        now = Time.current
-
-        DiscourseWorkflows::Execution.create!(
-          workflow: workflow,
-          trigger_node_id: @trigger_node_id,
-          status: :rate_limited,
-          trigger_data: {
-            "rate_limited" => true,
-          },
-          execution_mode: @options.execution_mode,
-          started_at: now,
-          finished_at: now,
-        )
+        create_execution_with_status(:rate_limited, trigger_data: { "rate_limited" => true })
       end
 
       def pause_waiting_execution!(node:, waiting_until: nil, steps: [])
@@ -285,8 +273,8 @@ module DiscourseWorkflows
         entries.transform_values do |node_steps|
           Array(node_steps).map do |step|
             step.except("input", "output").merge(
-              "input" => truncated_value([], nil, "execution_data_size_limit"),
-              "output" => truncated_value([], nil, "execution_data_size_limit"),
+              "input" => truncated_value(step["input"] || [], nil, "execution_data_size_limit"),
+              "output" => truncated_value(step["output"] || [], nil, "execution_data_size_limit"),
             )
           end
         end
