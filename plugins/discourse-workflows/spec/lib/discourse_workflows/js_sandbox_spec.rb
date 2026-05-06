@@ -17,7 +17,10 @@ RSpec.describe DiscourseWorkflows::JsSandbox do
 
   describe "timeout" do
     it "raises when JS execution exceeds the time limit" do
-      expect { sandbox.eval("while(true) {}") }.to raise_error(MiniRacer::ScriptTerminatedError)
+      expect { sandbox.eval("while(true) {}") }.to raise_error(
+        DiscourseWorkflows::JsSandbox::BudgetExceededError,
+        /exceeded #{DiscourseWorkflows::JsSandbox::EVAL_TIMEOUT_MS}ms time limit/,
+      )
     end
   end
 

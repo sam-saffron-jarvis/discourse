@@ -2,7 +2,7 @@
 
 module DiscourseWorkflows
   class JsSandbox
-    EVAL_TIMEOUT_MS = 500
+    EVAL_TIMEOUT_MS = 30
     MAX_INJECTED_JSON_BYTES = 1.megabyte
     MAX_MEMORY_BYTES = 10.megabytes
     MARSHAL_STACK_DEPTH = 20
@@ -29,6 +29,8 @@ module DiscourseWorkflows
     def eval(code)
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       @js_context.eval(code)
+    rescue MiniRacer::ScriptTerminatedError
+      raise BudgetExceededError, "JavaScript evaluation exceeded #{EVAL_TIMEOUT_MS}ms time limit"
     ensure
       finish_eval!(started_at)
     end
