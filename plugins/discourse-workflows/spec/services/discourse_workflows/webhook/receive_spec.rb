@@ -222,23 +222,16 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
         end
 
         before do
-          workflow.update!(
-            nodes:
-              workflow.nodes.map do |n|
-                if n["id"] == "webhook-1"
-                  n.merge(
-                    "configuration" => {
-                      "path" => "my-hook",
-                      "http_method" => "POST",
-                      "authentication" => "basic_auth",
-                      "credential_id" => credential.id,
-                    },
-                  )
-                else
-                  n
-                end
-              end,
-          )
+          update_workflow_node(workflow, "webhook-1") do |node|
+            node.merge(
+              "configuration" => {
+                "path" => "my-hook",
+                "http_method" => "POST",
+                "authentication" => "basic_auth",
+                "credential_id" => credential.id,
+              },
+            )
+          end
           DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
         end
 
@@ -278,19 +271,11 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
 
         context "when auth mode is unsupported" do
           before do
-            workflow.update!(
-              nodes:
-                workflow.nodes.map do |n|
-                  if n["id"] == "webhook-1"
-                    n.merge(
-                      "configuration" =>
-                        n["configuration"].merge("authentication" => "bearer_token"),
-                    )
-                  else
-                    n
-                  end
-                end,
-            )
+            update_workflow_node(workflow, "webhook-1") do |node|
+              node.merge(
+                "configuration" => node["configuration"].merge("authentication" => "bearer_token"),
+              )
+            end
           end
 
           it { is_expected.to fail_to_find_a_model(:authenticated_nodes) }
@@ -324,23 +309,16 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
         end
 
         before do
-          workflow.update!(
-            nodes:
-              workflow.nodes.map do |n|
-                if n["id"] == "webhook-1"
-                  n.merge(
-                    "configuration" => {
-                      "path" => "my-hook",
-                      "http_method" => "POST",
-                      "authentication" => "basic_auth",
-                      "credential_id" => credential.id,
-                    },
-                  )
-                else
-                  n
-                end
-              end,
-          )
+          update_workflow_node(workflow, "webhook-1") do |node|
+            node.merge(
+              "configuration" => {
+                "path" => "my-hook",
+                "http_method" => "POST",
+                "authentication" => "basic_auth",
+                "credential_id" => credential.id,
+              },
+            )
+          end
           DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
           DiscourseWorkflows::WorkflowDependencyIndexer.call(unprotected_workflow)
         end
@@ -375,22 +353,15 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
 
       context "with synchronous response mode" do
         before do
-          workflow.update!(
-            nodes:
-              workflow.nodes.map do |n|
-                if n["id"] == "webhook-1"
-                  n.merge(
-                    "configuration" =>
-                      n["configuration"].merge(
-                        "response_mode" => "when_last_node_finishes",
-                        "response_code" => "201",
-                      ),
-                  )
-                else
-                  n
-                end
-              end,
-          )
+          update_workflow_node(workflow, "webhook-1") do |node|
+            node.merge(
+              "configuration" =>
+                node["configuration"].merge(
+                  "response_mode" => "when_last_node_finishes",
+                  "response_code" => "201",
+                ),
+            )
+          end
           DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
         end
 

@@ -86,16 +86,9 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
     end
 
     it "handles different HTTP methods" do
-      workflow.update!(
-        nodes:
-          workflow.nodes.map do |n|
-            if n["id"] == "webhook-1"
-              n.merge("configuration" => { "path" => "my-hook", "http_method" => "PUT" })
-            else
-              n
-            end
-          end,
-      )
+      update_workflow_node(workflow, "webhook-1") do |node|
+        node.merge("configuration" => { "path" => "my-hook", "http_method" => "PUT" })
+      end
 
       put "/workflows/webhooks/my-hook.json",
           params: { updated: true }.to_json,
@@ -258,18 +251,14 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
       def setup_webhook_with_response(response_mode:, target_node_id:, extra:, webhook_config: {})
         workflow.update!(
           nodes:
-            workflow.nodes.map do |n|
-              if n["id"] == "webhook-1"
-                n.merge(
-                  "configuration" => {
-                    "path" => "my-hook",
-                    "http_method" => "POST",
-                    "response_mode" => response_mode,
-                  }.merge(webhook_config),
-                )
-              else
-                n
-              end
+            workflow_nodes_with_update(workflow, "webhook-1") do |node|
+              node.merge(
+                "configuration" => {
+                  "path" => "my-hook",
+                  "http_method" => "POST",
+                  "response_mode" => response_mode,
+                }.merge(webhook_config),
+              )
             end + extra[:nodes],
           connections: [
             {
@@ -510,24 +499,17 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
       end
 
       before do
-        workflow.update!(
-          nodes:
-            workflow.nodes.map do |n|
-              if n["id"] == "webhook-1"
-                n.merge(
-                  "configuration" => {
-                    "path" => "my-hook",
-                    "http_method" => "POST",
-                    "response_mode" => "immediately",
-                    "authentication" => "basic_auth",
-                    "credential_id" => credential.id,
-                  },
-                )
-              else
-                n
-              end
-            end,
-        )
+        update_workflow_node(workflow, "webhook-1") do |node|
+          node.merge(
+            "configuration" => {
+              "path" => "my-hook",
+              "http_method" => "POST",
+              "response_mode" => "immediately",
+              "authentication" => "basic_auth",
+              "credential_id" => credential.id,
+            },
+          )
+        end
       end
 
       it "returns 401 with WWW-Authenticate when no auth header" do

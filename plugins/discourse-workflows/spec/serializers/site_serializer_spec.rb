@@ -50,16 +50,9 @@ RSpec.describe SiteSerializer do
     end
 
     it "keeps the icon empty when none is configured" do
-      workflow.update!(
-        nodes:
-          workflow.nodes.map do |n|
-            if n["id"] == "trigger-1"
-              n.merge("configuration" => { "label" => "Run workflow" })
-            else
-              n
-            end
-          end,
-      )
+      update_workflow_node(workflow, "trigger-1") do |node|
+        node.merge("configuration" => { "label" => "Run workflow" })
+      end
       DiscourseWorkflows::WorkflowDependency.clear_cache!
 
       data = described_class.new(Site.new(guardian), scope: guardian, root: false).as_json

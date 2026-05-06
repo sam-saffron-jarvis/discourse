@@ -46,3 +46,11 @@ def build_workflow_graph
   yield builder
   builder.to_h
 end
+
+def workflow_nodes_with_update(workflow, node_id)
+  workflow.nodes.map { |node| node["id"] == node_id ? yield(node) : node }
+end
+
+def update_workflow_node(workflow, node_id, &block)
+  workflow.update!(nodes: workflow_nodes_with_update(workflow, node_id, &block))
+end
