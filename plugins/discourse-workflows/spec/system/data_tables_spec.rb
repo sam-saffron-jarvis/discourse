@@ -30,7 +30,7 @@ RSpec.describe "Discourse Workflows - Data Tables" do
     data_tables_page.visit_show(data_table.id)
 
     expect(data_tables_page).to have_viewer
-    expect(page).to have_css(".workflows-data-table-viewer__add-row")
+    expect(data_tables_page).to have_add_row_button
   end
 
   it "adds a row to the data table" do

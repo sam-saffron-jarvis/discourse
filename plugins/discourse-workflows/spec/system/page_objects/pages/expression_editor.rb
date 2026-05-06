@@ -95,6 +95,11 @@ module PageObjects
           page.has_css?(HOVER_TOOLTIP_SELECTOR, wait: 5)
         end
 
+        def hover_variable(name)
+          find(".cm-wf-variable", text: name, wait: 5).hover
+          self
+        end
+
         def has_no_hover_tooltip?
           page.has_no_css?(HOVER_TOOLTIP_SELECTOR)
         end

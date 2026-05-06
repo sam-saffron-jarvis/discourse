@@ -110,7 +110,7 @@ RSpec.describe "Workflow Expression Editor" do
     it "shows a tooltip when hovering over a dollar variable" do
       expression_editor.type_in_editor("{{ $json }}")
 
-      page.find(".cm-wf-variable", text: "$json", wait: 5).hover
+      expression_editor.hover_variable("$json")
 
       expect(expression_editor).to have_hover_tooltip
       expect(expression_editor.hover_tooltip_text).to include("current input item")

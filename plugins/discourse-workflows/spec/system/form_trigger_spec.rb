@@ -3,6 +3,8 @@
 RSpec.describe "Discourse Workflows - Form Trigger" do
   FORM_UUID = "a1b2c3d4-e5f6-7890-abcd-ef0123456789"
 
+  let(:form_trigger_page) { PageObjects::Pages::DiscourseWorkflows::FormTrigger.new }
+
   fab!(:workflow) do
     Fabricate(
       :discourse_workflows_workflow,
@@ -32,19 +34,18 @@ RSpec.describe "Discourse Workflows - Form Trigger" do
   before { DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow) }
 
   it "renders the public form" do
-    page.visit("/workflows/form/#{FORM_UUID}")
+    form_trigger_page.visit(FORM_UUID)
 
-    expect(page).to have_css(".workflows-form")
-    expect(page).to have_css(".workflows-form__title", text: "Contact Us")
-    expect(page).to have_css("input[name='your_name']")
+    expect(form_trigger_page).to have_workflows_form
+    expect(form_trigger_page).to have_form_title("Contact Us")
+    expect(form_trigger_page).to have_form_field("your_name")
   end
 
   it "submits the form and shows completion" do
-    page.visit("/workflows/form/#{FORM_UUID}")
+    form_trigger_page.visit(FORM_UUID)
 
-    find("input[name='your_name']").fill_in(with: "Alice")
-    find(".workflows-form .btn-primary[type='submit']").click
+    form_trigger_page.fill_field("your_name", "Alice").submit
 
-    expect(page).to have_css(".workflows-form__complete")
+    expect(form_trigger_page).to have_completion
   end
 end

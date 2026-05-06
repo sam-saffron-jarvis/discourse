@@ -45,6 +45,10 @@ module PageObjects
           page.has_css?(".workflows-data-table-viewer")
         end
 
+        def has_add_row_button?
+          page.has_css?(".workflows-data-table-viewer__add-row")
+        end
+
         def has_row?(count: nil)
           if count
             page.has_css?(".workflows-data-table-viewer__row", count: count)
