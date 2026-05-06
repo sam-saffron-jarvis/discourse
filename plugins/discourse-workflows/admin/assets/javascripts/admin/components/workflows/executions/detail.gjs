@@ -179,7 +179,7 @@ export default class ExecutionDetail extends Component {
       lines.push(`  Type: ${step.node_type}`);
       lines.push(`  Status: ${step.status}`);
       lines.push(
-        `  Duration: ${formatDuration(step.started_at, step.finished_at)}`
+        `  Duration: ${formatDuration(step.started_at, step.finished_at)}${step.metadata?.js_elapsed_ms ? ` (javascript: ${step.metadata.js_elapsed_ms}ms)` : ""}`
       );
 
       if (step.metadata?.conditions) {
@@ -272,6 +272,11 @@ export default class ExecutionDetail extends Component {
               </span>
               <span class="workflows-execution-detail__step-time">
                 {{formatDuration step.started_at step.finished_at}}
+                {{#if step.metadata.js_elapsed_ms}}
+                  <span
+                    class="workflows-execution-detail__step-js-time"
+                  >(javascript: {{step.metadata.js_elapsed_ms}}ms)</span>
+                {{/if}}
               </span>
             </div>
 

@@ -139,6 +139,7 @@ module DiscourseWorkflows
       return handle_node_issues(node, input_items, issues) if issues.any?
 
       step = record_step(node, input_items)
+      js_elapsed_before = sandbox_budget_tracker.current_elapsed_ms
       node_context = @context.node_context_for(node)
       resolver_ctx = build_resolver_context(node, input_items, node_context)
       resolver = build_resolver(resolver_ctx)
@@ -190,6 +191,8 @@ module DiscourseWorkflows
         raise
       ensure
         resolver&.dispose
+        js_elapsed = (sandbox_budget_tracker.current_elapsed_ms - js_elapsed_before).round(1)
+        step.add_metadata("js_elapsed_ms", js_elapsed) if js_elapsed > 0
       end
     end
 

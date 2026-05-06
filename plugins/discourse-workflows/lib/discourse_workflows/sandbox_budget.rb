@@ -21,8 +21,6 @@ module DiscourseWorkflows
             "Sandbox execution time exceeded #{@budget_ms}ms for this workflow"
     end
 
-    private
-
     def current_elapsed_ms
       if @context
         @context.fetch(CONTEXT_KEY, 0).to_f
@@ -30,6 +28,8 @@ module DiscourseWorkflows
         @elapsed_ms
       end
     end
+
+    private
 
     def persist_elapsed_ms(total)
       if @context
