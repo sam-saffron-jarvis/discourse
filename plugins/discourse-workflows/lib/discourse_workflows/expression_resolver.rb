@@ -241,15 +241,8 @@ module DiscourseWorkflows
 
       def evaluate(expression)
         ensure_initialized!
-        @sandbox.eval(expression)
+        @sandbox.eval("(#{expression})")
       rescue MiniRacer::Error => e
-        # Bare objects like { a: 1 } fail as blocks — retry wrapped in parens
-        if e.message.include?("SyntaxError") && expression.strip.start_with?("{")
-          begin
-            return @sandbox.eval("(#{expression})")
-          rescue MiniRacer::Error
-          end
-        end
         @expression_errors << { expression: expression, error: e.message, type: classify_error(e) }
         nil
       end
