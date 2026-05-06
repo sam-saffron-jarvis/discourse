@@ -31,10 +31,10 @@ module DiscourseWorkflows
           batch_size = @configuration.fetch("batch_size") { 1 }.to_i
           batch_size = 1 if batch_size < 1
 
-          if exec_ctx.node_context["items"].nil?
-            execute_first(exec_ctx.input_items, exec_ctx.node_context, batch_size)
+          if exec_ctx.get_context(:node)["items"].nil?
+            execute_first(exec_ctx.input_items, exec_ctx.get_context(:node), batch_size)
           else
-            execute_subsequent(exec_ctx.input_items, exec_ctx.node_context, batch_size)
+            execute_subsequent(exec_ctx.input_items, exec_ctx.get_context(:node), batch_size)
           end
         end
 

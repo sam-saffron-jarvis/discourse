@@ -77,7 +77,7 @@ module DiscourseWorkflows
                 sandbox,
                 exec_ctx.input_items,
                 @configuration,
-                DiscourseWorkflows::InputContext.from_node_context(exec_ctx.node_context),
+                DiscourseWorkflows::InputContext.from_node_context(exec_ctx.get_context(:node)),
               )
               if mode == "run_once_for_all_items"
                 execute_all_items(sandbox, code)

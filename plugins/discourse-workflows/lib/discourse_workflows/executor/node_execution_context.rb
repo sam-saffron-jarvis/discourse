@@ -93,7 +93,7 @@ module DiscourseWorkflows
       def data_table(id)
         id = id.to_s
         ensure_data_table_access!(id)
-        table = DiscourseWorkflows::DataTable.find(Integer(id))
+        table = DiscourseWorkflows::DataTable.find(id)
         DiscourseWorkflows::DataTables::NodeProxy.new(
           DiscourseWorkflows::DataTables::Facade.new(table),
         )
@@ -138,19 +138,13 @@ module DiscourseWorkflows
         @expression_errors = @resolver&.expression_errors || []
       end
 
-      # @deprecated Use {#get_context} instead. Kept for backward compatibility
-      #   during transition.
-      def node_context
-        @node_context
-      end
-
       def put_execution_to_wait(waiting_until = nil)
         @waiting = true
         @waiting_until = waiting_until
       end
 
       def waiting?
-        @waiting == true
+        @waiting
       end
 
       def with_item(item)
@@ -161,7 +155,7 @@ module DiscourseWorkflows
 
       def ensure_data_table_access!(data_table_id)
         if @workflow && @node_id
-          return if workflow_references_data_table?(data_table_id)
+          return if workflow_references_dependency?("data_table_id", data_table_id)
         elsif @configuration["data_table_id"].to_s == data_table_id
           return
         end
@@ -169,23 +163,10 @@ module DiscourseWorkflows
         raise Discourse::InvalidAccess
       end
 
-      def workflow_references_data_table?(data_table_id)
-        if @workflow_dependencies
-          @workflow_dependencies[@node_id].include?("data_table_id:#{data_table_id}")
-        else
-          DiscourseWorkflows::WorkflowDependency.exists?(
-            workflow_id: @workflow.id,
-            node_id: @node_id,
-            dependency_type: "data_table_id",
-            dependency_key: data_table_id,
-          )
-        end
-      end
-
       def ensure_credential_access!(credential_id)
         expected_credential_id = @configuration["credential_id"].to_s
         if @workflow && @node_id
-          return if workflow_references_credential?(credential_id)
+          return if workflow_references_dependency?("credential_id", credential_id)
         elsif expected_credential_id == credential_id
           return
         end
@@ -203,15 +184,15 @@ module DiscourseWorkflows
                 "user '#{target_user.username}'"
       end
 
-      def workflow_references_credential?(credential_id)
+      def workflow_references_dependency?(type, key)
         if @workflow_dependencies
-          @workflow_dependencies[@node_id].include?("credential_id:#{credential_id}")
+          @workflow_dependencies[@node_id].include?("#{type}:#{key}")
         else
           DiscourseWorkflows::WorkflowDependency.exists?(
             workflow_id: @workflow.id,
             node_id: @node_id,
-            dependency_type: "credential_id",
-            dependency_key: credential_id,
+            dependency_type: type,
+            dependency_key: key,
           )
         end
       end
