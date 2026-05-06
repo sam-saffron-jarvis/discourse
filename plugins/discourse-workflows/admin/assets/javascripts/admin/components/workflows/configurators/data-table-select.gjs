@@ -160,7 +160,7 @@ export default class DataTableSelect extends Component {
       @supportsExpression={{@supportsExpression}}
       @placeholder={{@placeholder}}
     >
-      <div class="workflows-property-engine-data-table-select">
+      <div class="workflows-property-engine__select-with-action">
         <ComboBox
           @content={{this.options}}
           @nameProperty="name"

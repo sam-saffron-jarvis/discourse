@@ -27,14 +27,14 @@ export default class ExpressionPreviewContent extends Component {
       const state = VALID_STATES.has(seg.state) ? seg.state : "pending";
       if (state === "valid" && seg.text.length > 0) {
         return {
-          className: `expression-preview__resolved expression-preview__resolved--${state}`,
+          className: `expression-preview__resolved --${state}`,
           text: seg.text,
         };
       }
 
       const labelState = state === "valid" ? "empty" : state;
       return {
-        className: `expression-preview__resolved expression-preview__resolved--${labelState} expression-preview__resolved--label`,
+        className: `expression-preview__resolved --${labelState} --label`,
         text: i18n(`${I18N_PREFIX}.${labelState}`),
       };
     });

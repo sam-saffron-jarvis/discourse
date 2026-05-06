@@ -68,7 +68,7 @@ export default class Credential extends Component {
       @supportsExpression={{@supportsExpression}}
       @placeholder={{@placeholder}}
     >
-      <div class="workflows-property-engine-credential">
+      <div class="workflows-property-engine__select-with-action">
         <ComboBox
           @content={{this.options}}
           @value={{@field.value}}

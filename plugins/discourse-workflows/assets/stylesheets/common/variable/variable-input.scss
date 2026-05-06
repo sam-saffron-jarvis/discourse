@@ -300,19 +300,19 @@
   }
 
   &__resolved {
-    &--valid {
+    &.--valid {
       color: var(--tertiary);
     }
 
-    &--invalid,
-    &--undefined {
+    &.--invalid,
+    &.--undefined {
       color: var(--danger);
       background: color-mix(in srgb, var(--danger) 10%, transparent);
       border-radius: 2px;
       padding: 0.1em 0.2em;
     }
 
-    &--warning {
+    &.--warning {
       color: var(--warning, light-dark(#b5651d, #e6a33e));
       background: color-mix(in srgb, var(--warning, #e6a33e) 10%, transparent);
       border-radius: 2px;
@@ -320,11 +320,11 @@
       font-style: italic;
     }
 
-    &--pending {
+    &.--pending {
       color: var(--primary-medium);
     }
 
-    &--label {
+    &.--label {
       background: color-mix(in srgb, var(--primary-low-mid) 40%, transparent);
       border-radius: 2px;
       padding: 0.1em 0.4em;

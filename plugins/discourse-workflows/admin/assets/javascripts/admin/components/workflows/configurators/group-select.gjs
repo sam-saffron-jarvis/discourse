@@ -125,7 +125,7 @@ export default class GroupSelect extends Component {
       @supportsExpression={{@supportsExpression}}
       @placeholder={{@placeholder}}
     >
-      <div class="workflows-property-engine-group-select">
+      <div class="workflows-property-engine__select-with-action">
         <ComboBox
           @content={{this.options}}
           @nameProperty="name"

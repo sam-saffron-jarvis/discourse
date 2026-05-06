@@ -10,6 +10,7 @@ module PageObjects
         AUTOCOMPLETE_SELECTOR = ".cm-tooltip-autocomplete"
         HOVER_TOOLTIP_SELECTOR = ".cm-wf-hover-tooltip"
         MODE_CONTROL_SELECTOR = ".workflows-property-engine__mode-control"
+        PREVIEW_SELECTOR = ".expression-preview"
 
         def switch_to_expression_mode
           label =
@@ -106,6 +107,18 @@ module PageObjects
 
         def hover_tooltip_text
           find(HOVER_TOOLTIP_SELECTOR).text
+        end
+
+        def has_expression_preview?
+          page.has_css?(PREVIEW_SELECTOR, wait: 10)
+        end
+
+        def has_expression_preview_result?(state, text:)
+          page.has_css?("#{PREVIEW_SELECTOR}__resolved.--#{state}", text: text)
+        end
+
+        def has_expression_preview_plaintext?(text)
+          page.has_css?("#{PREVIEW_SELECTOR}__plaintext", text: text)
         end
 
         private

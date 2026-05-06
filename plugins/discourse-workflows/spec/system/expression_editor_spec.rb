@@ -123,30 +123,33 @@ RSpec.describe "Workflow Expression Editor" do
     it "shows a resolved preview below the editor" do
       expression_editor.type_in_editor("{{ $current_user.username }}")
 
-      expect(page).to have_css(".expression-preview", wait: 10)
-      expect(page).to have_css(".expression-preview__resolved--valid", text: admin.username)
+      expect(expression_editor).to have_expression_preview
+      expect(expression_editor).to have_expression_preview_result("valid", text: admin.username)
     end
 
     it "shows invalid JavaScript for bad expressions" do
       expression_editor.type_in_editor("{{ $vars. }}")
 
-      expect(page).to have_css(".expression-preview", wait: 10)
-      expect(page).to have_css(".expression-preview__resolved--invalid", text: "invalid JavaScript")
+      expect(expression_editor).to have_expression_preview
+      expect(expression_editor).to have_expression_preview_result(
+        "invalid",
+        text: "invalid JavaScript",
+      )
     end
 
     it "shows plain text result for non-expression content" do
       expression_editor.type_in_editor("Hello world")
 
-      expect(page).to have_css(".expression-preview", wait: 10)
-      expect(page).to have_css(".expression-preview__plaintext", text: "Hello world")
+      expect(expression_editor).to have_expression_preview
+      expect(expression_editor).to have_expression_preview_plaintext("Hello world")
     end
 
     it "shows function warning when a method is referenced without calling it" do
       expression_editor.type_in_editor("{{ $current_user.username.includes }}")
 
-      expect(page).to have_css(".expression-preview", wait: 10)
-      expect(page).to have_css(
-        ".expression-preview__resolved--warning",
+      expect(expression_editor).to have_expression_preview
+      expect(expression_editor).to have_expression_preview_result(
+        "warning",
         text: "missing function call",
       )
     end

@@ -48,8 +48,8 @@ class WorkflowShowPage extends Component {
         <Stats @stats={{this.stats}} />
       </div>
 
-      <div class="workflows-show-nav-row">
-        <HorizontalOverflowNav class="workflows-show-nav">
+      <div class="workflows-show-nav">
+        <HorizontalOverflowNav>
           <NavItem
             @route="adminPlugins.show.discourse-workflows.show.index"
             @label="discourse_workflows.tabs.workflow"

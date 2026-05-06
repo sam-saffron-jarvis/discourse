@@ -88,7 +88,7 @@ export default class ExpressionPreview extends Component {
 
   <template>
     <span
-      class="expression-preview-anchor"
+      class="expression-preview__anchor"
       {{didInsert this.handleSegmentsChange}}
       {{didUpdate this.handleSegmentsChange @segments}}
       {{didUpdate this.handleVisibilityChange @visible}}

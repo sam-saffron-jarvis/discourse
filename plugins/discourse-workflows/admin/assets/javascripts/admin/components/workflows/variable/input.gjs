@@ -26,7 +26,7 @@ export default class VariableInput extends Component {
 
   <template>
     <div
-      class="workflows-variable-input-container"
+      class="workflows-variable-input__container"
       {{didInsert this.loadEditor}}
     >
       {{#if this.Editor}}
