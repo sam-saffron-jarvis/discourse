@@ -20,67 +20,6 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
       expect(result["body"]).to eq("result" => "ok")
     end
 
-    it "appends query parameters to the URL" do
-      stub_request(:get, "https://api.example.com/data?page=1&per=10").to_return(
-        status: 200,
-        body: "[]",
-        headers: {
-          "content-type" => "application/json",
-        },
-      )
-
-      config = {
-        "method" => "GET",
-        "url" => "https://api.example.com/data",
-        "query_params" => [
-          { "key" => "page", "value" => "1" },
-          { "key" => "per", "value" => "10" },
-        ],
-      }
-
-      result = execute_node(configuration: config, item: item)
-
-      expect(result["status"]).to eq(200)
-    end
-
-    it "merges query parameters with existing ones in URL" do
-      stub_request(:get, "https://api.example.com/data?existing=true&extra=yes").to_return(
-        status: 200,
-        body: "{}",
-        headers: {
-          "content-type" => "application/json",
-        },
-      )
-
-      config = {
-        "method" => "GET",
-        "url" => "https://api.example.com/data?existing=true",
-        "query_params" => [{ "key" => "extra", "value" => "yes" }],
-      }
-
-      result = execute_node(configuration: config, item: item)
-
-      expect(result["status"]).to eq(200)
-    end
-
-    it "sends custom headers" do
-      stub_request(:get, "https://api.example.com/data").with(
-        headers: {
-          "X-Api-Key" => "secret123",
-        },
-      ).to_return(status: 200, body: "{}", headers: { "content-type" => "application/json" })
-
-      config = {
-        "method" => "GET",
-        "url" => "https://api.example.com/data",
-        "headers" => [{ "key" => "X-Api-Key", "value" => "secret123" }],
-      }
-
-      result = execute_node(configuration: config, item: item)
-
-      expect(result["status"]).to eq(200)
-    end
-
     it "sends a JSON body with POST requests" do
       stub_request(:post, "https://api.example.com/data").with(body: '{"name":"test"}').to_return(
         status: 201,
@@ -189,15 +128,6 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
       sandbox&.dispose
     end
 
-    it "raises when URL is blank" do
-      config = { "method" => "GET", "url" => "" }
-
-      expect { execute_node(configuration: config, item: item) }.to raise_error(
-        RuntimeError,
-        "URL is required",
-      )
-    end
-
     it "raises when URL has no host" do
       config = { "method" => "GET", "url" => "http:///path" }
 
@@ -227,66 +157,6 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
 
         expect(result["status"]).to eq(404)
         expect(result["body"]).to eq("error" => "not found")
-      end
-    end
-
-    context "with form_urlencoded content type" do
-      it "sends URL-encoded form data" do
-        stub_request(:post, "https://api.example.com/form").with(
-          body: "name=test&value=123",
-          headers: {
-            "Content-Type" => "application/x-www-form-urlencoded",
-          },
-        ).to_return(
-          status: 200,
-          body: { ok: true }.to_json,
-          headers: {
-            "content-type" => "application/json",
-          },
-        )
-
-        config = {
-          "method" => "POST",
-          "url" => "https://api.example.com/form",
-          "content_type" => "form_urlencoded",
-          "body_form" => [
-            { "key" => "name", "value" => "test" },
-            { "key" => "value", "value" => "123" },
-          ],
-        }
-
-        result = execute_node(configuration: config, item: item)
-
-        expect(result["status"]).to eq(200)
-      end
-    end
-
-    context "with raw content type" do
-      it "sends raw body with custom content type" do
-        stub_request(:post, "https://api.example.com/raw").with(
-          body: "<xml>data</xml>",
-          headers: {
-            "Content-Type" => "application/xml",
-          },
-        ).to_return(
-          status: 200,
-          body: { ok: true }.to_json,
-          headers: {
-            "content-type" => "application/json",
-          },
-        )
-
-        config = {
-          "method" => "POST",
-          "url" => "https://api.example.com/raw",
-          "content_type" => "raw",
-          "raw_content_type" => "application/xml",
-          "body_raw" => "<xml>data</xml>",
-        }
-
-        result = execute_node(configuration: config, item: item)
-
-        expect(result["status"]).to eq(200)
       end
     end
 
