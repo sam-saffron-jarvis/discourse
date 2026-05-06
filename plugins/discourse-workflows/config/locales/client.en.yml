@@ -191,8 +191,8 @@ en:
         limit_description: "Maximum number of topics to return (1-100, default 30)."
       group:
         operation: "Operation"
-        add: "Add to group"
-        remove: "Remove from group"
+        add: "Add user"
+        remove: "Remove user"
         get: "Get group"
         username: "Username"
         group_id: "Group"
