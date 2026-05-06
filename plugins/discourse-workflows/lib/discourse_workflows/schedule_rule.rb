@@ -8,16 +8,6 @@ module DiscourseWorkflows
 
     MAX_RULES_PER_NODE = 5
 
-    WEEKDAY_MAP = {
-      0 => "SU",
-      1 => "MO",
-      2 => "TU",
-      3 => "WE",
-      4 => "TH",
-      5 => "FR",
-      6 => "SA",
-    }.freeze
-
     class Rule
       attr_reader :data
 
@@ -42,7 +32,7 @@ module DiscourseWorkflows
       end
 
       def handler
-        INTERVAL_HANDLERS.fetch(interval) { INTERVAL_HANDLERS.fetch("seconds") }
+        INTERVAL_HANDLERS.fetch(interval)
       end
     end
 
@@ -66,7 +56,10 @@ module DiscourseWorkflows
           "FREQ=MINUTELY;INTERVAL=#{n}"
         end
 
-        def valid?(rule) = to_rrule(rule).present?
+        def valid?(rule)
+          n = rule[:minutes_between_triggers]
+          n.nil? || n.to_i.between?(1, 59)
+        end
 
         def matches_now?(rule, dtstart, now)
           ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
@@ -82,7 +75,11 @@ module DiscourseWorkflows
           "FREQ=HOURLY;INTERVAL=#{n};BYMINUTE=#{minute}"
         end
 
-        def valid?(rule) = to_rrule(rule).present?
+        def valid?(rule)
+          n = rule[:hours_between_triggers]
+          m = rule[:trigger_at_minute]
+          (n.nil? || n.to_i.between?(1, 23)) && (m.nil? || m.to_i.between?(0, 59))
+        end
 
         def matches_now?(rule, dtstart, now)
           ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
@@ -99,7 +96,13 @@ module DiscourseWorkflows
           "FREQ=DAILY;INTERVAL=#{n};BYHOUR=#{hour};BYMINUTE=#{minute}"
         end
 
-        def valid?(rule) = to_rrule(rule).present?
+        def valid?(rule)
+          n = rule[:days_between_triggers]
+          h = rule[:trigger_at_hour]
+          m = rule[:trigger_at_minute]
+          (n.nil? || n.to_i.between?(1, 31)) && (h.nil? || h.to_i.between?(0, 23)) &&
+            (m.nil? || m.to_i.between?(0, 59))
+        end
 
         def matches_now?(rule, dtstart, now)
           ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
@@ -109,6 +112,16 @@ module DiscourseWorkflows
       end
 
       class Weeks
+        WEEKDAY_MAP = {
+          0 => "SU",
+          1 => "MO",
+          2 => "TU",
+          3 => "WE",
+          4 => "TH",
+          5 => "FR",
+          6 => "SA",
+        }.freeze
+
         def to_rrule(rule)
           n = (rule[:weeks_between_triggers] || 1).to_i.clamp(1, 52)
           hour = (rule[:trigger_at_hour] || 0).to_i.clamp(0, 23)
@@ -118,7 +131,15 @@ module DiscourseWorkflows
           "FREQ=WEEKLY;INTERVAL=#{n};BYDAY=#{weekdays.join(",")};BYHOUR=#{hour};BYMINUTE=#{minute}"
         end
 
-        def valid?(rule) = to_rrule(rule).present?
+        def valid?(rule)
+          n = rule[:weeks_between_triggers]
+          h = rule[:trigger_at_hour]
+          m = rule[:trigger_at_minute]
+          days = rule[:trigger_on_weekdays]
+          (n.nil? || n.to_i.between?(1, 52)) && (h.nil? || h.to_i.between?(0, 23)) &&
+            (m.nil? || m.to_i.between?(0, 59)) &&
+            (days.blank? || Array.wrap(days).all? { |d| d.to_i.between?(0, 6) })
+        end
 
         def matches_now?(rule, dtstart, now)
           ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
@@ -136,7 +157,14 @@ module DiscourseWorkflows
           "FREQ=MONTHLY;INTERVAL=#{n};BYMONTHDAY=#{day};BYHOUR=#{hour};BYMINUTE=#{minute}"
         end
 
-        def valid?(rule) = to_rrule(rule).present?
+        def valid?(rule)
+          n = rule[:months_between_triggers]
+          d = rule[:trigger_at_day_of_month]
+          h = rule[:trigger_at_hour]
+          m = rule[:trigger_at_minute]
+          (n.nil? || n.to_i.between?(1, 12)) && (d.nil? || d.to_i.between?(1, 31)) &&
+            (h.nil? || h.to_i.between?(0, 23)) && (m.nil? || m.to_i.between?(0, 59))
+        end
 
         def matches_now?(rule, dtstart, now)
           ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
@@ -183,8 +211,7 @@ module DiscourseWorkflows
     end
 
     def rules_from_configuration(configuration)
-      configuration = wrap(configuration)
-      Array.wrap(configuration[:rules])
+      Array.wrap(configuration.with_indifferent_access[:rules])
     end
 
     def valid_rule?(rule)
@@ -231,7 +258,7 @@ module DiscourseWorkflows
       return true if last_triggered.blank?
 
       interval = seconds_interval(rule)
-      elapsed = now - Time.parse(last_triggered)
+      elapsed = now - Time.zone.parse(last_triggered)
       elapsed > interval * 3
     end
 
@@ -268,6 +295,8 @@ module DiscourseWorkflows
           fired = true
         end
 
+        # Only one rule fires per minute per node to prevent duplicate executions
+        # when multiple rules happen to match at the same time.
         break if fired
       end
     end

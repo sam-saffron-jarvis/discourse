@@ -196,10 +196,108 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       )
     end
 
-    it "validates interval rules" do
+    it "accepts interval rules with valid fields" do
       expect(
         described_class.valid_rule?({ "interval" => "minutes", "minutes_between_triggers" => 5 }),
       ).to be(true)
+      expect(
+        described_class.valid_rule?(
+          { "interval" => "hours", "hours_between_triggers" => 2, "trigger_at_minute" => 30 },
+        ),
+      ).to be(true)
+      expect(
+        described_class.valid_rule?(
+          {
+            "interval" => "days",
+            "days_between_triggers" => 3,
+            "trigger_at_hour" => 9,
+            "trigger_at_minute" => 0,
+          },
+        ),
+      ).to be(true)
+      expect(
+        described_class.valid_rule?(
+          {
+            "interval" => "weeks",
+            "weeks_between_triggers" => 2,
+            "trigger_on_weekdays" => [1, 3],
+            "trigger_at_hour" => 8,
+            "trigger_at_minute" => 0,
+          },
+        ),
+      ).to be(true)
+      expect(
+        described_class.valid_rule?(
+          {
+            "interval" => "months",
+            "months_between_triggers" => 3,
+            "trigger_at_day_of_month" => 15,
+            "trigger_at_hour" => 9,
+            "trigger_at_minute" => 0,
+          },
+        ),
+      ).to be(true)
+    end
+
+    it "accepts interval rules with omitted optional fields" do
+      %w[minutes hours days weeks months].each do |interval|
+        expect(described_class.valid_rule?({ "interval" => interval })).to be(true)
+      end
+    end
+
+    it "rejects interval fields out of range" do
+      expect(
+        described_class.valid_rule?({ "interval" => "minutes", "minutes_between_triggers" => 0 }),
+      ).to be(false)
+      expect(
+        described_class.valid_rule?({ "interval" => "minutes", "minutes_between_triggers" => 60 }),
+      ).to be(false)
+
+      expect(
+        described_class.valid_rule?({ "interval" => "hours", "hours_between_triggers" => 0 }),
+      ).to be(false)
+      expect(
+        described_class.valid_rule?({ "interval" => "hours", "hours_between_triggers" => 24 }),
+      ).to be(false)
+      expect(
+        described_class.valid_rule?({ "interval" => "hours", "trigger_at_minute" => 60 }),
+      ).to be(false)
+
+      expect(
+        described_class.valid_rule?({ "interval" => "days", "days_between_triggers" => 0 }),
+      ).to be(false)
+      expect(
+        described_class.valid_rule?({ "interval" => "days", "days_between_triggers" => 32 }),
+      ).to be(false)
+      expect(described_class.valid_rule?({ "interval" => "days", "trigger_at_hour" => 24 })).to be(
+        false,
+      )
+      expect(
+        described_class.valid_rule?({ "interval" => "days", "trigger_at_minute" => 60 }),
+      ).to be(false)
+
+      expect(
+        described_class.valid_rule?({ "interval" => "weeks", "weeks_between_triggers" => 0 }),
+      ).to be(false)
+      expect(
+        described_class.valid_rule?({ "interval" => "weeks", "weeks_between_triggers" => 53 }),
+      ).to be(false)
+      expect(
+        described_class.valid_rule?({ "interval" => "weeks", "trigger_on_weekdays" => [0, 7] }),
+      ).to be(false)
+
+      expect(
+        described_class.valid_rule?({ "interval" => "months", "months_between_triggers" => 0 }),
+      ).to be(false)
+      expect(
+        described_class.valid_rule?({ "interval" => "months", "months_between_triggers" => 13 }),
+      ).to be(false)
+      expect(
+        described_class.valid_rule?({ "interval" => "months", "trigger_at_day_of_month" => 0 }),
+      ).to be(false)
+      expect(
+        described_class.valid_rule?({ "interval" => "months", "trigger_at_day_of_month" => 32 }),
+      ).to be(false)
     end
 
     it "validates seconds rules" do
