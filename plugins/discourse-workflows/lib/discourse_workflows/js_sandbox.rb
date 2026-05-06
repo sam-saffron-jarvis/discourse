@@ -2,7 +2,7 @@
 
 module DiscourseWorkflows
   class JsSandbox
-    EVAL_TIMEOUT_MS = 30
+    EVAL_TIMEOUT_MS = 100
     MAX_INJECTED_JSON_BYTES = 1.megabyte
     MAX_MEMORY_BYTES = 10.megabytes
     MARSHAL_STACK_DEPTH = 20
