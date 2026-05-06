@@ -18,7 +18,7 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionContext do
     it "warns when storing a reserved key" do
       allow(Rails.logger).to receive(:warn)
 
-      execution_context.store_context("trigger", [{ "json" => {} }])
+      execution_context.store_context("$trigger", [{ "json" => {} }])
 
       expect(Rails.logger).to have_received(:warn).with(/collides with reserved context key/)
     end
@@ -78,7 +78,7 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionContext do
         },
       )
 
-      expect(execution_context.context).to include("trigger" => trigger_data, "node_a" => "data_a")
+      expect(execution_context.context).to include("$trigger" => trigger_data, "node_a" => "data_a")
       expect(
         execution_context.node_context_for(Struct.new(:id, :name).new("node_a", "node_a")),
       ).to eq("counter" => 1)

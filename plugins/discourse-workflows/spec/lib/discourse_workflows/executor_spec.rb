@@ -16,7 +16,7 @@ RSpec.describe DiscourseWorkflows::Executor do
                "action:topic_tags",
                name: "Topic Tags",
                configuration: {
-                 "topic_id" => "={{ trigger.topic_id }}",
+                 "topic_id" => "={{ $trigger.topic_id }}",
                  "tag_names" => tag.name,
                }
         g.chain "trigger-1", "action-1"
@@ -106,13 +106,13 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "action-true",
                  "action:topic_tags",
                  configuration: {
-                   "topic_id" => "={{ trigger.topic_id }}",
+                   "topic_id" => "={{ $trigger.topic_id }}",
                    "tag_names" => tag.name,
                  }
           g.node "action-false",
                  "action:topic_tags",
                  configuration: {
-                   "topic_id" => "={{ trigger.topic_id }}",
+                   "topic_id" => "={{ $trigger.topic_id }}",
                    "tag_names" => false_tag.name,
                  }
           g.chain "trigger-1", "condition-1"
@@ -153,7 +153,7 @@ RSpec.describe DiscourseWorkflows::Executor do
             g.node "action-1",
                    "action:topic_tags",
                    configuration: {
-                     "topic_id" => "={{ trigger.topic_id }}",
+                     "topic_id" => "={{ $trigger.topic_id }}",
                      "tag_names" => tag.name,
                    }
             g.chain "trigger-1", "filter-1"
@@ -365,7 +365,7 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "action-1",
                  "action:topic_tags",
                  configuration: {
-                   "topic_id" => "={{ trigger.topic_id }}",
+                   "topic_id" => "={{ $trigger.topic_id }}",
                    "tag_names" => tag.name,
                  }
           g.chain "trigger-1", "action-1"
@@ -440,7 +440,7 @@ RSpec.describe DiscourseWorkflows::Executor do
                    "action:topic_tags",
                    name: "Topic Tags",
                    configuration: {
-                     "topic_id" => "={{ trigger.topic_id }}",
+                     "topic_id" => "={{ $trigger.topic_id }}",
                      "tag_names" => tag.name,
                    }
             g.chain "trigger-1", "unavailable-1", "action-1"

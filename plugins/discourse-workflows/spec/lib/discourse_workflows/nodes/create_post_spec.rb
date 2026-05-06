@@ -118,16 +118,16 @@ RSpec.describe DiscourseWorkflows::Nodes::CreatePost::V1 do
 
     it "resolves expressions for each input item" do
       config = {
-        "topic_id" => "={{ trigger.topic_id }}",
+        "topic_id" => "={{ $trigger.topic_id }}",
         "raw" => "=Hello {{ $json.name }}",
-        "reply_to_post_number" => "={{ trigger.reply_to_post_number }}",
-        "user_id" => "={{ trigger.user_id }}",
+        "reply_to_post_number" => "={{ $trigger.reply_to_post_number }}",
+        "user_id" => "={{ $trigger.user_id }}",
       }
       resolver_context = {
         "$json" => {
           "name" => "Ada",
         },
-        "trigger" => {
+        "$trigger" => {
           "topic_id" => topic.id,
           "reply_to_post_number" => first_post.post_number,
           "user_id" => admin.id,

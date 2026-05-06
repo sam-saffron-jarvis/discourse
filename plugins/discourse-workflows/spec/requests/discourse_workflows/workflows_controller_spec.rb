@@ -101,7 +101,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
                    type: "action:topic_tags",
                    name: "Topic Tags",
                    configuration: {
-                     topic_id: "={{ trigger.topic_id }}",
+                     topic_id: "={{ $trigger.topic_id }}",
                      tag_names: tag.name,
                    },
                  },

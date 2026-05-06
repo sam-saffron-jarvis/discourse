@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::ExpressionResolver do
-  subject(:resolver) { build_resolver(context.merge("$json" => context["trigger"])) }
+  subject(:resolver) { build_resolver(context.merge("$json" => context["$trigger"])) }
 
   fab!(:api_url_variable) do
     Fabricate(:discourse_workflows_variable, key: "API_URL", value: "https://example.com")
   end
   fab!(:prefix_variable) { Fabricate(:discourse_workflows_variable, key: "PREFIX", value: "hello") }
 
-  let(:context) { { "trigger" => { "topic_id" => 42, "tags" => %w[bug help] } } }
+  let(:context) { { "$trigger" => { "topic_id" => 42, "tags" => %w[bug help] } } }
 
   before do
     @resolvers_under_test = []
@@ -40,7 +40,7 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
     end
 
     it "resolves context dot-path expressions preserving type" do
-      expect(resolver.resolve("={{ trigger.topic_id }}")).to eq(42)
+      expect(resolver.resolve("={{ $trigger.topic_id }}")).to eq(42)
     end
 
     it "resolves $json expressions preserving type" do
@@ -63,11 +63,11 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
     end
 
     it "handles mixed literal and expression" do
-      expect(resolver.resolve("=topic-{{ trigger.topic_id }}-closed")).to eq("topic-42-closed")
+      expect(resolver.resolve("=topic-{{ $trigger.topic_id }}-closed")).to eq("topic-42-closed")
     end
 
     it "handles multiple expressions" do
-      expect(resolver.resolve("={{ trigger.topic_id }}-{{ $json.topic_id }}")).to eq("42-42")
+      expect(resolver.resolve("={{ $trigger.topic_id }}-{{ $json.topic_id }}")).to eq("42-42")
     end
 
     it "resolves node output references preserving type" do
@@ -75,38 +75,38 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
         "Previous Step" => [{ "json" => { "topic_id" => 99, "tags" => %w[dev ops] } }],
       }
 
-      node_resolver = build_resolver(node_context.merge("$json" => context["trigger"]))
+      node_resolver = build_resolver(node_context.merge("$json" => context["$trigger"]))
 
       expect(node_resolver.resolve("={{ $('Previous Step').item.json.topic_id }}")).to eq(99)
     end
 
     it "resolves node context references preserving type" do
       node_context = { "__node_contexts" => { "Approval" => { "approved" => true } } }
-      node_resolver = build_resolver(context.merge(node_context, "$json" => context["trigger"]))
+      node_resolver = build_resolver(context.merge(node_context, "$json" => context["$trigger"]))
 
       expect(node_resolver.resolve('={{ $("Approval").context["approved"] }}')).to be(true)
     end
 
     it "preserves array type for single-expression values" do
-      expect(resolver.resolve("={{ trigger.tags }}")).to eq(%w[bug help])
+      expect(resolver.resolve("={{ $trigger.tags }}")).to eq(%w[bug help])
     end
 
     it "formats arrays when interpolating into a larger string" do
-      expect(resolver.resolve("=tags: {{ trigger.tags }}")).to eq("tags: bug, help")
+      expect(resolver.resolve("=tags: {{ $trigger.tags }}")).to eq("tags: bug, help")
     end
 
     it "returns nil for missing paths" do
-      expect(resolver.resolve("={{ trigger.nonexistent }}")).to be_nil
+      expect(resolver.resolve("={{ $trigger.nonexistent }}")).to be_nil
     end
 
     it "returns nil for missing node output paths" do
-      node_resolver = build_resolver(context.merge("$json" => context["trigger"]))
+      node_resolver = build_resolver(context.merge("$json" => context["$trigger"]))
 
       expect(node_resolver.resolve("={{ $('Missing Step').item.json.topic_id }}")).to be_nil
     end
 
     it "returns nil for missing node context paths" do
-      node_resolver = build_resolver(context.merge("$json" => context["trigger"]))
+      node_resolver = build_resolver(context.merge("$json" => context["$trigger"]))
 
       expect(node_resolver.resolve('={{ $("Missing Step").context["approved"] }}')).to be_nil
     end
@@ -166,7 +166,7 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
     end
 
     it "evaluates .toUpperCase() on strings" do
-      ctx = { "trigger" => { "name" => "hello" }, "$json" => { "name" => "hello" } }
+      ctx = { "$trigger" => { "name" => "hello" }, "$json" => { "name" => "hello" } }
       r = build_resolver(ctx)
       expect(r.resolve("={{ $json.name.toUpperCase() }}")).to eq("HELLO")
     end
@@ -188,7 +188,7 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
 
     it "evaluates node output references with JS methods" do
       node_context = { "Previous Step" => [{ "json" => { "items" => %w[a b c] } }] }
-      r = build_resolver(node_context.merge("$json" => context["trigger"]))
+      r = build_resolver(node_context.merge("$json" => context["$trigger"]))
       expect(r.resolve("={{ $('Previous Step').item.json.items.join('-') }}")).to eq("a-b-c")
     end
   end
@@ -196,7 +196,7 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
   describe "#resolve_hash" do
     it "resolves all string values in a hash" do
       config = {
-        "topic_id" => "={{ trigger.topic_id }}",
+        "topic_id" => "={{ $trigger.topic_id }}",
         "tag_name" => "resolved",
         "nested" => {
           "value" => "={{ $json.topic_id }}",
@@ -212,19 +212,19 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
     end
 
     it "resolves expressions inside arrays of hashes" do
-      result = resolver.resolve_hash({ "items" => [{ "value" => "={{ trigger.topic_id }}" }] })
+      result = resolver.resolve_hash({ "items" => [{ "value" => "={{ $trigger.topic_id }}" }] })
       expect(result["items"][0]["value"]).to eq(42)
     end
 
     it "resolves expressions inside nested arrays" do
-      result = resolver.resolve_hash({ "items" => [["={{ trigger.topic_id }}"]] })
+      result = resolver.resolve_hash({ "items" => [["={{ $trigger.topic_id }}"]] })
       expect(result["items"][0][0]).to eq(42)
     end
   end
 
   describe "#with_item" do
     it "rebinds $json for the duration of the block" do
-      resolver = build_resolver(context.merge("$json" => context["trigger"]))
+      resolver = build_resolver(context.merge("$json" => context["$trigger"]))
       result_inside = nil
       result_outside_before = resolver.resolve("={{ $json.topic_id }}")
 
@@ -243,12 +243,12 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
       resolver =
         build_resolver(
           context.merge(
-            "$json" => context["trigger"],
+            "$json" => context["$trigger"],
             "__input_item" => {
-              "json" => context["trigger"],
+              "json" => context["$trigger"],
             },
             "__input_items" => [
-              { "json" => context["trigger"] },
+              { "json" => context["$trigger"] },
               { "json" => { "topic_id" => 999 } },
             ],
             "__input_params" => {
@@ -269,7 +269,7 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
     end
 
     it "accepts symbol-keyed input items that already include json" do
-      resolver = build_resolver(context.merge("$json" => context["trigger"]))
+      resolver = build_resolver(context.merge("$json" => context["$trigger"]))
       result_inside = nil
 
       resolver.with_item({ json: { topic_id: 999 } }) do
@@ -280,7 +280,7 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
     end
 
     it "restores $json even if the block raises" do
-      resolver = build_resolver(context.merge("$json" => context["trigger"]))
+      resolver = build_resolver(context.merge("$json" => context["$trigger"]))
       expect { resolver.with_item({ "topic_id" => 999 }) { raise "boom" } }.to raise_error("boom")
 
       expect(resolver.resolve("={{ $json.topic_id }}")).to eq(42)

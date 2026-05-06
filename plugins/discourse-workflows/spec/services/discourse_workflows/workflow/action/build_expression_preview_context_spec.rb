@@ -12,7 +12,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewConte
       let(:workflow) { nil }
 
       it "returns the default context" do
-        expect(context).to eq({ "$json" => {}, "trigger" => {} })
+        expect(context).to eq({ "$json" => {}, "$trigger" => {} })
       end
 
       it "does not include execution metadata" do
@@ -40,8 +40,8 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewConte
       end
 
       it "populates trigger exemplar into trigger and $json" do
-        expect(context["trigger"]).to include("topic")
-        expect(context["$json"]).to eq(context["trigger"])
+        expect(context["$trigger"]).to include("topic")
+        expect(context["$json"]).to eq(context["$trigger"])
       end
 
       it "populates exemplars keyed by node name" do
@@ -57,7 +57,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewConte
         end
 
         it "keeps the trigger exemplar separate from $json" do
-          expect(context["trigger"]).to include("topic")
+          expect(context["$trigger"]).to include("topic")
         end
       end
 
@@ -96,7 +96,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewConte
         end
 
         it "still populates the trigger exemplar" do
-          expect(context["trigger"]).to include("topic")
+          expect(context["$trigger"]).to include("topic")
         end
       end
 
@@ -111,7 +111,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewConte
           end
 
           it "leaves schema exemplars untouched" do
-            expect(context["trigger"]).to include("topic")
+            expect(context["$trigger"]).to include("topic")
           end
         end
 
@@ -135,7 +135,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewConte
           end
 
           it "overlays the trigger json into trigger and $json" do
-            expect(context["trigger"]).to eq({ "title" => "From past run" })
+            expect(context["$trigger"]).to eq({ "title" => "From past run" })
             expect(context["$json"]).to eq({ "title" => "From past run" })
           end
 
@@ -204,7 +204,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewConte
           end
 
           it "reads json from items when output_items is missing" do
-            expect(context["trigger"]).to eq({ "title" => "Legacy items" })
+            expect(context["$trigger"]).to eq({ "title" => "Legacy items" })
           end
         end
 

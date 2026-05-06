@@ -15,9 +15,9 @@ RSpec.describe "Workflow: topic category changed -> create post" do
         g.node "action-1",
                "action:create_post",
                configuration: {
-                 "topic_id" => "={{ trigger.topic.id }}",
+                 "topic_id" => "={{ $trigger.topic.id }}",
                  "raw" =>
-                   "=Category changed from {{ trigger.old_category_id }} to {{ trigger.topic.category_id }}",
+                   "=Category changed from {{ $trigger.old_category_id }} to {{ $trigger.topic.category_id }}",
                }
         g.chain "trigger-1", "action-1"
       end

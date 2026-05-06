@@ -286,7 +286,7 @@ module DiscourseWorkflows
       def build_expression_data
         {
           "$json" => @context.fetch("$json") { {} },
-          "trigger" => @context.fetch("trigger") { {} },
+          "$trigger" => @context.fetch("$trigger") { {} },
           "$execution" => @context.fetch("__execution") { {} },
           "$itemIndex" => @context.fetch("$itemIndex") { 0 },
           "__inputItem" =>
@@ -346,7 +346,7 @@ module DiscourseWorkflows
             set: function(value) { __data["$itemIndex"] = value; },
             configurable: true
           });
-          var trigger = __data["trigger"];
+          var $trigger = __data["$trigger"];
           var $execution = __data["$execution"];
           var __nodeCache = {};
           Object.defineProperty(this, '$', {

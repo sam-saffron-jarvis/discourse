@@ -41,7 +41,7 @@ RSpec.describe DiscourseWorkflows::Expression::Evaluate do
       it { is_expected.to run_successfully }
 
       it "builds the preview context" do
-        expect(result[:preview_context]).to include("$json" => {}, "trigger" => {})
+        expect(result[:preview_context]).to include("$json" => {}, "$trigger" => {})
       end
 
       it "returns resolved segments" do
@@ -64,7 +64,7 @@ RSpec.describe DiscourseWorkflows::Expression::Evaluate do
         DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewContext
           .expects(:call)
           .with(workflow: workflow, node_id: nil)
-          .returns({ "$json" => { "topic" => { "title" => "" } }, "trigger" => {} })
+          .returns({ "$json" => { "topic" => { "title" => "" } }, "$trigger" => {} })
           .once
 
         expect(result).to run_successfully

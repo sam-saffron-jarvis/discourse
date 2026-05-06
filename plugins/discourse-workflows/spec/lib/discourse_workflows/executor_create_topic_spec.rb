@@ -15,11 +15,11 @@ RSpec.describe DiscourseWorkflows::Executor do
                  "action:create_topic",
                  name: "Create Topic",
                  configuration: {
-                   "title" => "={{ trigger.title }}",
-                   "raw" => "={{ trigger.raw }}",
-                   "category_id" => "={{ trigger.category_id }}",
-                   "tag_names" => "={{ trigger.tags }}",
-                   "username" => "={{ trigger.username }}",
+                   "title" => "={{ $trigger.title }}",
+                   "raw" => "={{ $trigger.raw }}",
+                   "category_id" => "={{ $trigger.category_id }}",
+                   "tag_names" => "={{ $trigger.tags }}",
+                   "username" => "={{ $trigger.username }}",
                  }
           g.chain "trigger-1", "action-1"
         end

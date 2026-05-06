@@ -9,7 +9,7 @@ RSpec.describe DiscourseWorkflows::JsSandbox do
 
   fab!(:user)
 
-  let(:workflow_context) { { "trigger" => { "topic_id" => 42 } } }
+  let(:workflow_context) { { "$trigger" => { "topic_id" => 42 } } }
   let(:vars) { { "API_URL" => "https://example.com" } }
   let(:owned_sandboxes) { [] }
 

@@ -17,7 +17,7 @@ module DiscourseWorkflows
     private
 
     def default_context
-      { "$json" => {}, "trigger" => {} }
+      { "$json" => {}, "$trigger" => {} }
     end
 
     def initial_execution_metadata
@@ -36,7 +36,7 @@ module DiscourseWorkflows
       json = node_class.output_exemplar
 
       if node["type"]&.start_with?("trigger:")
-        context["trigger"] = json
+        context["$trigger"] = json
         context["$json"] = json unless node_id
       end
 
@@ -72,7 +72,7 @@ module DiscourseWorkflows
       json = items.dig(0, "json") || {}
 
       if step["node_type"]&.start_with?("trigger:")
-        context["trigger"] = json
+        context["$trigger"] = json
         context["$json"] = json unless node_id
       end
 

@@ -14,8 +14,8 @@ RSpec.describe "Workflow: topic created -> create topic" do
         g.node "action-1",
                "action:create_topic",
                configuration: {
-                 "title" => "Mirror: {{ trigger.topic_title }}",
-                 "raw" => "=Mirrored from topic {{ trigger.topic_id }}",
+                 "title" => "Mirror: {{ $trigger.topic_title }}",
+                 "raw" => "=Mirrored from topic {{ $trigger.topic_id }}",
                  "category_id" => category.id.to_s,
                  "username" => "system",
                }

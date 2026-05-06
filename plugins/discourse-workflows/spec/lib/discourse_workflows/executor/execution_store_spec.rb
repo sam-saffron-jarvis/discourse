@@ -28,7 +28,7 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionStore do
       expect(execution).to be_present
       expect(execution_context.execution).to eq(execution)
       expect(execution_context.resume_token).to be_present
-      expect(execution_context.context["trigger"]).to eq(trigger_data)
+      expect(execution_context.context["$trigger"]).to eq(trigger_data)
     end
   end
 

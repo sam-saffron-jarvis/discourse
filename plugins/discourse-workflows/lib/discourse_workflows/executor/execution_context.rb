@@ -4,7 +4,7 @@ module DiscourseWorkflows
   class Executor
     class ExecutionContext
       RESERVED_KEYS = %w[
-        trigger
+        $trigger
         __resume_token
         __form_completion
         __sandbox_elapsed_ms
@@ -30,14 +30,14 @@ module DiscourseWorkflows
       end
 
       def reset!(resume_token: SecureRandom.uuid)
-        @context = { "trigger" => trigger_data }
+        @context = { "$trigger" => trigger_data }
         @node_contexts_by_id = {}
         @context["__resume_token"] = resume_token
       end
 
       def restore!(context:, node_contexts:, resume_token: SecureRandom.uuid)
         @context = context.deep_stringify_keys
-        @context["trigger"] ||= trigger_data
+        @context["$trigger"] ||= trigger_data
         @node_contexts_by_id = normalize_node_contexts(node_contexts)
         @context["__resume_token"] = resume_token
       end

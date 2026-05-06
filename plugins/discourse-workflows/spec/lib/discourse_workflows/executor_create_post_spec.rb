@@ -15,10 +15,10 @@ RSpec.describe DiscourseWorkflows::Executor do
                  "action:create_post",
                  name: "Create Post",
                  configuration: {
-                   "topic_id" => "={{ trigger.topic_id }}",
-                   "raw" => "={{ trigger.raw }}",
-                   "reply_to_post_number" => "={{ trigger.reply_to_post_number }}",
-                   "user_id" => "={{ trigger.user_id }}",
+                   "topic_id" => "={{ $trigger.topic_id }}",
+                   "raw" => "={{ $trigger.raw }}",
+                   "reply_to_post_number" => "={{ $trigger.reply_to_post_number }}",
+                   "user_id" => "={{ $trigger.user_id }}",
                  }
           g.chain "trigger-1", "action-1"
         end

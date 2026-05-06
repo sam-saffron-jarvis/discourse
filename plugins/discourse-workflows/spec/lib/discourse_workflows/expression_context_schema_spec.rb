@@ -55,7 +55,7 @@ RSpec.describe DiscourseWorkflows::ExpressionContextSchema do
     fab!(:user)
 
     it "JsSandbox exposes core environment symbols" do
-      context = { "trigger" => {} }
+      context = { "$trigger" => {} }
       sandbox = DiscourseWorkflows::JsSandbox.new(context, user: user)
 
       # $execution is injected by ExpressionResolver, not JsSandbox directly
@@ -70,7 +70,7 @@ RSpec.describe DiscourseWorkflows::ExpressionContextSchema do
     end
 
     it "JsSandbox $current_user shape matches schema fields" do
-      context = { "trigger" => {} }
+      context = { "$trigger" => {} }
       sandbox = DiscourseWorkflows::JsSandbox.new(context, user: user)
 
       schema_fields = described_class.environment_symbols["$current_user"][:fields]
@@ -84,7 +84,7 @@ RSpec.describe DiscourseWorkflows::ExpressionContextSchema do
 
     it "ExpressionResolver $() returns shape matching node_reference_shape" do
       context = {
-        "trigger" => {
+        "$trigger" => {
         },
         "$json" => {
         },

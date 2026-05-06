@@ -15,7 +15,7 @@ RSpec.describe "Workflow: topic closed -> topic tags" do
                "action:topic_tags",
                configuration: {
                  "operation" => "add",
-                 "topic_id" => "={{ trigger.topic.id }}",
+                 "topic_id" => "={{ $trigger.topic.id }}",
                  "tag_names" => "resolved",
                }
         g.chain "trigger-1", "action-1"
