@@ -17,10 +17,10 @@ module DiscourseWorkflows
         config = build_config(method, url, headers, body, options)
         request_method, uri, request_headers, request_body =
           DiscourseWorkflows::Nodes::HttpRequest::RequestBuilder.new(config, @exec_ctx).build
-        never_error = config.fetch("never_error") { false }
+        never_error = config.fetch("never_error", false)
         response = run_with_retries(request_method, uri, request_headers, request_body, config)
         if !never_error && !(200..299).cover?(response.status)
-          raise "HTTP request failed with status #{response.status}"
+          raise "HTTP #{config["method"]} #{config["url"]} failed with status #{response.status}"
         end
 
         parsed =
@@ -47,11 +47,12 @@ module DiscourseWorkflows
 
       def run_with_retries(method, uri, headers, body, config)
         attempts = max_retries(config, method) + 1
+        statuses = retry_statuses(config)
         response = nil
 
         attempts.times do |attempt|
           response = connection.run_request(method, uri.to_s, body, headers)
-          break unless retry_response?(response, config) && attempt < attempts - 1
+          break if statuses.exclude?(response.status) || attempt >= attempts - 1
         end
 
         response
@@ -66,10 +67,6 @@ module DiscourseWorkflows
 
       def request_options
         { timeout: TIMEOUT_SECONDS, open_timeout: TIMEOUT_SECONDS, write_timeout: TIMEOUT_SECONDS }
-      end
-
-      def retry_response?(response, config)
-        retry_statuses(config).include?(response.status)
       end
 
       def max_retries(config, method)

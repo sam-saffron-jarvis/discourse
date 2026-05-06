@@ -109,7 +109,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
 
       expect { execute_node(configuration: config, item: item) }.to raise_error(
         RuntimeError,
-        /HTTP request failed with status 404/,
+        %r{HTTP GET https://api\.example\.com/fail failed with status 404},
       )
     end
 
@@ -123,7 +123,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
 
       expect { execute_node(configuration: config, item: item) }.to raise_error(
         RuntimeError,
-        /HTTP request failed with status 500/,
+        %r{HTTP POST https://api\.example\.com/error failed with status 500},
       )
     end
 
