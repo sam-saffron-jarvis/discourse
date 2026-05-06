@@ -7,9 +7,12 @@ module DiscourseWorkflows
     MAX_MEMORY_BYTES = 10.megabytes
     MARSHAL_STACK_DEPTH = 20
 
-    attr_reader :js_context, :workflow_context, :log
+    attr_reader :log
 
     class BudgetExceededError < StandardError
+    end
+
+    class SandboxError < StandardError
     end
 
     class PayloadTooLargeError < StandardError
@@ -31,6 +34,8 @@ module DiscourseWorkflows
       @js_context.eval(code)
     rescue MiniRacer::ScriptTerminatedError
       raise BudgetExceededError, "JavaScript evaluation exceeded #{EVAL_TIMEOUT_MS}ms time limit"
+    rescue MiniRacer::Error => e
+      raise SandboxError, "Sandbox execution failed: #{e.message}"
     ensure
       finish_eval!(started_at)
     end

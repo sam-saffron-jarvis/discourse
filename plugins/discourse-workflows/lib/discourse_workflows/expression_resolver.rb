@@ -34,7 +34,7 @@ module DiscourseWorkflows
 
     def self.resolve_segments(template, context: {}, user: nil)
       with_owned_sandbox(context, user: user) { |resolver| resolver.resolve_segments(template) }
-    rescue MiniRacer::Error => e
+    rescue MiniRacer::Error, JsSandbox::BudgetExceededError, JsSandbox::SandboxError => e
       Rails.logger.warn("Expression evaluation failed: #{e.message}")
       []
     end
@@ -242,6 +242,8 @@ module DiscourseWorkflows
       def evaluate(expression)
         ensure_initialized!
         @sandbox.eval("(#{expression})")
+      rescue JsSandbox::BudgetExceededError, JsSandbox::SandboxError
+        raise
       rescue MiniRacer::Error => e
         @expression_errors << { expression: expression, error: e.message, type: classify_error(e) }
         nil

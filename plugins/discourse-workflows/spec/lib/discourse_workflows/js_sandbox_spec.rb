@@ -26,7 +26,7 @@ RSpec.describe DiscourseWorkflows::JsSandbox do
 
   describe "memory limit" do
     it "raises when JS allocates too much memory" do
-      expect { sandbox.eval(<<~JS) }.to raise_error(MiniRacer::Error)
+      expect { sandbox.eval(<<~JS) }.to raise_error(DiscourseWorkflows::JsSandbox::SandboxError)
           var a = [];
           while(true) { a.push(new Array(10000).fill('x')); }
         JS
