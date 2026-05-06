@@ -1,6 +1,4 @@
 .workflows-execution-detail {
-  padding: var(--space-4);
-
   &__step {
     border: 1.5px solid var(--primary-low);
     border-radius: 0.375em;
@@ -70,8 +68,8 @@
 
   &__kind-badge {
     font-size: var(--font-down-2);
-    font-weight: 600;
-    text-transform: uppercase;
+    font-weight: bold;
+    text-transform: lowercase;
     letter-spacing: 0.04em;
     padding: 0.15em 0.45em;
     border-radius: 0.25em;
@@ -115,10 +113,9 @@
 
   &__step-summary {
     font-size: var(--font-down-1);
-    color: var(--primary-medium);
+    color: var(--danger);
     margin-top: var(--space-1);
     padding-left: calc(1.25em + var(--space-2));
-    font-family: var(--d-font-family--monospace);
   }
 
   &__step-type {
@@ -127,7 +124,9 @@
   }
 
   &__step-badge {
-    font-size: var(--font-down-1);
+    font-size: var(--font-down-2);
+    font-weight: bold;
+    text-transform: lowercase;
     padding: 0.1em 0.4em;
     border-radius: 0.25em;
 
