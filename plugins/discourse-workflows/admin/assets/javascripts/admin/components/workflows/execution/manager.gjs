@@ -2,7 +2,6 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { concat, fn } from "@ember/helper";
 import { action } from "@ember/object";
-import { LinkTo } from "@ember/routing";
 import { service } from "@ember/service";
 import DButton from "discourse/components/d-button";
 import icon from "discourse/helpers/d-icon";
@@ -172,12 +171,7 @@ export default class ExecutionsManager extends Component {
       </:head>
       <:row as |execution|>
         {{#unless @workflowId}}
-          <td>
-            <LinkTo
-              @route="adminPlugins.show.discourse-workflows.show"
-              @model={{execution.workflow_id}}
-            >{{execution.workflow_name}}</LinkTo>
-          </td>
+          <td>{{execution.workflow_name}}</td>
         {{/unless}}
         <td>
           <span
