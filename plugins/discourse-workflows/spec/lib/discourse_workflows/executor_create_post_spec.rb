@@ -18,7 +18,7 @@ RSpec.describe DiscourseWorkflows::Executor do
                    "topic_id" => "={{ $trigger.topic_id }}",
                    "raw" => "={{ $trigger.raw }}",
                    "reply_to_post_number" => "={{ $trigger.reply_to_post_number }}",
-                   "user_id" => "={{ $trigger.user_id }}",
+                   "author_username" => "={{ $trigger.author_username }}",
                  }
           g.chain "trigger-1", "action-1"
         end
@@ -28,7 +28,7 @@ RSpec.describe DiscourseWorkflows::Executor do
         topic_id: topic.id,
         raw: "Generated reply",
         reply_to_post_number: first_post.post_number,
-        user_id: admin.id,
+        author_username: admin.username,
       }
 
       execution = described_class.new(workflow, "trigger-1", trigger_data).run

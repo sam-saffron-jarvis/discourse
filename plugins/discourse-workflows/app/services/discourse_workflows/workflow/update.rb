@@ -9,7 +9,6 @@ module DiscourseWorkflows
       attribute :name, :string
       attribute :enabled, :boolean
       attribute :error_workflow_id, :integer
-      attribute :run_as_username, :string
       attribute :nodes
       attribute :connections
 
@@ -26,7 +25,6 @@ module DiscourseWorkflows
         attrs = { name: }
         attrs[:enabled] = enabled unless enabled.nil?
         attrs[:error_workflow_id] = error_workflow_id
-        attrs[:run_as_username] = run_as_username if run_as_username
         attrs
       end
     end

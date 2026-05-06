@@ -37,9 +37,13 @@ module DiscourseWorkflows
               type: :integer,
               required: false,
             },
-            user_id: {
-              type: :integer,
+            author_username: {
+              type: :string,
               required: false,
+              default: "system",
+              ui: {
+                control: :user,
+              },
             },
           }
         end
@@ -49,11 +53,10 @@ module DiscourseWorkflows
         end
 
         def execute(exec_ctx)
-          run_as_user = exec_ctx.run_as_user
           items =
             exec_ctx.input_items.map do |item|
               config = exec_ctx.get_parameters(item)
-              result = process(exec_ctx, run_as_user, config)
+              result = process(exec_ctx, config)
               wrap(result)
             end
           [items]
@@ -61,12 +64,11 @@ module DiscourseWorkflows
 
         private
 
-        def process(exec_ctx, run_as_user, config)
+        def process(exec_ctx, config)
           topic = Topic.find(config["topic_id"])
           ensure_topic_is_open!(topic)
 
-          author =
-            config["user_id"].present? ? exec_ctx.find_user(id: config["user_id"]) : run_as_user
+          author = exec_ctx.find_user(username: config["author_username"].presence || "system")
           post = PostCreator.new(author, build_post_args(topic, config)).create!
 
           { post: Schemas::Post.resolve(post) }

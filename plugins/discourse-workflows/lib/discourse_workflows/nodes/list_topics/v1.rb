@@ -37,6 +37,14 @@ module DiscourseWorkflows
               required: false,
               default: DEFAULT_LIMIT,
             },
+            actor_username: {
+              type: :string,
+              required: false,
+              default: "system",
+              ui: {
+                control: :user,
+              },
+            },
           }
         end
 
@@ -51,7 +59,8 @@ module DiscourseWorkflows
           query = config["query"]
           limit = [[Integer(config.fetch("limit") { DEFAULT_LIMIT }), 1].max, MAX_LIMIT].min
 
-          topic_query = TopicQuery.new(exec_ctx.run_as_user, q: query, per_page: limit)
+          actor = exec_ctx.find_user(username: config["actor_username"].presence || "system")
+          topic_query = TopicQuery.new(actor, q: query, per_page: limit)
           topic_list = topic_query.list_filter
 
           posts = topic_list.topics.map(&:first_post).compact

@@ -1,14 +1,7 @@
 # frozen_string_literal: true
 
 module NodeExecutionHelpers
-  def execute_node_result(
-    configuration:,
-    item: nil,
-    input_items: nil,
-    node_context: nil,
-    run_as_user: Discourse.system_user,
-    &block
-  )
+  def execute_node_result(configuration:, item: nil, input_items: nil, node_context: nil, &block)
     item = { "json" => {} } if item.nil? && input_items.nil?
     input_items = input_items || [item]
     action = described_class.new(configuration: configuration)
@@ -22,7 +15,6 @@ module NodeExecutionHelpers
       property_schema: described_class.property_schema,
       resolver_context: resolver_context,
     }
-    kwargs[:run_as_user] = run_as_user if run_as_user
     kwargs[:node_context] = node_context if node_context
 
     ctx = DiscourseWorkflows::Executor::NodeExecutionContext.new(**kwargs)
@@ -36,8 +28,8 @@ module NodeExecutionHelpers
     sandbox&.dispose
   end
 
-  def execute_node(configuration:, item: { "json" => {} }, run_as_user: Discourse.system_user)
-    result = execute_node_result(configuration: configuration, item: item, run_as_user: run_as_user)
+  def execute_node(configuration:, item: { "json" => {} })
+    result = execute_node_result(configuration: configuration, item: item)
     result.primary_items(ports: described_class.ports).first["json"]
   end
 end

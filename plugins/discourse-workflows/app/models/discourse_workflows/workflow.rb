@@ -3,6 +3,7 @@
 module DiscourseWorkflows
   class Workflow < ActiveRecord::Base
     self.table_name = "discourse_workflows_workflows"
+    self.ignored_columns = ["run_as_username"]
 
     has_many :executions,
              class_name: "DiscourseWorkflows::Execution",
@@ -151,7 +152,6 @@ end
 #  enabled           :boolean          default(FALSE), not null
 #  name              :string           not null
 #  nodes             :jsonb
-#  run_as_username   :string           default("system")
 #  settings          :jsonb
 #  static_data       :jsonb
 #  created_at        :datetime         not null

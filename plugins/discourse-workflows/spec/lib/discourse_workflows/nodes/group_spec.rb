@@ -58,12 +58,17 @@ RSpec.describe DiscourseWorkflows::Nodes::Group::V1 do
         }.by(1)
       end
 
-      it "raises when run_as_user cannot edit the group" do
-        config = { "operation" => "add", "username" => user.username, "group_id" => group.id.to_s }
+      it "raises when actor_username cannot edit the group" do
+        config = {
+          "operation" => "add",
+          "username" => user.username,
+          "group_id" => group.id.to_s,
+          "actor_username" => user.username,
+        }
 
-        expect {
-          execute_node(configuration: config, item: item, run_as_user: user)
-        }.to raise_error(Discourse::InvalidAccess)
+        expect { execute_node(configuration: config, item: item) }.to raise_error(
+          Discourse::InvalidAccess,
+        )
       end
     end
 
@@ -104,16 +109,17 @@ RSpec.describe DiscourseWorkflows::Nodes::Group::V1 do
         }.by(1)
       end
 
-      it "raises when run_as_user cannot edit the group" do
+      it "raises when actor_username cannot edit the group" do
         config = {
           "operation" => "remove",
           "username" => user.username,
           "group_id" => group.id.to_s,
+          "actor_username" => user.username,
         }
 
-        expect {
-          execute_node(configuration: config, item: item, run_as_user: user)
-        }.to raise_error(Discourse::InvalidAccess)
+        expect { execute_node(configuration: config, item: item) }.to raise_error(
+          Discourse::InvalidAccess,
+        )
       end
     end
 
@@ -138,10 +144,15 @@ RSpec.describe DiscourseWorkflows::Nodes::Group::V1 do
       )
     end
 
-    it "uses run_as_user for group action logging" do
-      config = { "operation" => "add", "username" => user.username, "group_id" => group.id.to_s }
+    it "uses actor_username for group action logging" do
+      config = {
+        "operation" => "add",
+        "username" => user.username,
+        "group_id" => group.id.to_s,
+        "actor_username" => admin.username,
+      }
 
-      execute_node(configuration: config, item: item, run_as_user: admin)
+      execute_node(configuration: config, item: item)
 
       expect(
         GroupHistory.find_by(
@@ -172,13 +183,17 @@ RSpec.describe DiscourseWorkflows::Nodes::Group::V1 do
         )
       end
 
-      it "raises when run_as_user cannot see the group" do
+      it "raises when actor_username cannot see the group" do
         group.update!(visibility_level: Group.visibility_levels[:staff])
-        config = { "operation" => "get", "group_id" => group.id.to_s }
+        config = {
+          "operation" => "get",
+          "group_id" => group.id.to_s,
+          "actor_username" => user.username,
+        }
 
-        expect {
-          execute_node(configuration: config, item: item, run_as_user: user)
-        }.to raise_error(Discourse::InvalidAccess)
+        expect { execute_node(configuration: config, item: item) }.to raise_error(
+          Discourse::InvalidAccess,
+        )
       end
     end
   end

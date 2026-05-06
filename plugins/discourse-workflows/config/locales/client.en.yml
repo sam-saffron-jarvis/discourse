@@ -34,8 +34,6 @@ en:
         settings: "Settings"
       settings:
         saved: "Settings saved."
-        run_as: "Run as"
-        run_as_description: "The user identity workflow actions will use when performing operations. Defaults to the system user. It is your responsibility to ensure the specified user has the necessary permissions for all actions in this workflow."
         error_workflow: "Error workflow"
         error_workflow_description: "When this workflow fails, automatically trigger the selected error workflow. Only workflows with an Error Trigger node will appear as options."
         error_workflow_none: "None"
@@ -176,8 +174,10 @@ en:
         remove: "Remove"
         topic_id: "Topic ID"
         tag_names: "Tags"
+        actor_username: "Performed by"
       fetch_topic:
         topic_id: "Topic ID"
+        actor_username: "Performed by"
       limit:
         max_items: "Max items"
         keep: "Keep"
@@ -189,6 +189,7 @@ en:
         query_placeholder: "category:support status:open"
         limit: "Limit"
         limit_description: "Maximum number of topics to return (1-100, default 30)."
+        actor_username: "List as user"
       group:
         operation: "Operation"
         add: "Add user"
@@ -198,6 +199,7 @@ en:
         group_id: "Group"
         group_id_placeholder: "Select a group"
         manage_groups: "Manage groups"
+        actor_username: "Performed by"
       badge:
         operation: "Operation"
         grant: "Grant badge"
@@ -205,14 +207,14 @@ en:
         username: "Username"
         badge_id: "Badge"
         badge_id_placeholder: "Select a badge"
+        actor_username: "Performed by"
       create_post:
         topic_id: "Topic ID"
         raw: "Body"
         raw_description: "Raw content for the reply."
         reply_to_post_number: "Reply to post number"
         reply_to_post_number_description: "Reply to a specific post number in the topic."
-        user_id: "Author User ID"
-        user_id_description: "Leave blank to use the system user."
+        author_username: "Author username"
       create_topic:
         title: "Title"
         raw: "Body"

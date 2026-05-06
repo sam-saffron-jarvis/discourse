@@ -54,20 +54,20 @@ RSpec.describe DiscourseWorkflows::Nodes::FetchTopic::V1 do
       end.to raise_error(ActiveRecord::RecordNotFound)
     end
 
-    it "raises when run_as_user cannot see the topic" do
+    it "raises when actor_username cannot see the topic" do
       pm = Fabricate(:private_message_topic)
 
       expect do
         execute_node(
           configuration: {
             "topic_id" => pm.id.to_s,
+            "actor_username" => user.username,
           },
           item: {
             "json" => {
               "topic_id" => pm.id.to_s,
             },
           },
-          run_as_user: user,
         )
       end.to raise_error(Discourse::InvalidAccess)
     end

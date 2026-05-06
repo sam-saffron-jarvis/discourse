@@ -1,21 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
-  describe "#guardian" do
-    fab!(:user)
-
-    it "memoizes a guardian for the run_as_user" do
-      ctx = described_class.new(input_items: [], resolver: nil, run_as_user: user)
-      guardian = instance_double(Guardian)
-
-      allow(Guardian).to receive(:new).with(user).and_return(guardian)
-
-      expect(ctx.guardian).to eq(guardian)
-      expect(ctx.guardian).to eq(guardian)
-      expect(Guardian).to have_received(:new).with(user).once
-    end
-  end
-
   describe "#get_parameters" do
     it "resolves $json expressions against the item passed in, not a cached first item" do
       config = { "value" => "={{ $json.x }}" }
@@ -190,8 +175,6 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
 
   describe "#find_user" do
     fab!(:user)
-    fab!(:other_user, :user)
-    fab!(:admin)
 
     it "finds a user by username" do
       ctx = described_class.new(input_items: [], resolver: nil)
@@ -203,27 +186,6 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx = described_class.new(input_items: [], resolver: nil)
 
       expect(ctx.find_user(id: user.id)).to eq(user)
-    end
-
-    it "allows the run_as_user to find themselves" do
-      ctx = described_class.new(input_items: [], resolver: nil, run_as_user: user)
-
-      expect(ctx.find_user(username: user.username)).to eq(user)
-    end
-
-    it "allows an admin run_as_user to find another user" do
-      ctx = described_class.new(input_items: [], resolver: nil, run_as_user: admin)
-
-      expect(ctx.find_user(username: user.username)).to eq(user)
-    end
-
-    it "raises a node error when run_as_user cannot act on behalf of the user" do
-      ctx = described_class.new(input_items: [], resolver: nil, run_as_user: user)
-
-      expect { ctx.find_user(username: other_user.username) }.to raise_error(
-        DiscourseWorkflows::NodeError,
-        "User '#{user.username}' is not allowed to act on behalf of user '#{other_user.username}'",
-      )
     end
 
     it "raises a node error when the username cannot be found" do

@@ -5,7 +5,6 @@ import { service } from "@ember/service";
 import Form from "discourse/components/form";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
-import UserChooser from "discourse/select-kit/components/user-chooser";
 import { i18n } from "discourse-i18n";
 import ErrorWorkflowChooser from "./error-workflow-chooser";
 
@@ -15,7 +14,6 @@ export default class WorkflowSettings extends Component {
   @service toasts;
 
   formData = {
-    run_as_username: this.args.workflow.run_as_username ?? "system",
     error_workflow_id: this.args.workflow.error_workflow_id,
   };
 
@@ -53,9 +51,6 @@ export default class WorkflowSettings extends Component {
           data: {
             workflow: {
               name: this.args.workflow.name,
-              run_as_username: Array.isArray(data.run_as_username)
-                ? data.run_as_username[0] || "system"
-                : data.run_as_username || "system",
               error_workflow_id: data.error_workflow_id,
             },
           },
@@ -78,23 +73,6 @@ export default class WorkflowSettings extends Component {
       class="workflows-settings"
       as |form|
     >
-      <form.Field
-        @name="run_as_username"
-        @title={{i18n "discourse_workflows.settings.run_as"}}
-        @description={{i18n "discourse_workflows.settings.run_as_description"}}
-        @type="custom"
-        @format="full"
-        as |field|
-      >
-        <field.Control>
-          <UserChooser
-            @value={{field.value}}
-            @onChange={{field.set}}
-            @options={{hash maximum=1 excludeCurrentUser=false}}
-          />
-        </field.Control>
-      </form.Field>
-
       <form.Field
         @name="error_workflow_id"
         @title={{i18n "discourse_workflows.settings.error_workflow"}}

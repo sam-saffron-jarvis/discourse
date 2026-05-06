@@ -9,7 +9,6 @@ module DiscourseWorkflows
                :connections,
                :error_workflow_id,
                :error_workflow_name,
-               :run_as_username,
                :created_at,
                :updated_at,
                :last_execution_status,

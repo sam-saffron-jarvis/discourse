@@ -5,7 +5,6 @@ module DiscourseWorkflows
     class NodeExecutionContext
       attr_reader :input_items,
                   :user,
-                  :run_as_user,
                   :vars,
                   :expression_errors,
                   :condition_details,
@@ -21,7 +20,6 @@ module DiscourseWorkflows
         property_schema: {},
         node_context: {},
         user: nil,
-        run_as_user: Discourse.system_user,
         resolver: nil,
         vars: nil,
         workflow: nil,
@@ -37,7 +35,6 @@ module DiscourseWorkflows
         @property_schema = property_schema
         @node_context = node_context
         @user = user
-        @run_as_user = run_as_user
         @resolver = resolver
         @vars = vars
         @workflow = workflow
@@ -110,10 +107,6 @@ module DiscourseWorkflows
         @resolver.resolve_hash(credential.decrypted_data)
       end
 
-      def guardian
-        @guardian ||= Guardian.new(run_as_user)
-      end
-
       def find_user(username: nil, id: nil)
         if username.present? == id.present?
           raise ArgumentError, "Provide exactly one of username or id"
@@ -127,7 +120,7 @@ module DiscourseWorkflows
           raise DiscourseWorkflows::NodeError, "User with id #{id} not found" if user.nil?
         end
 
-        ensure_can_act_as_user!(user)
+        user
       end
 
       def http_request(method:, url:, headers: {}, body: nil, options: {})
@@ -172,16 +165,6 @@ module DiscourseWorkflows
         end
 
         raise Discourse::InvalidAccess
-      end
-
-      def ensure_can_act_as_user!(target_user)
-        return target_user if run_as_user == Discourse.system_user
-        return target_user if run_as_user.id == target_user.id
-        return target_user if guardian.is_admin?
-
-        raise DiscourseWorkflows::NodeError,
-              "User '#{run_as_user.username}' is not allowed to act on behalf of " \
-                "user '#{target_user.username}'"
       end
 
       def workflow_references_dependency?(type, key)

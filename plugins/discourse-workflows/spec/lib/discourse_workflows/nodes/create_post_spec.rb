@@ -18,7 +18,7 @@ RSpec.describe DiscourseWorkflows::Nodes::CreatePost::V1 do
             configuration: {
               "topic_id" => topic.id.to_s,
               "raw" => "Workflow reply",
-              "user_id" => admin.id.to_s,
+              "author_username" => admin.username,
             },
             item: item,
           )
@@ -63,17 +63,17 @@ RSpec.describe DiscourseWorkflows::Nodes::CreatePost::V1 do
       expect(topic.posts.order(:id).last.reply_to_post_number).to eq(first_post.post_number)
     end
 
-    it "raises when the user cannot be found" do
+    it "raises when the author_username cannot be found" do
       expect do
         execute_node(
           configuration: {
             "topic_id" => topic.id.to_s,
             "raw" => "Workflow reply",
-            "user_id" => -999,
+            "author_username" => "nonexistent_user",
           },
           item: item,
         )
-      end.to raise_error(DiscourseWorkflows::NodeError, "User with id -999 not found")
+      end.to raise_error(DiscourseWorkflows::NodeError, "User 'nonexistent_user' not found")
     end
 
     it "raises when the topic is closed" do
@@ -121,7 +121,7 @@ RSpec.describe DiscourseWorkflows::Nodes::CreatePost::V1 do
         "topic_id" => "={{ $trigger.topic_id }}",
         "raw" => "=Hello {{ $json.name }}",
         "reply_to_post_number" => "={{ $trigger.reply_to_post_number }}",
-        "user_id" => "={{ $trigger.user_id }}",
+        "author_username" => "={{ $trigger.author_username }}",
       }
       resolver_context = {
         "$json" => {
@@ -130,7 +130,7 @@ RSpec.describe DiscourseWorkflows::Nodes::CreatePost::V1 do
         "$trigger" => {
           "topic_id" => topic.id,
           "reply_to_post_number" => first_post.post_number,
-          "user_id" => admin.id,
+          "author_username" => admin.username,
         },
       }
       sandbox = DiscourseWorkflows::JsSandbox.new(resolver_context)

@@ -21,7 +21,20 @@ module DiscourseWorkflows
         end
 
         def self.property_schema
-          { topic_id: { type: :string, required: true } }
+          {
+            topic_id: {
+              type: :string,
+              required: true,
+            },
+            actor_username: {
+              type: :string,
+              required: false,
+              default: "system",
+              ui: {
+                control: :user,
+              },
+            },
+          }
         end
 
         def self.output_schema
@@ -42,7 +55,8 @@ module DiscourseWorkflows
 
         def process(exec_ctx, config)
           topic = Topic.find(config["topic_id"])
-          exec_ctx.guardian.ensure_can_see!(topic)
+          actor = exec_ctx.find_user(username: config["actor_username"].presence || "system")
+          Guardian.new(actor).ensure_can_see!(topic)
           { topic: Schemas::Topic.resolve(topic) }
         end
       end

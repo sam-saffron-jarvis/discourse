@@ -106,25 +106,35 @@ RSpec.describe DiscourseWorkflows::Nodes::Badge::V1 do
       )
     end
 
-    it "uses run_as_user when granting" do
-      config = { "operation" => "grant", "username" => user.username, "badge_id" => badge.id.to_s }
+    it "uses actor_username when granting" do
+      config = {
+        "operation" => "grant",
+        "username" => user.username,
+        "badge_id" => badge.id.to_s,
+        "actor_username" => admin.username,
+      }
 
-      execute_node(configuration: config, item: item, run_as_user: admin)
+      execute_node(configuration: config, item: item)
 
       expect(UserBadge.find_by(user: user, badge: badge).granted_by_id).to eq(admin.id)
     end
 
-    it "uses run_as_user when revoking" do
+    it "uses actor_username when revoking" do
       BadgeGranter.grant(badge, user, granted_by: Discourse.system_user)
 
-      config = { "operation" => "revoke", "username" => user.username, "badge_id" => badge.id.to_s }
+      config = {
+        "operation" => "revoke",
+        "username" => user.username,
+        "badge_id" => badge.id.to_s,
+        "actor_username" => admin.username,
+      }
 
-      execute_node(configuration: config, item: item, run_as_user: admin)
+      execute_node(configuration: config, item: item)
 
       expect(UserBadge.exists?(user: user, badge: badge)).to be(false)
     end
 
-    it "defaults to system user when run_as_user is not set" do
+    it "defaults to system user when actor_username is not set" do
       config = { "operation" => "grant", "username" => user.username, "badge_id" => badge.id.to_s }
 
       execute_node(configuration: config, item: item)

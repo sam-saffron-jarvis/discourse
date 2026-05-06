@@ -254,7 +254,6 @@ module DiscourseWorkflows
         property_schema: node_type_class.property_schema,
         node_context: node_context,
         user: @options.user,
-        run_as_user: run_as_user,
         resolver: resolver,
         vars: preloaded_vars,
         workflow: @workflow,
@@ -434,18 +433,6 @@ module DiscourseWorkflows
 
     def rate_limiter
       @rate_limiter ||= ExecutionRateLimiter.new(@workflow)
-    end
-
-    def run_as_user
-      @run_as_user ||=
-        if @workflow.run_as_username.blank? || @workflow.run_as_username == "system"
-          Discourse.system_user
-        else
-          User.find_by(username: @workflow.run_as_username) ||
-            raise(
-              "Couldn't run this workflow as user: #{@workflow.run_as_username}. User not found.",
-            )
-        end
     end
   end
 end

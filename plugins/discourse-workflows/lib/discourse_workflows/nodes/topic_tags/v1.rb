@@ -44,6 +44,14 @@ module DiscourseWorkflows
                 control: :tags,
               },
             },
+            actor_username: {
+              type: :string,
+              required: false,
+              default: "system",
+              ui: {
+                control: :user,
+              },
+            },
           }
         end
 
@@ -61,6 +69,8 @@ module DiscourseWorkflows
 
         def process(exec_ctx, config)
           topic = Topic.find(config["topic_id"])
+          actor = exec_ctx.find_user(username: config["actor_username"].presence || "system")
+          guardian = Guardian.new(actor)
 
           names =
             Array
@@ -73,10 +83,10 @@ module DiscourseWorkflows
           when "remove"
             old_tag_names = topic.tags.pluck(:name)
             desired_tag_names = old_tag_names - names
-            tag_topic!(topic, exec_ctx.guardian, desired_tag_names)
+            tag_topic!(topic, guardian, desired_tag_names)
             { tag_names: old_tag_names & names, topic_id: topic.id }
           else
-            tag_topic!(topic, exec_ctx.guardian, names, append: true)
+            tag_topic!(topic, guardian, names, append: true)
             { tag_names: names, topic_id: topic.id }
           end
         end

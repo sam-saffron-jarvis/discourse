@@ -140,19 +140,27 @@ RSpec.describe DiscourseWorkflows::Nodes::TopicTags::V1 do
         tag
       end
 
-      it "prevents adding staff-only tags when run_as_user is a regular user" do
-        config = { "operation" => "add", "topic_id" => topic.id.to_s, "tag_names" => "staff-only" }
+      it "prevents adding staff-only tags when actor_username is a regular user" do
+        config = {
+          "operation" => "add",
+          "topic_id" => topic.id.to_s,
+          "tag_names" => "staff-only",
+          "actor_username" => regular_user.username,
+        }
 
-        expect do
-          execute_node(configuration: config, item: item, run_as_user: regular_user)
-        end.to raise_error(RuntimeError)
+        expect { execute_node(configuration: config, item: item) }.to raise_error(RuntimeError)
         expect(topic.reload.tags.pluck(:name)).not_to include("staff-only")
       end
 
-      it "allows adding staff-only tags when run_as_user is staff" do
-        config = { "operation" => "add", "topic_id" => topic.id.to_s, "tag_names" => "staff-only" }
+      it "allows adding staff-only tags when actor_username is staff" do
+        config = {
+          "operation" => "add",
+          "topic_id" => topic.id.to_s,
+          "tag_names" => "staff-only",
+          "actor_username" => admin.username,
+        }
 
-        result = execute_node(configuration: config, item: item, run_as_user: admin)
+        result = execute_node(configuration: config, item: item)
 
         expect(result["tag_names"]).to include("staff-only")
         expect(topic.reload.tags.pluck(:name)).to include("staff-only")

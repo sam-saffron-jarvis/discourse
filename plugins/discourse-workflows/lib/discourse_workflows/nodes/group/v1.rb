@@ -57,6 +57,14 @@ module DiscourseWorkflows
                 none: "discourse_workflows.group.group_id_placeholder",
               },
             },
+            actor_username: {
+              type: :string,
+              required: false,
+              default: "system",
+              ui: {
+                control: :user,
+              },
+            },
           }
         end
 
@@ -98,16 +106,18 @@ module DiscourseWorkflows
 
         def process(exec_ctx, config)
           group = ::Group.find(config["group_id"])
-          exec_ctx.guardian.ensure_can_see_group!(group)
+          actor = exec_ctx.find_user(username: config["actor_username"].presence || "system")
+          guardian = Guardian.new(actor)
+          guardian.ensure_can_see_group!(group)
           group_data = Schemas::Group.resolve(group)
 
           return { group: group_data } if config["operation"] == "get"
 
-          exec_ctx.guardian.ensure_can_edit_group!(group)
+          guardian.ensure_can_edit_group!(group)
 
           user = exec_ctx.find_user(username: config["username"])
 
-          logger = GroupActionLogger.new(exec_ctx.run_as_user, group)
+          logger = GroupActionLogger.new(actor, group)
 
           case config["operation"]
           when "remove"

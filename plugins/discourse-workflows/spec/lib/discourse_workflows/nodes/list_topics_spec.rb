@@ -15,10 +15,8 @@ RSpec.describe DiscourseWorkflows::Nodes::ListTopics::V1 do
   end
   fab!(:post_2) { Fabricate(:post, topic: topic_2, user: user) }
 
-  def execute_list_topics(configuration:, run_as_user: Discourse.system_user)
-    execute_node_result(configuration: configuration, run_as_user: run_as_user).primary_items(
-      ports: described_class.ports,
-    )
+  def execute_list_topics(configuration:)
+    execute_node_result(configuration: configuration).primary_items(ports: described_class.ports)
   end
 
   describe "#execute" do
@@ -120,7 +118,7 @@ RSpec.describe DiscourseWorkflows::Nodes::ListTopics::V1 do
       expect(result.length).to eq(1)
     end
 
-    it "uses run_as_user when set" do
+    it "uses actor_username when set" do
       restricted = Fabricate(:category, read_restricted: true)
       Fabricate(:category_group, category: restricted, group: Group[:staff], permission_type: 0)
       Fabricate(:topic, category: restricted)
@@ -129,8 +127,8 @@ RSpec.describe DiscourseWorkflows::Nodes::ListTopics::V1 do
         execute_list_topics(
           configuration: {
             "query" => "category:#{restricted.slug}",
+            "actor_username" => other_user.username,
           },
-          run_as_user: other_user,
         )
 
       expect(result.length).to eq(0)
