@@ -1,6 +1,6 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
-import { array, concat, fn } from "@ember/helper";
+import { concat, fn } from "@ember/helper";
 import { action } from "@ember/object";
 import { LinkTo } from "@ember/routing";
 import { service } from "@ember/service";
@@ -41,6 +41,7 @@ function runTime(execution) {
 export default class ExecutionsManager extends Component {
   @service currentUser;
   @service dialog;
+  @service router;
 
   @tracked executions = null;
   @tracked loadMoreUrl = null;
@@ -110,6 +111,15 @@ export default class ExecutionsManager extends Component {
     });
   }
 
+  @action
+  navigateToExecution(execution) {
+    this.router.transitionTo(
+      "adminPlugins.show.discourse-workflows.show.executions.show",
+      execution.workflow_id,
+      execution.id
+    );
+  }
+
   <template>
     <AdminTable
       @items={{this.executions}}
@@ -118,6 +128,7 @@ export default class ExecutionsManager extends Component {
       @loadMore={{this.loadMore}}
       @loadingMore={{this.loadingMore}}
       @selectable={{true}}
+      @onRowClick={{this.navigateToExecution}}
     >
       <:empty>
         <EmptyState
@@ -158,7 +169,6 @@ export default class ExecutionsManager extends Component {
         <th>{{i18n "discourse_workflows.executions.status"}}</th>
         <th>{{i18n "discourse_workflows.executions.started_at"}}</th>
         <th>{{i18n "discourse_workflows.executions.run_time"}}</th>
-        <th></th>
       </:head>
       <:row as |execution|>
         {{#unless @workflowId}}
@@ -183,15 +193,6 @@ export default class ExecutionsManager extends Component {
         </td>
         <td>{{formatTime execution.started_at}}</td>
         <td>{{runTime execution}}</td>
-        <td class="workflows-admin-table__actions">
-          <LinkTo
-            @route="adminPlugins.show.discourse-workflows.show.executions.show"
-            @models={{array execution.workflow_id execution.id}}
-            class="btn btn-flat btn-small"
-          >
-            {{i18n "discourse_workflows.executions.details"}}
-          </LinkTo>
-        </td>
       </:row>
     </AdminTable>
   </template>

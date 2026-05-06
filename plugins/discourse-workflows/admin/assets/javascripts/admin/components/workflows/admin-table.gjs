@@ -86,6 +86,17 @@ export default class AdminTable extends Component {
     }
   }
 
+  @action
+  handleRowClick(item, event) {
+    if (!this.args.onRowClick) {
+      return;
+    }
+    if (event.target.closest("a, button, input")) {
+      return;
+    }
+    this.args.onRowClick(item);
+  }
+
   <template>
     <div class="workflows-admin-table" ...attributes>
       <ConditionalLoadingSpinner @condition={{@isLoading}}>
@@ -125,7 +136,12 @@ export default class AdminTable extends Component {
               </thead>
               <tbody>
                 {{#each @items as |item|}}
-                  <tr class={{@rowClass}} data-item-id={{this.itemId item}}>
+                  {{! template-lint-disable no-invalid-interactive }}
+                  <tr
+                    class="{{@rowClass}}{{if @onRowClick ' --clickable'}}"
+                    data-item-id={{this.itemId item}}
+                    {{on "click" (fn this.handleRowClick item)}}
+                  >
                     {{#if @selectable}}
                       <td class="workflows-admin-table__checkbox-cell">
                         <input
@@ -138,6 +154,7 @@ export default class AdminTable extends Component {
                     {{/if}}
                     {{yield item to="row"}}
                   </tr>
+                  {{! template-lint-enable no-invalid-interactive }}
                 {{/each}}
               </tbody>
             </table>
