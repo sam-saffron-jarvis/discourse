@@ -3,6 +3,7 @@
 module DiscourseWorkflows
   class WebhookRequestParser
     MAX_BODY_SIZE = 1.megabyte
+    BODY_TOO_LARGE_ERROR = "Request body too large"
 
     FILTERED_HEADERS = %w[authorization cookie proxy-authorization].to_set.freeze
 
@@ -22,6 +23,9 @@ module DiscourseWorkflows
       if @request.content_type&.include?("application/json")
         parse_json_body
       else
+        if @request.raw_post.bytesize > MAX_BODY_SIZE
+          raise Discourse::InvalidParameters, BODY_TOO_LARGE_ERROR
+        end
         @params.except(:path, :controller, :action, :format).to_unsafe_h
       end
     end
@@ -34,7 +38,7 @@ module DiscourseWorkflows
           header_name = normalize_header_name(key)
           next unless header_name
 
-          headers[header_name] = FILTERED_HEADERS.include?(header_name) ? "[FILTERED]" : value
+          headers[header_name] = FILTERED_HEADERS.include?(header_name) ? "[FILTERED]" : value.to_s
         end
     end
 
@@ -42,14 +46,16 @@ module DiscourseWorkflows
 
     def validate_body_size!
       if (@request.content_length || 0) > MAX_BODY_SIZE
-        raise Discourse::InvalidParameters, "Request body too large"
+        raise Discourse::InvalidParameters, BODY_TOO_LARGE_ERROR
       end
     end
 
     def parse_json_body
       body = @request.raw_post
-      raise Discourse::InvalidParameters, "Request body too large" if body.bytesize > MAX_BODY_SIZE
-      JSON.parse(body).presence || {}
+      raise Discourse::InvalidParameters, BODY_TOO_LARGE_ERROR if body.bytesize > MAX_BODY_SIZE
+      parsed = JSON.parse(body)
+      raise Discourse::InvalidParameters, "JSON body must be an object" unless parsed.is_a?(Hash)
+      parsed
     rescue JSON::ParserError
       raise Discourse::InvalidParameters, "Invalid JSON in request body"
     end
