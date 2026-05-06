@@ -362,14 +362,14 @@ module DiscourseWorkflows
 
     def start_execution!
       @store.start!
-      @snapshot = WorkflowSnapshot.new(@store.workflow_snapshot_data)
+      @snapshot = @store.workflow_snapshot
       @steps = []
       @queue = []
     end
 
     def resume_execution!(execution)
       @store.resume!(execution)
-      @snapshot = WorkflowSnapshot.new(@store.workflow_snapshot_data)
+      @snapshot = @store.workflow_snapshot
       @steps = restore_steps_from(execution)
       @queue = []
     end

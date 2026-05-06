@@ -173,7 +173,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
         Fabricate(
           :discourse_workflows_execution_data,
           execution: waiting_execution,
-          workflow_data: DiscourseWorkflows::WorkflowSnapshot.snapshot(workflow),
+          workflow_data: DiscourseWorkflows::WorkflowSnapshot.from_workflow(workflow).to_h,
         )
       end
 
@@ -233,7 +233,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
         )
 
         waiting_execution.execution_data.update!(
-          workflow_data: DiscourseWorkflows::WorkflowSnapshot.snapshot(workflow),
+          workflow_data: DiscourseWorkflows::WorkflowSnapshot.from_workflow(workflow).to_h,
         )
 
         post "/workflows/webhooks/#{waiting_execution.id}/after-approval.json?token=#{resume_token}",

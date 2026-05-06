@@ -13,18 +13,18 @@ module DiscourseWorkflows
 
       delegate :workflow, :trigger_data, to: :@execution_context
 
-      attr_reader :trigger_node_id, :execution, :workflow_snapshot_data
+      attr_reader :trigger_node_id, :execution, :workflow_snapshot
 
       def initialize(trigger_node_id:, execution_context:, execution_mode:, options:)
         @trigger_node_id = trigger_node_id.to_s
         @execution_context = execution_context
         @execution_mode = execution_mode
         @options = options
-        @workflow_snapshot_data = {}
+        @workflow_snapshot = nil
       end
 
       def start!
-        @workflow_snapshot_data = WorkflowSnapshot.snapshot(workflow)
+        @workflow_snapshot = WorkflowSnapshot.from_workflow(workflow)
         @execution = create_execution!
         reset_collaborators!
         @execution
@@ -132,8 +132,12 @@ module DiscourseWorkflows
       end
 
       def restore_from!(execution_data)
-        @workflow_snapshot_data =
-          execution_data&.workflow_data.presence || WorkflowSnapshot.snapshot(workflow)
+        @workflow_snapshot =
+          if execution_data&.workflow_data.present?
+            WorkflowSnapshot.new(execution_data.workflow_data)
+          else
+            WorkflowSnapshot.from_workflow(workflow)
+          end
         @execution_context.restore!(
           context: execution_data&.context_data || {},
           node_contexts: execution_data&.node_contexts || {},
@@ -197,7 +201,7 @@ module DiscourseWorkflows
           }.to_json
         end
 
-        ed.update!(data: json_data, workflow_data: @workflow_snapshot_data)
+        ed.update!(data: json_data, workflow_data: @workflow_snapshot&.to_h)
       end
 
       def steps_to_entries(steps)
@@ -298,10 +302,9 @@ module DiscourseWorkflows
       end
 
       def publish_form_notification(status)
-        return if @workflow_snapshot_data.blank?
+        return if @workflow_snapshot.nil?
 
-        snapshot = WorkflowSnapshot.new(@workflow_snapshot_data)
-        trigger_node = snapshot.find_node(@trigger_node_id)
+        trigger_node = @workflow_snapshot.find_node(@trigger_node_id)
         return unless trigger_node&.type == "trigger:form"
 
         channel = self.class.form_channel(execution.id, @execution_context.resume_token)

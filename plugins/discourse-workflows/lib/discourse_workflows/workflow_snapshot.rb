@@ -21,11 +21,11 @@ module DiscourseWorkflows
               SnapshotNode.new(
                 id: n["id"].to_s,
                 type: n["type"],
-                type_version: n.fetch("type_version") { Registry::DEFAULT_VERSION },
+                type_version: n["type_version"] || Registry::DEFAULT_VERSION,
                 name: n["name"],
                 position: n["position"],
-                configuration: n.fetch("configuration") { {} },
-              )
+                configuration: n["configuration"] || {},
+              ).freeze
             @nodes_by_id[node.id] = node
             node
           end
@@ -36,9 +36,9 @@ module DiscourseWorkflows
           .map do |c|
             SnapshotConnection.new(
               source_node_id: c["source_node_id"].to_s,
-              source_output: c.fetch("source_output") { "main" },
+              source_output: c["source_output"] || "main",
               target_node_id: c["target_node_id"].to_s,
-            )
+            ).freeze
           end
 
       @connections_by_source = @connections.group_by(&:source_node_id)
@@ -56,8 +56,32 @@ module DiscourseWorkflows
       @nodes_by_id[connection.target_node_id]
     end
 
-    def self.snapshot(workflow)
-      { "nodes" => workflow.nodes, "connections" => workflow.connections }
+    def to_h
+      {
+        "nodes" =>
+          nodes.map do |n|
+            {
+              "id" => n.id,
+              "type" => n.type,
+              "type_version" => n.type_version,
+              "name" => n.name,
+              "position" => n.position,
+              "configuration" => n.configuration,
+            }
+          end,
+        "connections" =>
+          connections.map do |c|
+            {
+              "source_node_id" => c.source_node_id,
+              "source_output" => c.source_output,
+              "target_node_id" => c.target_node_id,
+            }
+          end,
+      }
+    end
+
+    def self.from_workflow(workflow)
+      new("nodes" => workflow.nodes, "connections" => workflow.connections)
     end
   end
 end

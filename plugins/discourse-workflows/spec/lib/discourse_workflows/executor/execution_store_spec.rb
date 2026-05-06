@@ -190,7 +190,7 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionStore do
       expect(restored_context.node_context_for(OpenStruct.new(id: "node_a", name: "node_a"))).to eq(
         "counter" => 1,
       )
-      expect(restored.workflow_snapshot_data).to be_present
+      expect(restored.workflow_snapshot).to be_present
     end
   end
 end
