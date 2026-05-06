@@ -172,6 +172,9 @@ en:
         operation: "Operation"
         add: "Add"
         remove: "Remove"
+        operations:
+          add: "Add tag"
+          remove: "Remove tag"
         topic_id: "Topic ID"
         tag_names: "Tags"
         actor_username: "Performed by"
@@ -195,6 +198,10 @@ en:
         add: "Add user"
         remove: "Remove user"
         get: "Get group"
+        operations:
+          add: "Add user"
+          remove: "Remove user"
+          get: "Get group"
         username: "Username"
         group_id: "Group"
         group_id_placeholder: "Select a group"
@@ -204,6 +211,9 @@ en:
         operation: "Operation"
         grant: "Grant badge"
         revoke: "Revoke badge"
+        operations:
+          grant: "Grant badge"
+          revoke: "Revoke badge"
         username: "Username"
         badge_id: "Badge"
         badge_id_placeholder: "Select a badge"
