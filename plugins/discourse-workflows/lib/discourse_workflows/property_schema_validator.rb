@@ -134,10 +134,7 @@ module DiscourseWorkflows
     private
 
     def validate_schema(schema, path:)
-      sibling_keys = schema.keys
-      schema.each do |name, field|
-        validate_field(name, field, path: path, sibling_keys: sibling_keys)
-      end
+      validate_schema_with_siblings(schema, path: path, siblings: schema.keys)
     end
 
     def validate_field(name, field, path:, sibling_keys:)
@@ -173,6 +170,7 @@ module DiscourseWorkflows
     def validate_field_options(field, path:)
       type = field[:type]
       return if TYPES_REQUIRING_OPTIONS.exclude?(type)
+      return if field[:options_source]
 
       options = field[:options]
       return if options.is_a?(Array) && options.any?
