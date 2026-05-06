@@ -20,15 +20,18 @@ RSpec.describe DiscourseWorkflows::ExpressionsController do
 
     it "is rate limited" do
       RateLimiter.enable
-      freeze_time
 
-      30.times do
+      freeze_time do
+        30.times do
+          post endpoint, params: { template: "test" }
+          expect(response.status).to eq(200)
+        end
+
         post endpoint, params: { template: "test" }
-        expect(response.status).to eq(200)
+        expect(response.status).to eq(429)
       end
-
-      post endpoint, params: { template: "test" }
-      expect(response.status).to eq(429)
+    ensure
+      RateLimiter.disable
     end
 
     it "requires the template parameter" do
