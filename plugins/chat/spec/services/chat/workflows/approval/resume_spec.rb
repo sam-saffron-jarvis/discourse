@@ -1,9 +1,22 @@
 # frozen_string_literal: true
 
-RSpec.describe Chat::Workflows::ApprovalResume do
+RSpec.describe Chat::Workflows::Approval::Resume do
   describe described_class::Contract, type: :model do
     it { is_expected.to validate_presence_of(:execution_id) }
-    it { is_expected.to validate_presence_of(:action_token) }
+    it { is_expected.to validate_presence_of(:resume_token) }
+
+    it "splits action_token into resume_token and action_type before validation" do
+      contract = described_class.new(action_token: "tok-123:approve")
+      contract.valid?
+      expect(contract.resume_token).to eq("tok-123")
+      expect(contract.action_type).to eq("approve")
+    end
+
+    it "rejects unrecognized action_type values" do
+      contract = described_class.new(execution_id: 1, action_token: "tok:unknown")
+      expect(contract).not_to be_valid
+      expect(contract.errors[:action_type]).to be_present
+    end
   end
 
   describe ".call" do
@@ -59,21 +72,30 @@ RSpec.describe Chat::Workflows::ApprovalResume do
     end
 
     context "when action_type is missing" do
-      fab!(:execution) do
-        Fabricate(:discourse_workflows_execution, status: :waiting, resume_token: "correct-token")
-      end
+      let(:execution_id) { 1 }
       let(:action_token) { "correct-token" }
 
-      it { is_expected.to fail_to_find_a_model(:execution) }
+      it { is_expected.to fail_a_contract }
     end
 
     context "when action_type is unrecognized" do
+      let(:execution_id) { 1 }
+      let(:action_token) { "correct-token:unknown" }
+
+      it { is_expected.to fail_a_contract }
+    end
+
+    context "when the execution cannot be claimed" do
       fab!(:execution) do
         Fabricate(:discourse_workflows_execution, status: :waiting, resume_token: "correct-token")
       end
-      let(:action_token) { "correct-token:unknown" }
+      let(:action_token) { "correct-token:approve" }
 
-      it { is_expected.to fail_to_find_a_model(:execution) }
+      before do
+        allow(::DiscourseWorkflows::Execution).to receive(:claim_for_resume).and_return(nil)
+      end
+
+      it { is_expected.to fail_to_find_a_model(:claimed_execution) }
     end
 
     context "when everything is valid" do
