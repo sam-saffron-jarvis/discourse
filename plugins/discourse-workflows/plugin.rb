@@ -7,8 +7,6 @@
 # authors: Discourse
 # url: https://github.com/discourse/discourse-workflows
 
-hide_plugin if self.respond_to?(:hide_plugin)
-
 enabled_site_setting :discourse_workflows_enabled
 
 module ::DiscourseWorkflows
