@@ -71,7 +71,7 @@ export default class WorkflowsIndex extends Component {
     >
       <:empty>
         <EmptyState
-          @emoji="👋"
+          @emoji="wave"
           @title={{i18n
             "discourse_workflows.empty_title"
             username=this.currentUser.displayName

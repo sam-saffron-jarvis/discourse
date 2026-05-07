@@ -91,7 +91,7 @@ export default class VariablesManager extends CrudManager {
     >
       <:empty>
         <EmptyState
-          @emoji="👋"
+          @emoji="wave"
           @title={{i18n
             "discourse_workflows.variables.empty_title"
             username=this.currentUser.displayName

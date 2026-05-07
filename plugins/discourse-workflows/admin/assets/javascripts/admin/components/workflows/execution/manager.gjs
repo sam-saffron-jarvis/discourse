@@ -131,7 +131,7 @@ export default class ExecutionsManager extends Component {
     >
       <:empty>
         <EmptyState
-          @emoji="👋"
+          @emoji="wave"
           @title={{i18n
             "discourse_workflows.executions.empty_title"
             username=this.currentUser.displayName

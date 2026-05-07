@@ -95,7 +95,7 @@ export default class CredentialsManager extends CrudManager {
     >
       <:empty>
         <EmptyState
-          @emoji="🔐"
+          @emoji="locked_with_key"
           @title={{i18n
             "discourse_workflows.credentials.empty_title"
             username=this.currentUser.displayName

@@ -86,7 +86,7 @@ export default class DataTablesManager extends CrudManager {
     >
       <:empty>
         <EmptyState
-          @emoji="👋"
+          @emoji="wave"
           @title={{i18n
             "discourse_workflows.data_tables.empty_title"
             username=this.currentUser.displayName
