@@ -79,8 +79,12 @@ if defined?(DiscourseWorkflows)
             config = exec_ctx.get_parameters(item)
 
             message_text = config.fetch("message")
-            approve_label = config["approve_label"].presence || "Approve"
-            deny_label = config["deny_label"].presence || "Deny"
+            approve_label =
+              config["approve_label"].presence ||
+                I18n.t("discourse_workflows.chat_approval.default_approve_label")
+            deny_label =
+              config["deny_label"].presence ||
+                I18n.t("discourse_workflows.chat_approval.default_deny_label")
             channel_id = config.fetch("channel_id").to_i
             timeout_minutes = config["timeout_minutes"].presence&.to_i
 

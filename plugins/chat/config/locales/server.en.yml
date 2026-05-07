@@ -246,6 +246,11 @@ en:
       send_chat_message:
         title: Send chat message
 
+  discourse_workflows:
+    chat_approval:
+      default_approve_label: "Approve"
+      default_deny_label: "Deny"
+
   reviewable_score_types:
     needs_review:
       title: "Needs Review"
