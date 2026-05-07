@@ -264,6 +264,22 @@ en:
         invalid: "Invalid JavaScript"
         warning: "Missing function call"
         pending: "Not resolved yet"
+      expression_docs:
+        vars:
+          input: "Current node input helpers. Use $input.item, $input.all(), $input.first(), $input.last(), or $input.params."
+          item_index: "Index of the input item currently being processed."
+          json: "JSON data of the current input item. Shorthand for $input.item.json."
+          trigger: "Alias for $json — the trigger node's output data."
+          site_settings: "Access Discourse site settings. Example: $site_settings.title"
+          current_user: "The user who triggered the workflow. Properties: id, username"
+          workflow_vars: "Workflow variables defined in the admin panel."
+          execution: "Execution metadata: id, workflow_id, workflow_name"
+          node_ref: "Reference a previous node's output. Example: $('Node Name').item.json"
+        methods:
+          input:
+            all: "Returns an array of the current node's input items."
+            first: "Returns the current node's first input item."
+            last: "Returns the current node's last input item."
       property_engine:
         add_item: "Add item"
         remove_item: "Remove item"

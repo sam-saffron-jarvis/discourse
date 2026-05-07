@@ -1,18 +1,20 @@
+import { i18n } from "discourse-i18n";
+
 export const WORKFLOW_VARIABLE_MIME = "application/x-workflow-variable";
 
 const WORKFLOW_METHOD_DOCS = Object.freeze({
   $input: Object.freeze({
     all: Object.freeze({
       detail: "()",
-      info: "Returns an array of the current node's input items.",
+      infoKey: "discourse_workflows.expression_docs.methods.input.all",
     }),
     first: Object.freeze({
       detail: "()",
-      info: "Returns the current node's first input item.",
+      infoKey: "discourse_workflows.expression_docs.methods.input.first",
     }),
     last: Object.freeze({
       detail: "()",
-      info: "Returns the current node's last input item.",
+      infoKey: "discourse_workflows.expression_docs.methods.input.last",
     }),
   }),
 });
@@ -90,7 +92,11 @@ function buildNodeOutput(json) {
 const EMPTY_NODE_OUTPUT = buildNodeOutput(Object.create(null));
 
 export function lookupWorkflowMethodDoc(parentPath, methodName) {
-  return WORKFLOW_METHOD_DOCS[parentPath]?.[methodName] || null;
+  const doc = WORKFLOW_METHOD_DOCS[parentPath]?.[methodName];
+  if (!doc) {
+    return null;
+  }
+  return { detail: doc.detail, info: i18n(doc.infoKey) };
 }
 
 function buildScopeFromFields(fields) {

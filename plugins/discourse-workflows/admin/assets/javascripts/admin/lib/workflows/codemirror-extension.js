@@ -1,4 +1,5 @@
 import { ajax } from "discourse/lib/ajax";
+import { i18n } from "discourse-i18n";
 import {
   buildScope,
   lookupWorkflowMethodDoc,
@@ -52,37 +53,45 @@ function buildAnalyzeAtCursor({ cmLanguage, utils }) {
 const DOLLAR_VAR_DOCS = {
   $input: {
     detail: "object",
-    info: "Current node input helpers. Use $input.item, $input.all(), $input.first(), $input.last(), or $input.params.",
+    infoKey: "discourse_workflows.expression_docs.vars.input",
   },
   $itemIndex: {
     detail: "number",
-    info: "Index of the input item currently being processed.",
+    infoKey: "discourse_workflows.expression_docs.vars.item_index",
   },
   $json: {
     detail: "object",
-    info: "JSON data of the current input item. Shorthand for $input.item.json.",
+    infoKey: "discourse_workflows.expression_docs.vars.json",
   },
   trigger: {
     detail: "object",
-    info: "Alias for $json \u2014 the trigger node's output data.",
+    infoKey: "discourse_workflows.expression_docs.vars.trigger",
   },
   $site_settings: {
     detail: "object",
-    info: "Access Discourse site settings. Example: $site_settings.title",
+    infoKey: "discourse_workflows.expression_docs.vars.site_settings",
   },
   $current_user: {
     detail: "object",
-    info: "The user who triggered the workflow. Properties: id, username",
+    infoKey: "discourse_workflows.expression_docs.vars.current_user",
   },
   $vars: {
     detail: "object",
-    info: "Workflow variables defined in the admin panel.",
+    infoKey: "discourse_workflows.expression_docs.vars.workflow_vars",
   },
   $execution: {
     detail: "object",
-    info: "Execution metadata: id, workflow_id, workflow_name",
+    infoKey: "discourse_workflows.expression_docs.vars.execution",
   },
 };
+
+function lookupDollarVarDoc(name) {
+  const doc = DOLLAR_VAR_DOCS[name];
+  if (!doc) {
+    return null;
+  }
+  return { detail: doc.detail, info: i18n(doc.infoKey) };
+}
 
 function buildDollarVars(scope, sections) {
   const groups = [
@@ -101,7 +110,7 @@ function buildDollarVars(scope, sections) {
   for (const group of groups) {
     for (const name of group.names) {
       if (name in scope) {
-        const docs = DOLLAR_VAR_DOCS[name] || {};
+        const docs = lookupDollarVarDoc(name) || {};
         const isObject =
           typeof scope[name] === "object" && scope[name] !== null;
         const entry = {
@@ -124,7 +133,7 @@ function buildDollarVars(scope, sections) {
     apply: "$('",
     type: "function",
     detail: "node reference",
-    info: "Reference a previous node's output. Example: $('Node Name').item.json",
+    info: i18n("discourse_workflows.expression_docs.vars.node_ref"),
     section: sections.nodes,
   });
   return dollarVars;
@@ -460,7 +469,7 @@ function buildHoverTooltip({ cmLanguage, cmView, utils }, { scope }) {
         }
       }
 
-      const varDoc = DOLLAR_VAR_DOCS[name];
+      const varDoc = lookupDollarVarDoc(name);
       if (varDoc) {
         return makeTooltip(
           jsNode,
