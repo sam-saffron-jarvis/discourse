@@ -42,6 +42,12 @@ export default class WorkflowNode extends Component {
     this.args.onManualTrigger?.(this.data.clientId);
   };
 
+  handleOpenIssues = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    this.args.onEditNode?.(this.data.clientId);
+  };
+
   portLabel = (key) => {
     return nodeTypePortLabel(this.resolvedNodeType, key);
   };
@@ -202,6 +208,7 @@ export default class WorkflowNode extends Component {
               @identifier="workflow-node-issues"
               class="workflow-rete-node__issues-badge"
               {{on "pointerdown" this.stopPropagation}}
+              {{on "click" this.handleOpenIssues}}
             >
               <:trigger>
                 {{icon "triangle-exclamation"}}

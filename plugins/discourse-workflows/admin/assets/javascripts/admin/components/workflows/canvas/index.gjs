@@ -600,6 +600,7 @@ export default class WorkflowCanvas extends Component {
             @onDelete={{this.rete.renderer.onNodeDelete}}
             @onManualTrigger={{this.rete.renderer.onManualTrigger}}
             @onSocketRendered={{this.rete.renderer.onSocketRendered}}
+            @onEditNode={{@onEditNode}}
             @workflowEnabled={{this.workflowEnabled}}
           />
         {{/in-element}}
