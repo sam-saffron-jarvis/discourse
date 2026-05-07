@@ -6,6 +6,7 @@ import { action } from "@ember/object";
 import { modifier } from "ember-modifier";
 import ConditionalLoadingSpinner from "discourse/components/conditional-loading-spinner";
 import LoadMore from "discourse/components/load-more";
+import concatClass from "discourse/helpers/concat-class";
 import { eq } from "discourse/truth-helpers";
 
 const indeterminate = modifier((element, [value]) => {
@@ -115,11 +116,13 @@ export default class AdminTable extends Component {
           {{/if}}
 
           <LoadMore @action={{@loadMore}} @enabled={{@canLoadMore}}>
-            <table class="workflows-admin-table__table">
-              <thead>
-                <tr>
+            <table class="d-table workflows-admin-table__table">
+              <thead class="d-table__header">
+                <tr class="d-table__row">
                   {{#if @selectable}}
-                    <th class="workflows-admin-table__checkbox-cell">
+                    <th
+                      class="d-table__header-cell workflows-admin-table__checkbox-cell"
+                    >
                       <input
                         type="checkbox"
                         checked={{this.allSelected}}
@@ -138,12 +141,18 @@ export default class AdminTable extends Component {
                 {{#each @items as |item|}}
                   {{! template-lint-disable no-invalid-interactive }}
                   <tr
-                    class="{{@rowClass}}{{if @onRowClick ' --clickable'}}"
+                    class={{concatClass
+                      "d-table__row"
+                      @rowClass
+                      (if @onRowClick "--clickable")
+                    }}
                     data-item-id={{this.itemId item}}
                     {{on "click" (fn this.handleRowClick item)}}
                   >
                     {{#if @selectable}}
-                      <td class="workflows-admin-table__checkbox-cell">
+                      <td
+                        class="d-table__cell workflows-admin-table__checkbox-cell"
+                      >
                         <input
                           type="checkbox"
                           checked={{this.isRowSelected item}}

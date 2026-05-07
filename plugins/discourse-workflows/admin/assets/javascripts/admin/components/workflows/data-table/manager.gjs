@@ -25,6 +25,14 @@ export default class DataTablesManager extends CrudManager {
   }
 
   @action
+  navigateToDataTable(dataTable) {
+    this.router.transitionTo(
+      "adminPlugins.show.discourse-workflows-data-tables.show",
+      dataTable.id
+    );
+  }
+
+  @action
   addDataTable() {
     this.modal.show(DataTableModal, {
       model: {
@@ -83,6 +91,7 @@ export default class DataTablesManager extends CrudManager {
       @canLoadMore={{this.canLoadMore}}
       @loadMore={{this.loadMore}}
       @loadingMore={{this.loadingMore}}
+      @onRowClick={{this.navigateToDataTable}}
     >
       <:empty>
         <EmptyState
@@ -107,27 +116,47 @@ export default class DataTablesManager extends CrudManager {
         />
       </:toolbar>
       <:head>
-        <th>{{i18n "discourse_workflows.data_tables.name"}}</th>
-        <th>{{i18n "discourse_workflows.data_tables.columns"}}</th>
-        <th>{{i18n "discourse_workflows.data_tables.size"}}</th>
-        <th></th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.data_tables.name"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.data_tables.columns"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.data_tables.size"
+          }}</th>
+        <th class="d-table__header-cell"></th>
       </:head>
       <:row as |dataTable|>
-        <td>
+        <td class="d-table__cell --overview">
           <LinkTo
             @route="adminPlugins.show.discourse-workflows-data-tables.show"
             @model={{dataTable.id}}
-            class="workflows-data-tables-manager__name-link"
-          >{{dataTable.name}}</LinkTo>
+            class="d-table__overview-link"
+          >
+            <strong class="d-table__overview-name">{{dataTable.name}}</strong>
+          </LinkTo>
         </td>
-        <td>{{dataTable.columns.length}}</td>
-        <td>{{humanSize dataTable.size}}</td>
-        <td class="workflows-admin-table__actions">
-          <DButton
-            @action={{fn this.deleteDataTable dataTable}}
-            @icon="trash-can"
-            class="btn-flat btn-small btn-danger"
-          />
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.data_tables.columns"}}
+          </div>
+          {{dataTable.columns.length}}
+        </td>
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.data_tables.size"}}
+          </div>
+          {{humanSize dataTable.size}}
+        </td>
+        <td class="d-table__cell --controls">
+          <div class="d-table__cell-actions">
+            <DButton
+              @action={{fn this.deleteDataTable dataTable}}
+              @icon="trash-can"
+              class="btn-flat btn-small btn-danger"
+            />
+          </div>
         </td>
       </:row>
     </AdminTable>

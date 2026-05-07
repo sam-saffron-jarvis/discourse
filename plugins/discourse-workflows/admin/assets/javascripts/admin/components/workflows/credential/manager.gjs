@@ -92,6 +92,7 @@ export default class CredentialsManager extends CrudManager {
       @canLoadMore={{this.canLoadMore}}
       @loadMore={{this.loadMore}}
       @loadingMore={{this.loadingMore}}
+      @onRowClick={{this.editCredential}}
     >
       <:empty>
         <EmptyState
@@ -116,26 +117,41 @@ export default class CredentialsManager extends CrudManager {
         />
       </:toolbar>
       <:head>
-        <th>{{i18n "discourse_workflows.credentials.name"}}</th>
-        <th>{{i18n "discourse_workflows.credentials.type"}}</th>
-        <th>{{i18n "discourse_workflows.credentials.created"}}</th>
-        <th></th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.credentials.name"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.credentials.type"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.credentials.created"
+          }}</th>
+        <th class="d-table__header-cell"></th>
       </:head>
       <:row as |credential|>
-        <td>{{credential.name}}</td>
-        <td>{{credential.credential_type}}</td>
-        <td>{{credential.created_at}}</td>
-        <td class="workflows-admin-table__actions">
-          <DButton
-            @action={{fn this.editCredential credential}}
-            @icon="pencil"
-            class="btn-flat btn-small"
-          />
-          <DButton
-            @action={{fn this.deleteCredential credential}}
-            @icon="trash-can"
-            class="btn-flat btn-small btn-danger"
-          />
+        <td class="d-table__cell --overview">
+          <strong class="d-table__overview-name">{{credential.name}}</strong>
+        </td>
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.credentials.type"}}
+          </div>
+          {{credential.credential_type}}
+        </td>
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.credentials.created"}}
+          </div>
+          {{credential.created_at}}
+        </td>
+        <td class="d-table__cell --controls">
+          <div class="d-table__cell-actions">
+            <DButton
+              @action={{fn this.deleteCredential credential}}
+              @icon="trash-can"
+              class="btn-flat btn-small btn-danger"
+            />
+          </div>
         </td>
       </:row>
     </AdminTable>

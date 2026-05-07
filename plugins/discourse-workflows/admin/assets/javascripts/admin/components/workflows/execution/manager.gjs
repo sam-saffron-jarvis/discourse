@@ -163,17 +163,32 @@ export default class ExecutionsManager extends Component {
       </:toolbar>
       <:head>
         {{#unless @workflowId}}
-          <th>{{i18n "discourse_workflows.executions.workflow"}}</th>
+          <th class="d-table__header-cell">{{i18n
+              "discourse_workflows.executions.workflow"
+            }}</th>
         {{/unless}}
-        <th>{{i18n "discourse_workflows.executions.status"}}</th>
-        <th>{{i18n "discourse_workflows.executions.started_at"}}</th>
-        <th>{{i18n "discourse_workflows.executions.run_time"}}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.executions.status"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.executions.started_at"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.executions.run_time"
+          }}</th>
       </:head>
       <:row as |execution|>
         {{#unless @workflowId}}
-          <td>{{execution.workflow_name}}</td>
+          <td class="d-table__cell --overview">
+            <strong
+              class="d-table__overview-name"
+            >{{execution.workflow_name}}</strong>
+          </td>
         {{/unless}}
-        <td>
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.executions.status"}}
+          </div>
           <span
             class="workflows-executions-manager__status --{{execution.status}}"
           >
@@ -185,8 +200,18 @@ export default class ExecutionsManager extends Component {
             }}
           </span>
         </td>
-        <td>{{formatTime execution.started_at}}</td>
-        <td>{{runTime execution}}</td>
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.executions.started_at"}}
+          </div>
+          {{formatTime execution.started_at}}
+        </td>
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.executions.run_time"}}
+          </div>
+          {{runTime execution}}
+        </td>
       </:row>
     </AdminTable>
   </template>

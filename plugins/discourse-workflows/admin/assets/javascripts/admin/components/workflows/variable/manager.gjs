@@ -88,6 +88,7 @@ export default class VariablesManager extends CrudManager {
       @canLoadMore={{this.canLoadMore}}
       @loadMore={{this.loadMore}}
       @loadingMore={{this.loadingMore}}
+      @onRowClick={{this.editVariable}}
     >
       <:empty>
         <EmptyState
@@ -112,15 +113,31 @@ export default class VariablesManager extends CrudManager {
         />
       </:toolbar>
       <:head>
-        <th>{{i18n "discourse_workflows.variables.key"}}</th>
-        <th>{{i18n "discourse_workflows.variables.value"}}</th>
-        <th>{{i18n "discourse_workflows.variables.usage_syntax"}}</th>
-        <th></th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.variables.key"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.variables.value"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.variables.usage_syntax"
+          }}</th>
+        <th class="d-table__header-cell"></th>
       </:head>
       <:row as |variable|>
-        <td>{{variable.key}}</td>
-        <td>{{variable.value}}</td>
-        <td>
+        <td class="d-table__cell --overview">
+          <strong class="d-table__overview-name">{{variable.key}}</strong>
+        </td>
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.variables.value"}}
+          </div>
+          {{variable.value}}
+        </td>
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.variables.usage_syntax"}}
+          </div>
           <DButton
             @action={{fn this.copySyntax variable.key}}
             @translatedLabel={{concat "$vars." variable.key}}
@@ -129,17 +146,14 @@ export default class VariablesManager extends CrudManager {
             class="btn-flat btn-small"
           />
         </td>
-        <td class="workflows-admin-table__actions">
-          <DButton
-            @action={{fn this.editVariable variable}}
-            @icon="pencil"
-            class="btn-flat btn-small"
-          />
-          <DButton
-            @action={{fn this.deleteVariable variable}}
-            @icon="trash-can"
-            class="btn-flat btn-small btn-danger"
-          />
+        <td class="d-table__cell --controls">
+          <div class="d-table__cell-actions">
+            <DButton
+              @action={{fn this.deleteVariable variable}}
+              @icon="trash-can"
+              class="btn-flat btn-small btn-danger"
+            />
+          </div>
         </td>
       </:row>
     </AdminTable>

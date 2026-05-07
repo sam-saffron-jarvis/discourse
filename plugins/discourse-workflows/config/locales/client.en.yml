@@ -23,6 +23,7 @@ en:
       last_editor: "Last editor"
       last_update: "Last update"
       last_run: "Last run"
+      last_execution_never: "Never"
       last_execution_failed: "Last execution failed"
       create_first_workflow: "Create your first workflow"
       empty_title: "%{username}, let's set up a workflow"

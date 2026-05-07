@@ -58,6 +58,14 @@ export default class WorkflowsIndex extends Component {
     }
   }
 
+  @action
+  navigateToWorkflow(workflow) {
+    this.router.transitionTo(
+      "adminPlugins.show.discourse-workflows.show",
+      workflow.id
+    );
+  }
+
   <template>
     <Stats @stats={{@stats}} />
 
@@ -68,6 +76,7 @@ export default class WorkflowsIndex extends Component {
       @loadMore={{this.loadMore}}
       @loadingMore={{this.loading}}
       @rowClass="workflows-index__row"
+      @onRowClick={{this.navigateToWorkflow}}
     >
       <:empty>
         <EmptyState
@@ -90,22 +99,28 @@ export default class WorkflowsIndex extends Component {
         />
       </:toolbar>
       <:head>
-        <th>{{i18n "discourse_workflows.workflow_name"}}</th>
-        <th>{{i18n "discourse_workflows.last_editor"}}</th>
-        <th>{{i18n "discourse_workflows.last_update"}}</th>
-        <th>{{i18n "discourse_workflows.last_run"}}</th>
-        <th></th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.workflow_name"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.last_editor"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.last_update"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.last_run"
+          }}</th>
+        <th class="d-table__header-cell"></th>
       </:head>
       <:row as |workflow|>
-        <td class="workflows-index__name">
-          <div class="workflows-index__name-content">
-            <LinkTo
-              @route="adminPlugins.show.discourse-workflows.show"
-              @model={{workflow.id}}
-              class="workflows-index__name-link"
-            >
-              {{workflow.name}}
-            </LinkTo>
+        <td class="d-table__cell --overview workflows-index__name">
+          <LinkTo
+            @route="adminPlugins.show.discourse-workflows.show"
+            @model={{workflow.id}}
+            class="d-table__overview-link"
+          >
+            <strong class="d-table__overview-name">{{workflow.name}}</strong>
             {{#if (eq workflow.last_execution_status "error")}}
               <span
                 class="workflows-index__warning"
@@ -116,9 +131,12 @@ export default class WorkflowsIndex extends Component {
                 {{icon "triangle-exclamation"}}
               </span>
             {{/if}}
-          </div>
+          </LinkTo>
         </td>
-        <td class="workflows-index__last-editor">
+        <td class="d-table__cell --detail workflows-index__last-editor">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.last_editor"}}
+          </div>
           {{#if workflow.updated_by}}
             <a
               href={{workflow.updated_by.path}}
@@ -129,17 +147,23 @@ export default class WorkflowsIndex extends Component {
             </a>
           {{/if}}
         </td>
-        <td class="workflows-index__last-update">
+        <td class="d-table__cell --detail workflows-index__last-update">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.last_update"}}
+          </div>
           {{formatDate workflow.updated_at format="medium"}}
         </td>
-        <td class="workflows-index__last-run">
+        <td class="d-table__cell --detail workflows-index__last-run">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.last_run"}}
+          </div>
           {{#if workflow.last_execution_at}}
             {{formatDate workflow.last_execution_at format="medium"}}
           {{else}}
             {{i18n "discourse_workflows.last_execution_never"}}
           {{/if}}
         </td>
-        <td class="workflows-index__status">
+        <td class="d-table__cell --detail workflows-index__status">
           {{#if workflow.enabled}}
             <span class="workflows-index__badge is-enabled">
               {{i18n "discourse_workflows.enabled"}}
