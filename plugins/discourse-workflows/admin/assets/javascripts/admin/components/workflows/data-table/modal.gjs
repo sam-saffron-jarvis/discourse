@@ -5,10 +5,22 @@ import Form from "discourse/components/form";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { i18n } from "discourse-i18n";
 
+const NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_ ]*$/;
+
 export default class DataTableModal extends Component {
   formData = {
     name: this.args.model.dataTable?.name || "",
   };
+
+  @action
+  validateName(name, value, { addError }) {
+    if (value && !NAME_PATTERN.test(value)) {
+      addError(name, {
+        title: i18n("discourse_workflows.data_tables.name"),
+        message: i18n("discourse_workflows.data_tables.name_invalid"),
+      });
+    }
+  }
 
   @action
   async handleSubmit(data) {
@@ -43,6 +55,7 @@ export default class DataTableModal extends Component {
             @type="input"
             @format="full"
             @validation="required"
+            @validate={{this.validateName}}
             as |field|
           >
             <field.Control

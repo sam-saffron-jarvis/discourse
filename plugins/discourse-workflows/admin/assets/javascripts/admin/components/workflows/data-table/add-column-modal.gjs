@@ -4,8 +4,20 @@ import DModal from "discourse/components/d-modal";
 import Form from "discourse/components/form";
 import { i18n } from "discourse-i18n";
 
+const COLUMN_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 export default class AddColumnModal extends Component {
   formData = { name: "", type: "string" };
+
+  @action
+  validateColumnName(name, value, { addError }) {
+    if (value && !COLUMN_NAME_PATTERN.test(value)) {
+      addError(name, {
+        title: i18n("discourse_workflows.data_tables.column_name"),
+        message: i18n("discourse_workflows.data_tables.column_name_invalid"),
+      });
+    }
+  }
 
   @action
   async handleSubmit(data) {
@@ -32,6 +44,7 @@ export default class AddColumnModal extends Component {
             @type="input"
             @format="full"
             @validation="required"
+            @validate={{this.validateColumnName}}
             as |field|
           >
             <field.Control placeholder="column_name" />
