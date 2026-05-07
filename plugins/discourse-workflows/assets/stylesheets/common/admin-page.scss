@@ -13,26 +13,6 @@
   justify-content: space-between;
   margin-bottom: 0.5em;
   gap: 1em;
-
-  .d-stat-tiles {
-    display: flex;
-    gap: 0.5em;
-    margin-bottom: 0;
-  }
-
-  .d-stat-tile {
-    padding: 0.25em 0.5em;
-    gap: 0;
-
-    &__label {
-      font-size: var(--font-down-2);
-      margin-bottom: 0;
-    }
-
-    &__value {
-      font-size: var(--font-down-1);
-    }
-  }
 }
 
 .workflows-editable-title {

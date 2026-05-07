@@ -3,7 +3,11 @@ import { i18n } from "discourse-i18n";
 
 <template>
   {{#if @stats.total}}
-    <DStatTiles title={{i18n "discourse_workflows.stats.period"}} as |tiles|>
+    <DStatTiles
+      title={{i18n "discourse_workflows.stats.period"}}
+      @format="compact"
+      as |tiles|
+    >
       <tiles.Tile
         @label={{i18n "discourse_workflows.stats.executions"}}
         @formattedValue={{@stats.total}}
