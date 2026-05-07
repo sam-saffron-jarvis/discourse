@@ -622,6 +622,11 @@ en:
         column_name: "Column name"
         column_name_invalid: "Must start with a letter or underscore and contain only letters, numbers, and underscores"
         column_type: "Column type"
+        column_types:
+          string: "String"
+          number: "Number"
+          boolean: "Boolean"
+          date: "Date"
         add_column: "Add column"
         add_row: "Add row"
         edit_row: "Edit row"

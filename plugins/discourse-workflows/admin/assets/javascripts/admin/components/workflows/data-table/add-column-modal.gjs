@@ -59,10 +59,18 @@ export default class AddColumnModal extends Component {
             as |field|
           >
             <field.Control as |select|>
-              <select.Option @value="string">string</select.Option>
-              <select.Option @value="number">number</select.Option>
-              <select.Option @value="boolean">boolean</select.Option>
-              <select.Option @value="date">date</select.Option>
+              <select.Option @value="string">{{i18n
+                  "discourse_workflows.data_tables.column_types.string"
+                }}</select.Option>
+              <select.Option @value="number">{{i18n
+                  "discourse_workflows.data_tables.column_types.number"
+                }}</select.Option>
+              <select.Option @value="boolean">{{i18n
+                  "discourse_workflows.data_tables.column_types.boolean"
+                }}</select.Option>
+              <select.Option @value="date">{{i18n
+                  "discourse_workflows.data_tables.column_types.date"
+                }}</select.Option>
             </field.Control>
           </form.Field>
 
