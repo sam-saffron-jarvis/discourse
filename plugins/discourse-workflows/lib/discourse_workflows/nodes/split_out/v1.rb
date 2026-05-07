@@ -61,7 +61,8 @@ module DiscourseWorkflows
           fields_to_include = parse_field_names(@configuration["fields_to_include"])
 
           if dest_names.present? && dest_names.length != field_names.length
-            raise ArgumentError, "destination_field_name count must match field count"
+            raise ArgumentError,
+                  I18n.t("discourse_workflows.errors.split_out.destination_count_mismatch")
           end
 
           items =
@@ -119,7 +120,11 @@ module DiscourseWorkflows
 
           if max_len > MAX_SPLIT_ITEMS
             raise ArgumentError,
-                  "Cannot split into more than #{MAX_SPLIT_ITEMS} items (array has #{max_len} elements)"
+                  I18n.t(
+                    "discourse_workflows.errors.split_out.too_many_items",
+                    max: MAX_SPLIT_ITEMS,
+                    count: max_len,
+                  )
           end
 
           (0...max_len).map do |i|

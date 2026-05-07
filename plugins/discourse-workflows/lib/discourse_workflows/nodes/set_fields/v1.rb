@@ -122,10 +122,14 @@ module DiscourseWorkflows
 
         def parse_json_fields(config)
           raw_json = config["json"]
-          raise ArgumentError, "JSON string is blank" if raw_json.blank?
+          if raw_json.blank?
+            raise ArgumentError, I18n.t("discourse_workflows.errors.set_fields.json_blank")
+          end
 
           parsed = JSON.parse(raw_json)
-          raise ArgumentError, "JSON must be an object" unless parsed.is_a?(Hash)
+          unless parsed.is_a?(Hash)
+            raise ArgumentError, I18n.t("discourse_workflows.errors.set_fields.json_must_be_object")
+          end
 
           parsed
         end

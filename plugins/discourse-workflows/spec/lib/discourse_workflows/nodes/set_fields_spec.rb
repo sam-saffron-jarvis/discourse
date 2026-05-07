@@ -167,7 +167,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SetFields::V1 do
 
         expect { execute_node(configuration: config, item: item) }.to raise_error(
           ArgumentError,
-          "JSON must be an object",
+          "JSON must be an object.",
         )
       end
 
@@ -176,7 +176,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SetFields::V1 do
 
         expect { execute_node(configuration: config, item: item) }.to raise_error(
           ArgumentError,
-          "JSON string is blank",
+          "JSON string is blank.",
         )
       end
     end

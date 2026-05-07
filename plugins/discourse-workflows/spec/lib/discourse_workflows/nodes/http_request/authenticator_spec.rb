@@ -19,7 +19,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::Authenticator do
     it "raises when credential_id is missing for auth modes" do
       expect {
         described_class.apply({ "authentication" => "basic_auth" }, {}, nil)
-      }.to raise_error(ArgumentError, /credential_id is required/)
+      }.to raise_error(ArgumentError, /Credential is required/)
     end
 
     context "with basic_auth" do

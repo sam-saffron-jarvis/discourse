@@ -15,7 +15,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::RequestBuilder do
     it "raises when URL is blank" do
       expect { described_class.new("method" => "GET", "url" => "").build }.to raise_error(
         RuntimeError,
-        "URL is required",
+        "URL is required.",
       )
     end
 

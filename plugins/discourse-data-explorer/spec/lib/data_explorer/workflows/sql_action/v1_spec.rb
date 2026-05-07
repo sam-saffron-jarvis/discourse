@@ -21,7 +21,7 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
       it "raises when no query is provided" do
         expect {
           execute_node(configuration: { "operation" => "raw", "query" => "" })
-        }.to raise_error(ArgumentError, "No SQL query provided")
+        }.to raise_error(ArgumentError, "No SQL query provided.")
       end
 
       it "emits on the empty port when the query returns no rows" do
@@ -102,7 +102,7 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
       it "raises when query_id is missing" do
         expect { execute_node(configuration: { "operation" => "queries" }) }.to raise_error(
           ArgumentError,
-          "No query selected",
+          "No query selected.",
         )
       end
     end

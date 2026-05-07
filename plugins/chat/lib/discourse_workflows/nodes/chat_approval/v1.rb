@@ -110,12 +110,23 @@ if defined?(DiscourseWorkflows)
             ) do |result|
               on_success { return result.message_instance }
               on_model_not_found(:channel) do
-                raise "Chat message failed: channel #{channel_id} not found"
+                raise I18n.t(
+                        "discourse_workflows.errors.chat_approval.channel_not_found",
+                        channel_id: channel_id,
+                      )
               end
               on_failed_contract do |contract|
-                raise "Chat message failed: #{contract.errors.full_messages.join(", ")}"
+                raise I18n.t(
+                        "discourse_workflows.errors.chat_approval.invalid_params",
+                        errors: contract.errors.full_messages.join(", "),
+                      )
               end
-              on_failure { raise "Chat message failed: #{result.inspect_steps}" }
+              on_failure do
+                raise I18n.t(
+                        "discourse_workflows.errors.chat_approval.failed",
+                        steps: result.inspect_steps,
+                      )
+              end
             end
           end
 

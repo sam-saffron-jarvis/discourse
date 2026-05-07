@@ -17,7 +17,8 @@ module DiscourseWorkflows
 
         def validate_column!(column_name)
           return if @column_names.include?(column_name)
-          raise ArgumentError, "Unknown column name '#{column_name}'"
+          raise ArgumentError,
+                I18n.t("discourse_workflows.errors.data_table.unknown_column", column: column_name)
         end
 
         private

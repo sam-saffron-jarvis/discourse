@@ -47,7 +47,13 @@ module DiscourseWorkflows
                 }
               end
             query = @proxy.build_query(filter: normalized_filter, optional_filter: true)
-            raise ArgumentError, query.errors.full_messages.join(", ") if query.invalid?
+            if query.invalid?
+              raise ArgumentError,
+                    I18n.t(
+                      "discourse_workflows.errors.data_table.invalid_query",
+                      errors: query.errors.full_messages.join(", "),
+                    )
+            end
             query
           end
 
@@ -55,7 +61,13 @@ module DiscourseWorkflows
             resolved =
               @columns_resolver ? @columns_resolver.resolve(columns || {}) : (columns || {})
             row_input = @proxy.build_row_input(data: resolved, fill_missing: false)
-            raise ArgumentError, row_input.errors.full_messages.join(", ") if row_input.invalid?
+            if row_input.invalid?
+              raise ArgumentError,
+                    I18n.t(
+                      "discourse_workflows.errors.data_table.invalid_row",
+                      errors: row_input.errors.full_messages.join(", "),
+                    )
+            end
             row_input
           end
 
@@ -98,7 +110,13 @@ module DiscourseWorkflows
                 sort_direction: config["sort_direction"],
                 optional_filter: true,
               )
-            raise ArgumentError, query.errors.full_messages.join(", ") if query.invalid?
+            if query.invalid?
+              raise ArgumentError,
+                    I18n.t(
+                      "discourse_workflows.errors.data_table.invalid_query",
+                      errors: query.errors.full_messages.join(", "),
+                    )
+            end
             result = @proxy.query(query)
             Item.wrap(result[:rows])
           end
@@ -154,7 +172,14 @@ module DiscourseWorkflows
         }.freeze
 
         def self.for(operation)
-          REGISTRY[operation] || raise(ArgumentError, "Unknown operation: #{operation}")
+          REGISTRY[operation] ||
+            raise(
+              ArgumentError,
+              I18n.t(
+                "discourse_workflows.errors.data_table.unknown_operation",
+                operation: operation,
+              ),
+            )
         end
       end
     end

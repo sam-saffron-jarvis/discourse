@@ -119,7 +119,7 @@ RSpec.describe DiscourseWorkflows::Nodes::TopicTags::V1 do
 
       expect { execute_node(configuration: config, item: item) }.to raise_error(
         RuntimeError,
-        "No tag names provided",
+        "No tag names provided.",
       )
     end
 

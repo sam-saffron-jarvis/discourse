@@ -161,7 +161,10 @@ module DiscourseDataExplorer
 
         def execute_saved_query(config)
           query_id = config["query_id"]
-          raise ArgumentError, "No query selected" if query_id.blank?
+          if query_id.blank?
+            raise ArgumentError,
+                  I18n.t("discourse_data_explorer.discourse_workflows.sql_action.no_query_selected")
+          end
 
           query = DiscourseDataExplorer::Query.find(query_id)
           raw_params = config.fetch("query_params") { {} }
@@ -180,7 +183,10 @@ module DiscourseDataExplorer
 
         def execute_raw_sql(config)
           sql = config["query"].to_s
-          raise ArgumentError, "No SQL query provided" if sql.blank?
+          if sql.blank?
+            raise ArgumentError,
+                  I18n.t("discourse_data_explorer.discourse_workflows.sql_action.no_sql_provided")
+          end
 
           req_params = {}
           Array(config["params"]).each do |param|

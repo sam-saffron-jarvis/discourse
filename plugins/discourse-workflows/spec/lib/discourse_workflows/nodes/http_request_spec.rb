@@ -133,7 +133,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
 
       expect { execute_node(configuration: config, item: item) }.to raise_error(
         RuntimeError,
-        "URL must include a host",
+        "URL must include a host.",
       )
     end
 

@@ -109,8 +109,13 @@ module DiscourseWorkflows
             amount = @configuration.fetch("wait_amount") { 1 }.to_i
             unit = @configuration.fetch("wait_unit") { "hours" }
 
-            raise ArgumentError, "Wait amount must be greater than 0" if amount <= 0
-            raise ArgumentError, "Invalid wait unit: #{unit}" if WAIT_UNITS.exclude?(unit)
+            if amount <= 0
+              raise ArgumentError, I18n.t("discourse_workflows.errors.wait.amount_must_be_positive")
+            end
+            if WAIT_UNITS.exclude?(unit)
+              raise ArgumentError,
+                    I18n.t("discourse_workflows.errors.wait.invalid_unit", unit: unit)
+            end
 
             waiting_until = amount.public_send(unit).from_now
           end
@@ -128,10 +133,12 @@ module DiscourseWorkflows
           timeout_unit = @configuration["timeout_unit"].presence || "hours"
 
           if WAIT_UNITS.exclude?(timeout_unit)
-            raise ArgumentError, "Invalid timeout unit: #{timeout_unit}"
+            raise ArgumentError,
+                  I18n.t("discourse_workflows.errors.wait.invalid_timeout_unit", unit: timeout_unit)
           end
           if timeout_amount && timeout_amount <= 0
-            raise ArgumentError, "Timeout amount must be greater than 0"
+            raise ArgumentError,
+                  I18n.t("discourse_workflows.errors.wait.timeout_amount_must_be_positive")
           end
 
           timeout_amount&.public_send(timeout_unit)&.from_now

@@ -98,7 +98,7 @@ module DiscourseWorkflows
               }
             end
             on_failed_step(:create_post) { |step| raise step.error }
-            on_failure { raise "Failed to create topic" }
+            on_failure { raise I18n.t("discourse_workflows.errors.create_topic.failed") }
           end
         end
 

@@ -70,10 +70,18 @@ if defined?(DiscourseWorkflows)
             ) do
               on_success { { "channel_id" => channel_id, "message" => message } }
               on_failed_contract do |contract|
-                raise "Invalid params: #{contract.errors.full_messages.join(", ")}"
+                raise I18n.t(
+                        "discourse_workflows.errors.send_chat_message.invalid_params",
+                        errors: contract.errors.full_messages.join(", "),
+                      )
               end
-              on_model_not_found(:channel) { raise "Channel not found: #{channel_id}" }
-              on_failure { raise "Failed to send chat message" }
+              on_model_not_found(:channel) do
+                raise I18n.t(
+                        "discourse_workflows.errors.send_chat_message.channel_not_found",
+                        channel_id: channel_id,
+                      )
+              end
+              on_failure { raise I18n.t("discourse_workflows.errors.send_chat_message.failed") }
             end
           end
         end

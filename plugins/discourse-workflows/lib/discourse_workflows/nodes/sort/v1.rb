@@ -154,7 +154,7 @@ module DiscourseWorkflows
         def sort_code(exec_ctx, config)
           code = config["code"].to_s
           unless code.match?(/\breturn\b/)
-            raise ArgumentError, "Code must contain a return statement"
+            raise ArgumentError, I18n.t("discourse_workflows.errors.sort.code_missing_return")
           end
 
           items = exec_ctx.input_items.map { |item| { "json" => item.fetch("json") { {} } } }

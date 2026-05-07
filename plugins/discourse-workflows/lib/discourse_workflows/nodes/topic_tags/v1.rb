@@ -77,7 +77,7 @@ module DiscourseWorkflows
               .wrap(config["tag_names"])
               .flat_map { |n| n.to_s.split(",") }
               .filter_map { |n| n.strip.presence }
-          raise "No tag names provided" if names.empty?
+          raise I18n.t("discourse_workflows.errors.topic_tags.no_tag_names") if names.empty?
 
           case config["operation"]
           when "remove"
@@ -93,7 +93,10 @@ module DiscourseWorkflows
 
         def tag_topic!(topic, guardian, tag_names, append: false)
           unless DiscourseTagging.tag_topic_by_names(topic, guardian, tag_names, append:)
-            raise "Tag operation failed: #{topic.errors.full_messages.join(", ")}"
+            raise I18n.t(
+                    "discourse_workflows.errors.topic_tags.operation_failed",
+                    errors: topic.errors.full_messages.join(", "),
+                  )
           end
           topic.save!
         end

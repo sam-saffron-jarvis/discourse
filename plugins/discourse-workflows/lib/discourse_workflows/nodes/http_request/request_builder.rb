@@ -13,7 +13,9 @@ module DiscourseWorkflows
 
         def build
           method = @config.fetch("method") { "GET" }.downcase.to_sym
-          raise "URL is required" if @config["url"].blank?
+          if @config["url"].blank?
+            raise I18n.t("discourse_workflows.errors.http_request.url_required")
+          end
 
           uri = build_uri(@config["url"], @config["query_params"])
           headers = normalize_headers(@config["headers"])
@@ -27,9 +29,9 @@ module DiscourseWorkflows
         def build_uri(url, query_params)
           uri = URI.parse(url)
           if %w[http https].exclude?(uri.scheme&.downcase)
-            raise "Only HTTP and HTTPS URLs are supported"
+            raise I18n.t("discourse_workflows.errors.http_request.unsupported_scheme")
           end
-          raise "URL must include a host" if uri.host.blank?
+          raise I18n.t("discourse_workflows.errors.http_request.host_required") if uri.host.blank?
 
           append_query_params(uri, query_params)
           uri

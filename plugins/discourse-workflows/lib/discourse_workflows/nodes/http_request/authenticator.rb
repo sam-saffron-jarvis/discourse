@@ -20,10 +20,18 @@ module DiscourseWorkflows
 
         def self.fetch_credential_data(exec_ctx, credential_id, auth_mode)
           if credential_id.blank?
-            raise ArgumentError, "credential_id is required for authentication mode '#{auth_mode}'"
+            raise ArgumentError,
+                  I18n.t(
+                    "discourse_workflows.errors.http_request.credential_required",
+                    mode: auth_mode,
+                  )
           end
           if exec_ctx.nil?
-            raise ArgumentError, "exec_ctx is required for authentication mode '#{auth_mode}'"
+            raise ArgumentError,
+                  I18n.t(
+                    "discourse_workflows.errors.http_request.exec_ctx_required",
+                    mode: auth_mode,
+                  )
           end
 
           exec_ctx.get_credential(credential_id)
