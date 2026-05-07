@@ -3,12 +3,12 @@ import { tracked } from "@glimmer/tracking";
 import { fn } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
-import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { trustHTML } from "@ember/template";
 import CookText from "discourse/components/cook-text";
 import DMenu from "discourse/float-kit/components/d-menu";
 import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
+import autoFocus from "discourse/modifiers/auto-focus";
 import { eq } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 import CanvasHoverToolbar from "./hover-toolbar";
@@ -27,10 +27,6 @@ const RESIZE_EDGES = ["n", "s", "w", "e", "nw", "ne", "sw", "se"];
 
 function swatchStyle(colorBg) {
   return trustHTML(`background:${colorBg}`);
-}
-
-function focusElement(element) {
-  element.focus();
 }
 
 function stopPropagation(event) {
@@ -239,7 +235,7 @@ export default class StickyNote extends Component {
             class="workflow-sticky-note__textarea"
             value={{@note.text}}
             placeholder={{i18n "discourse_workflows.sticky_note.placeholder"}}
-            {{didInsert focusElement}}
+            {{autoFocus}}
             {{on "input" this.handleTextInput}}
             {{on "blur" this.stopEditing}}
             {{on "keydown" stopPropagation}}
