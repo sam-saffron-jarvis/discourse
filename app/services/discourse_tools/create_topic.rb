@@ -18,24 +18,28 @@ module DiscourseTools
       attribute :skip_workflows, :boolean, default: false
     end
 
+    model :category, optional: true
     policy :can_create
     step :create_post
 
     private
 
-    def can_create(guardian:, params:)
-      category = Category.find_by(id: params.category_id) if params.category_id.present?
+    def fetch_category(params:)
+      Category.find_by(id: params.category_id) if params.category_id.present?
+    end
+
+    def can_create(guardian:, category:)
       guardian.can_create?(Topic, category)
     end
 
-    def create_post(guardian:, params:, options:)
+    def create_post(guardian:, params:, options:, category:)
       args = {
         title: params.title,
         raw: params.raw,
         guardian: guardian,
         skip_validations: options.skip_validations,
       }
-      args[:category] = params.category_id if params.category_id.present?
+      args[:category] = category.id if category
       args[:tags] = options.tags if options.tags.present?
       args[:skip_workflows] = true if options.skip_workflows
 
