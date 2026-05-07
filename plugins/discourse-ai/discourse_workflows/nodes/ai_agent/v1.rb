@@ -75,15 +75,23 @@ if defined?(DiscourseWorkflows)
             { result: :string }
           end
 
+          def self.load_options(source_key)
+            case source_key
+            when "agents"
+              agent_options
+            end
+          end
+
           def self.metadata
-            {
-              agents:
-                ::AiAgent
-                  .where(enabled: true)
-                  .order(:name)
-                  .pluck(:id, :name)
-                  .map { |id, name| { id: id, name: name } },
-            }
+            { agents: agent_options }
+          end
+
+          def self.agent_options
+            ::AiAgent
+              .where(enabled: true)
+              .order(:name)
+              .pluck(:id, :name)
+              .map { |id, name| { id: id, name: name } }
           end
 
           def execute(exec_ctx)
