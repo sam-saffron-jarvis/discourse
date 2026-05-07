@@ -22,15 +22,12 @@ import {
   buildStickyNoteTranslateHandler,
   computeStickyNoteRects,
 } from "./canvas-sticky-notes";
-import ConnectionToolbar from "./connection-toolbar";
+import ConnectionEntry from "./connection-entry";
 import Controls from "./controls";
+import LoopBackConnection from "./loop-back-connection";
 import { createReteEditor } from "./rete-editor";
 import StickyNoteComponent from "./sticky-note";
 import WorkflowNode from "./workflow-node";
-
-const SVG_STYLE = trustHTML(
-  "overflow:visible;position:absolute;pointer-events:none;width:9999px;height:9999px"
-);
 
 export default class WorkflowCanvas extends Component {
   @service keyboardShortcuts;
@@ -328,9 +325,7 @@ export default class WorkflowCanvas extends Component {
   }
 
   @action
-  handleLoopBackAdd(loopNodeClientId, e) {
-    e.stopPropagation();
-    e.preventDefault();
+  handleLoopBackAdd(loopNodeClientId) {
     this.args.onOpenNodePanel?.({ loopNodeClientId });
   }
 
@@ -589,109 +584,17 @@ export default class WorkflowCanvas extends Component {
 
         {{#each this.connectionEntries as |entry|}}
           {{#in-element entry.element insertBefore=null}}
-            {{! template-lint-disable no-forbidden-elements }}
             {{#if entry.isLoopBack}}
-              <svg class="workflow-loop-back" style={{SVG_STYLE}}>
-                <path
-                  class="workflow-loop-back__path"
-                  fill="none"
-                  stroke="var(--primary-low-mid)"
-                  stroke-width="1.5"
-                  d={{entry.pathD}}
-                />
-                <polygon
-                  class="workflow-loop-back__arrow"
-                  fill="var(--primary-low-mid)"
-                  points={{entry.loopArrowPoints}}
-                />
-                <foreignObject
-                  class="workflow-loop-back__button-fo"
-                  width="28"
-                  height="28"
-                  x={{entry.loopButtonX}}
-                  y={{entry.loopButtonY}}
-                >
-                  <button
-                    type="button"
-                    class="workflow-loop-back__add-btn"
-                    {{on
-                      "click"
-                      (fn this.handleLoopBackAdd entry.loopNodeClientId)
-                    }}
-                  >+</button>
-                </foreignObject>
-              </svg>
+              <LoopBackConnection
+                @entry={{entry}}
+                @onAdd={{this.handleLoopBackAdd}}
+              />
             {{else}}
-              <svg
-                class={{concatClass
-                  "workflow-connection"
-                  (if entry.isPseudo "--pseudo")
-                }}
-                style={{SVG_STYLE}}
-              >
-                <path
-                  class="workflow-connection__hit"
-                  fill="none"
-                  stroke="transparent"
-                  stroke-width="12"
-                  pointer-events="stroke"
-                  style="cursor:pointer"
-                  d={{entry.pathD}}
-                />
-                <path
-                  class="workflow-connection__visible"
-                  fill="none"
-                  stroke={{if
-                    entry.isPseudo
-                    "var(--tertiary)"
-                    "var(--primary-low-mid)"
-                  }}
-                  stroke-width="1.5"
-                  stroke-dasharray={{if entry.isPseudo "6 3" ""}}
-                  opacity={{if entry.isPseudo "0.6" ""}}
-                  d={{entry.pathD}}
-                />
-                <path
-                  class="workflow-connection__arrow"
-                  d="M -9 -5 L 0 0 L -9 5 Z"
-                  fill={{if
-                    entry.isPseudo
-                    "var(--tertiary)"
-                    "var(--primary-low-mid)"
-                  }}
-                  stroke={{if
-                    entry.isPseudo
-                    "var(--tertiary)"
-                    "var(--primary-low-mid)"
-                  }}
-                  stroke-width="2"
-                  stroke-linejoin="round"
-                  transform={{entry.arrowTransform}}
-                />
-                {{#unless entry.isPseudo}}
-                  <foreignObject
-                    class="workflow-connection__toolbar-fo"
-                    width="48"
-                    height="22"
-                    x={{entry.toolbarX}}
-                    y={{entry.toolbarY}}
-                  >
-                    <ConnectionToolbar
-                      @hitPathSelector=".workflow-connection__hit"
-                      @foreignObjectSelector=".workflow-connection__toolbar-fo"
-                      @svgElement={{entry.element}}
-                      @onAdd={{fn
-                        this.handleConnectionToolbarAdd
-                        entry.connectionInfo
-                      }}
-                      @onDelete={{fn
-                        this.handleConnectionToolbarDelete
-                        entry.connectionInfo
-                      }}
-                    />
-                  </foreignObject>
-                {{/unless}}
-              </svg>
+              <ConnectionEntry
+                @entry={{entry}}
+                @onAdd={{this.handleConnectionToolbarAdd}}
+                @onDelete={{this.handleConnectionToolbarDelete}}
+              />
             {{/if}}
           {{/in-element}}
         {{/each}}
