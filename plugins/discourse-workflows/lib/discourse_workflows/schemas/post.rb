@@ -18,7 +18,7 @@ module DiscourseWorkflows
         BASE_FIELDS
       end
 
-      def self.resolve(post)
+      def self.serialize(post)
         return {} if post.nil?
 
         {

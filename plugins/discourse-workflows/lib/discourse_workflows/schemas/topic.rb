@@ -25,7 +25,7 @@ module DiscourseWorkflows
         extensions.reduce(BASE_FIELDS.dup) { |schema, ext| schema.merge(ext[:fields]) }
       end
 
-      def self.resolve(topic)
+      def self.serialize(topic)
         first_post = topic.first_post
 
         data = {
@@ -46,7 +46,7 @@ module DiscourseWorkflows
         }
 
         extensions = Registry.schema_extensions_for(:topic)
-        extensions.each { |ext| data.merge!(ext[:resolver].call(topic)) }
+        extensions.each { |ext| data.merge!(ext[:serializer].call(topic)) }
         data
       end
 

@@ -92,7 +92,7 @@ module DiscourseWorkflows
             on_success do |post:|
               topic = post.topic
               {
-                topic: Schemas::Topic.resolve(topic),
+                topic: Schemas::Topic.serialize(topic),
                 post_id: post.id,
                 post_number: post.post_number,
               }

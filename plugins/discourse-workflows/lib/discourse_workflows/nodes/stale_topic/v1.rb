@@ -34,7 +34,7 @@ module DiscourseWorkflows
         end
 
         def output
-          { topic: Schemas::Topic.resolve(@topic) }
+          { topic: Schemas::Topic.serialize(@topic) }
         end
       end
     end

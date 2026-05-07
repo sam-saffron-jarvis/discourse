@@ -57,7 +57,7 @@ module DiscourseWorkflows
           topic = Topic.find(config["topic_id"])
           actor = exec_ctx.find_user(username: config["actor_username"].presence || "system")
           Guardian.new(actor).ensure_can_see!(topic)
-          { topic: Schemas::Topic.resolve(topic) }
+          { topic: Schemas::Topic.serialize(topic) }
         end
       end
     end

@@ -11,7 +11,7 @@ if defined?(DiscourseWorkflows)
                         fields: {
                           assigned_to: :string,
                         },
-                        resolver: ->(topic) do
+                        serializer: ->(topic) do
                           assignment = Assignment.find_by(target: topic)
                           { assigned_to: assignment&.assigned_to&.display_name }
                         end
@@ -111,7 +111,7 @@ if defined?(DiscourseWorkflows)
 
               {
                 previously_assigned:
-                  DiscourseWorkflows::Schemas::Assignee.resolve(previously_assigned),
+                  DiscourseWorkflows::Schemas::Assignee.serialize(previously_assigned),
               }
             else
               assignee = find_assignee(config["assignee"])
@@ -127,9 +127,9 @@ if defined?(DiscourseWorkflows)
               end
 
               {
-                assignee: DiscourseWorkflows::Schemas::Assignee.resolve(assignee),
+                assignee: DiscourseWorkflows::Schemas::Assignee.serialize(assignee),
                 previously_assigned:
-                  DiscourseWorkflows::Schemas::Assignee.resolve(previously_assigned),
+                  DiscourseWorkflows::Schemas::Assignee.serialize(previously_assigned),
               }
             end
           end

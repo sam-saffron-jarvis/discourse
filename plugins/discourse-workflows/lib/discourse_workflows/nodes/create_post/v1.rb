@@ -71,7 +71,7 @@ module DiscourseWorkflows
           author = exec_ctx.find_user(username: config["author_username"].presence || "system")
           post = PostCreator.new(author, build_post_args(topic, config)).create!
 
-          { post: Schemas::Post.resolve(post) }
+          { post: Schemas::Post.serialize(post) }
         end
 
         def ensure_topic_is_open!(topic)

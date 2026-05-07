@@ -14,25 +14,25 @@ RSpec.describe DiscourseWorkflows::Schemas::Assignee do
     end
   end
 
-  describe ".resolve" do
+  describe ".serialize" do
     it "returns a user-typed payload for User instances" do
-      result = described_class.resolve(user)
+      result = described_class.serialize(user)
 
       expect(result[:type]).to eq("user")
-      expect(result[:user]).to eq(DiscourseWorkflows::Schemas::User.resolve(user))
+      expect(result[:user]).to eq(DiscourseWorkflows::Schemas::User.serialize(user))
       expect(result[:group]).to eq({})
     end
 
     it "returns a group-typed payload for Group instances" do
-      result = described_class.resolve(group)
+      result = described_class.serialize(group)
 
       expect(result[:type]).to eq("group")
       expect(result[:user]).to eq({})
-      expect(result[:group]).to eq(DiscourseWorkflows::Schemas::Group.resolve(group))
+      expect(result[:group]).to eq(DiscourseWorkflows::Schemas::Group.serialize(group))
     end
 
     it "returns an empty payload when no assignee is given" do
-      expect(described_class.resolve(nil)).to eq(type: nil, user: {}, group: {})
+      expect(described_class.serialize(nil)).to eq(type: nil, user: {}, group: {})
     end
   end
 end

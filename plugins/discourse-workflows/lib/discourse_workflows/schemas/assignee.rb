@@ -19,12 +19,12 @@ module DiscourseWorkflows
         BASE_FIELDS
       end
 
-      def self.resolve(assignee)
+      def self.serialize(assignee)
         case assignee
         when ::User
-          { type: "user", user: User.resolve(assignee), group: {} }
+          { type: "user", user: User.serialize(assignee), group: {} }
         when ::Group
-          { type: "group", user: {}, group: Group.resolve(assignee) }
+          { type: "group", user: {}, group: Group.serialize(assignee) }
         else
           { type: nil, user: {}, group: {} }
         end

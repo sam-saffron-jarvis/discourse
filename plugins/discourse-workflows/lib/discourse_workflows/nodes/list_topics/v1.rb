@@ -68,7 +68,7 @@ module DiscourseWorkflows
             ActiveRecord::Associations::Preloader.new(records: posts, associations: :user).call
           end
 
-          items = topic_list.topics.map { |topic| wrap(topic: Schemas::Topic.resolve(topic)) }
+          items = topic_list.topics.map { |topic| wrap(topic: Schemas::Topic.serialize(topic)) }
           [items]
         end
       end

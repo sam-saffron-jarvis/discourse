@@ -48,7 +48,7 @@ module DiscourseWorkflows
 
         def output
           {
-            topic: Schemas::Topic.resolve(@topic),
+            topic: Schemas::Topic.serialize(@topic),
             old_tags: @old_tag_names,
             new_tags: @new_tag_names,
             added_tags: @new_tag_names - @old_tag_names,

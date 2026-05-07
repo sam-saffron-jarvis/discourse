@@ -109,7 +109,7 @@ module DiscourseWorkflows
           actor = exec_ctx.find_user(username: config["actor_username"].presence || "system")
           guardian = Guardian.new(actor)
           guardian.ensure_can_see_group!(group)
-          group_data = Schemas::Group.resolve(group)
+          group_data = Schemas::Group.serialize(group)
 
           return { group: group_data } if config["operation"] == "get"
 
@@ -128,7 +128,7 @@ module DiscourseWorkflows
             logger.log_add_user_to_group(user)
           end
 
-          { group: group_data, user: Schemas::User.resolve(user) }
+          { group: group_data, user: Schemas::User.serialize(user) }
         end
       end
     end

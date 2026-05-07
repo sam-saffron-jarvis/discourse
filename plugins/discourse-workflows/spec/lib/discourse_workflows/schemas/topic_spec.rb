@@ -24,7 +24,7 @@ RSpec.describe DiscourseWorkflows::Schemas::Topic do
     end
 
     it "includes fields from schema extensions" do
-      stub_extension = { name: :topic, fields: { custom_field: :string }, resolver: ->(_) { {} } }
+      stub_extension = { name: :topic, fields: { custom_field: :string }, serializer: ->(_) { {} } }
 
       klass = Class.new(DiscourseWorkflows::NodeType)
       klass.instance_variable_set(:@schema_extensions, [stub_extension])
@@ -42,9 +42,9 @@ RSpec.describe DiscourseWorkflows::Schemas::Topic do
     end
   end
 
-  describe ".resolve" do
+  describe ".serialize" do
     it "returns all base topic data" do
-      data = described_class.resolve(topic)
+      data = described_class.serialize(topic)
 
       expect(data[:id]).to eq(topic.id)
       expect(data[:title]).to eq(topic.title)
@@ -61,7 +61,7 @@ RSpec.describe DiscourseWorkflows::Schemas::Topic do
         fields: {
           custom_field: :string,
         },
-        resolver: ->(_topic) { { custom_field: "extended_value" } },
+        serializer: ->(_topic) { { custom_field: "extended_value" } },
       }
 
       klass = Class.new(DiscourseWorkflows::NodeType)
@@ -73,7 +73,7 @@ RSpec.describe DiscourseWorkflows::Schemas::Topic do
       DiscoursePluginRegistry.register_discourse_workflows_node(klass, plugin)
       DiscourseWorkflows::Registry.reset_indexes!
 
-      data = described_class.resolve(topic)
+      data = described_class.serialize(topic)
       expect(data[:custom_field]).to eq("extended_value")
     ensure
       DiscoursePluginRegistry._raw_discourse_workflows_nodes.reject! { |h| h[:value] == klass }

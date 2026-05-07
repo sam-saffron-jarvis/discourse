@@ -39,7 +39,7 @@ module DiscourseWorkflows
         end
 
         def output
-          { topic: Schemas::Topic.resolve(@topic), old_category_id: @old_category.id }
+          { topic: Schemas::Topic.serialize(@topic), old_category_id: @old_category.id }
         end
       end
     end

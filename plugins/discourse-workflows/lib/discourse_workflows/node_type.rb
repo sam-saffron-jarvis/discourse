@@ -110,9 +110,9 @@ module DiscourseWorkflows
       @schema_extensions || []
     end
 
-    def self.extend_schema(name, fields:, resolver:)
+    def self.extend_schema(name, fields:, serializer:)
       @schema_extensions ||= []
-      @schema_extensions << { name: name, fields: fields, resolver: resolver }
+      @schema_extensions << { name: name, fields: fields, serializer: serializer }
     end
 
     def initialize(configuration: {})

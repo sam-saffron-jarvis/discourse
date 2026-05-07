@@ -20,7 +20,7 @@ module DiscourseWorkflows
         BASE_FIELDS
       end
 
-      def self.resolve(group)
+      def self.serialize(group)
         {
           id: group.id,
           name: group.name,

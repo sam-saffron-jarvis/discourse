@@ -32,9 +32,9 @@ RSpec.describe DiscourseWorkflows::Schemas::Group do
     end
   end
 
-  describe ".resolve" do
-    it "returns resolved group data" do
-      result = described_class.resolve(group)
+  describe ".serialize" do
+    it "returns serialized group data" do
+      result = described_class.serialize(group)
 
       expect(result[:id]).to eq(group.id)
       expect(result[:name]).to eq("test_group")
