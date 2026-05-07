@@ -74,6 +74,11 @@
     outline: none;
     padding: 0;
     cursor: text;
+
+    &:focus {
+      border: none;
+      outline: none;
+    }
   }
 
   &__text {
