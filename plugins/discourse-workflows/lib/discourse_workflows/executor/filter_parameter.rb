@@ -16,7 +16,8 @@ module DiscourseWorkflows
       end
 
       def self.execute_filter_condition(condition, options, resolver)
-        left = resolver.resolve(condition["leftValue"])
+        left_expression = condition["leftValue"]
+        left = resolver.resolve(left_expression)
         operator = condition.fetch("operator") { {} }
         type = operator.fetch("type") { "string" }
         operation = operator["operation"]
@@ -25,6 +26,7 @@ module DiscourseWorkflows
 
         {
           "left" => left,
+          "leftExpression" => left_expression,
           "operator" => operation,
           "right" => right,
           "type" => type,

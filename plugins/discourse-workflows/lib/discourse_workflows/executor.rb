@@ -189,6 +189,9 @@ module DiscourseWorkflows
         resolver&.dispose
         js_elapsed = (sandbox_budget_tracker.current_elapsed_ms - js_elapsed_before).round(1)
         step.add_metadata("js_elapsed_ms", js_elapsed) if js_elapsed > 0
+        if exec_ctx&.condition_details&.any?
+          step.add_metadata("conditions", exec_ctx.condition_details)
+        end
       end
     end
 

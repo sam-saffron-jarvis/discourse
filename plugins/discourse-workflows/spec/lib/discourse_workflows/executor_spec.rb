@@ -127,6 +127,14 @@ RSpec.describe DiscourseWorkflows::Executor do
       expect(execution.status).to eq("success")
       expect(topic.reload.tags.map(&:name)).to include(tag.name)
       expect(topic.reload.tags.map(&:name)).not_to include("needs-review")
+
+      condition_step = execution.execution_data.find_step(node_id: "condition-1")
+      expect(condition_step["metadata"]["conditions"]).to be_present
+      expect(condition_step["metadata"]["conditions"].first).to include(
+        "left" => include("bug"),
+        "operator" => "contains",
+        "passed" => true,
+      )
     end
 
     context "with a filter workflow" do
