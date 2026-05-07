@@ -21,6 +21,10 @@ if defined?(DiscourseWorkflows)
             SiteSetting.chat_enabled
           end
 
+        def self.group
+          "discourse_actions"
+        end
+        
           def self.unavailable_reason_key
             "discourse_workflows.node_unavailable.requires_chat"
           end
