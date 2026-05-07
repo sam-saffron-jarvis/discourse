@@ -137,7 +137,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
       input = [{ "json" => { "n" => 1 } }]
 
       expect { execute(input, "type" => "code", "code" => "return {{{invalid;") }.to raise_error(
-        MiniRacer::ParseError,
+        DiscourseWorkflows::JsSandbox::SandboxError,
       )
     end
 

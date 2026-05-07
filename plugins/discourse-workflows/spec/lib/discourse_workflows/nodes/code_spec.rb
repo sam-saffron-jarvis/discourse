@@ -239,7 +239,9 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
     end
 
     it "raises on invalid JavaScript" do
-      expect { execute_code("this is not valid js {{{") }.to raise_error(MiniRacer::ParseError)
+      expect { execute_code("this is not valid js {{{") }.to raise_error(
+        DiscourseWorkflows::JsSandbox::SandboxError,
+      )
     end
 
     context "with mode run_once_for_all_items" do
