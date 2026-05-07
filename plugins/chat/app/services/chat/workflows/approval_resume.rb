@@ -35,9 +35,10 @@ module Chat
           ::DiscourseWorkflows::Execution.by_resume_token(resume_token).find_by(
             id: params.execution_id,
           )
-        return nil unless found
 
-        ::DiscourseWorkflows::Execution.claim_for_resume(found, resume_token: resume_token)
+    def claim_for_resume(execution:, resume_token:)
+        ::DiscourseWorkflows::Execution.claim_for_resume(execution, resume_token:)
+    end
       end
 
       def resume_execution(execution:, params:)
