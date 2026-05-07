@@ -69,7 +69,7 @@ export default class WorkflowCanvas extends Component {
   @action
   isStickyNoteSelected(clientId) {
     this.selectionVersion;
-    return this.rete?.isStickyNoteSelected(clientId) ?? false;
+    return this.rete.isStickyNoteSelected(clientId);
   }
 
   @action
@@ -118,7 +118,7 @@ export default class WorkflowCanvas extends Component {
       onDelete: () => this.deleteSelected(),
       onEscape: () => {
         this.contextMenuApi?.close();
-        this.rete?.selector.unselectAll();
+        this.rete.selector.unselectAll();
         this.selectionVersion++;
       },
       onZoomIn: () => this.zoomIn(),
@@ -260,18 +260,18 @@ export default class WorkflowCanvas extends Component {
 
     this.#hasSetupStarted = true;
     const element = this.canvasElement;
-    this.keyboard = setupCanvasKeyboard(
-      this.keyboardShortcuts,
-      this.#keyboardActions(),
-      element
-    );
-
     const nodeTypes = await this.workflowsNodeTypes.load();
 
     this.rete = await createReteEditor(this.containerElement, {
       nodeTypes,
       callbacks: this.#reteCallbacks(),
     });
+
+    this.keyboard = setupCanvasKeyboard(
+      this.keyboardShortcuts,
+      this.#keyboardActions(),
+      element
+    );
 
     this.args.onAreaReady?.(this.rete.area);
 
@@ -286,17 +286,17 @@ export default class WorkflowCanvas extends Component {
   }
 
   get nodeEntries() {
-    return this.rete?.renderer.nodeEntryList ?? [];
+    return this.rete.renderer.nodeEntryList;
   }
 
   get connectionEntries() {
-    return this.rete?.renderer.connectionEntryList ?? [];
+    return this.rete.renderer.connectionEntryList;
   }
 
   get handleEntries() {
     return [
-      ...(this.rete?.renderer.outputHandleEntryList ?? []),
-      ...(this.rete?.renderer.inputHandleEntryList ?? []),
+      ...this.rete.renderer.outputHandleEntryList,
+      ...this.rete.renderer.inputHandleEntryList,
     ].map((entry) => ({
       ...entry,
       svgStyle: trustHTML(
@@ -306,7 +306,7 @@ export default class WorkflowCanvas extends Component {
   }
 
   get areaContentElement() {
-    return this.rete?.areaContentElement;
+    return this.rete.areaContentElement;
   }
 
   @action
@@ -359,9 +359,6 @@ export default class WorkflowCanvas extends Component {
   }
 
   #invokeAtViewportCenter(callback) {
-    if (!this.rete || !this.containerElement) {
-      return;
-    }
     this.contextMenuApi?.close();
     callback?.(this.rete.viewportCenter());
   }
@@ -373,7 +370,7 @@ export default class WorkflowCanvas extends Component {
 
   @action
   async selectStickyNote(clientId) {
-    await this.rete?.selectStickyNote(clientId, {
+    await this.rete.selectStickyNote(clientId, {
       onStickyNoteTranslate: buildStickyNoteTranslateHandler(
         this.args.stickyNotes,
         this.args.onStickyNoteMove
@@ -386,11 +383,7 @@ export default class WorkflowCanvas extends Component {
   }
 
   #copy() {
-    const selected = this.rete?.getSelectedIds();
-    if (!selected) {
-      return;
-    }
-    const { nodeIds, stickyNoteIds } = selected;
+    const { nodeIds, stickyNoteIds } = this.rete.getSelectedIds();
     const cloneMatching = (items, ids) =>
       (items || []).filter((n) => ids.has(n.clientId)).map(structuredClone);
     const nodes = cloneMatching(this.args.nodes, nodeIds);
@@ -438,7 +431,7 @@ export default class WorkflowCanvas extends Component {
 
   @action
   async translateSelected(draggedClientId, dx, dy) {
-    await this.rete?.translateSelectedEntities(
+    await this.rete.translateSelectedEntities(
       draggedClientId,
       "sticky-note",
       dx,
@@ -448,25 +441,18 @@ export default class WorkflowCanvas extends Component {
 
   @action
   deleteSelected() {
-    const selected = this.rete?.getSelectedIds();
-    if (!selected) {
-      return;
-    }
-    const { nodeIds, stickyNoteIds } = selected;
+    const { nodeIds, stickyNoteIds } = this.rete.getSelectedIds();
     if (nodeIds.size > 0 || stickyNoteIds.size > 0) {
       this.args.onRemoveSelected?.({
         nodeIds: [...nodeIds],
         stickyNoteIds: [...stickyNoteIds],
       });
-      this.rete?.selector.unselectAll();
+      this.rete.selector.unselectAll();
       this.selectionVersion++;
     }
   }
 
   async #applyZoom(delta) {
-    if (!this.rete) {
-      return;
-    }
     const currentK = this.rete.transform.k;
     const newK = Math.max(
       this.#ZOOM_MIN,
@@ -487,17 +473,11 @@ export default class WorkflowCanvas extends Component {
 
   @action
   async fitToView() {
-    if (!this.rete) {
-      return;
-    }
     await this.rete.fitToView(this.#stickyNoteRects());
   }
 
   @action
   async autoLayout() {
-    if (!this.rete) {
-      return;
-    }
     const positions = await this.rete.autoArrange();
     this.args.onAutoLayout?.(positions);
     await this.rete.fitToView(this.#stickyNoteRects());
@@ -571,299 +551,301 @@ export default class WorkflowCanvas extends Component {
         </div>
       {{/if}}
 
-      {{#if this.showEmptyState}}
-        <div class="workflows-canvas__empty-state">
-          <button
-            type="button"
-            class="workflows-canvas__empty-state-trigger"
-            {{on "click" this.openNodePanelAtCenter}}
-          >
-            <span class="workflows-canvas__empty-state-tile">
-              {{icon "plus"}}
-            </span>
-            <span class="workflows-canvas__empty-state-label">
-              {{i18n "discourse_workflows.add_node.first_step"}}
-            </span>
-          </button>
-        </div>
-      {{/if}}
-
       <div
         class="workflows-canvas__rete-container"
         {{didInsert this.registerContainer}}
       ></div>
 
-      {{#each this.nodeEntries as |entry|}}
-        {{#in-element entry.element insertBefore=null}}
-          <WorkflowNode
-            @node={{entry.node}}
-            @onDelete={{this.rete.renderer.onNodeDelete}}
-            @onManualTrigger={{this.rete.renderer.onManualTrigger}}
-            @onSocketRendered={{this.rete.renderer.onSocketRendered}}
-            @onEditNode={{@onEditNode}}
-            @workflowEnabled={{this.workflowEnabled}}
-          />
-        {{/in-element}}
-      {{/each}}
+      {{#if this.rete}}
+        {{#if this.showEmptyState}}
+          <div class="workflows-canvas__empty-state">
+            <button
+              type="button"
+              class="workflows-canvas__empty-state-trigger"
+              {{on "click" this.openNodePanelAtCenter}}
+            >
+              <span class="workflows-canvas__empty-state-tile">
+                {{icon "plus"}}
+              </span>
+              <span class="workflows-canvas__empty-state-label">
+                {{i18n "discourse_workflows.add_node.first_step"}}
+              </span>
+            </button>
+          </div>
+        {{/if}}
 
-      {{#each this.connectionEntries as |entry|}}
-        {{#in-element entry.element insertBefore=null}}
-          {{! template-lint-disable no-forbidden-elements }}
-          {{#if entry.isLoopBack}}
-            <svg class="workflow-loop-back" style={{SVG_STYLE}}>
+        {{#each this.nodeEntries as |entry|}}
+          {{#in-element entry.element insertBefore=null}}
+            <WorkflowNode
+              @node={{entry.node}}
+              @onDelete={{this.rete.renderer.onNodeDelete}}
+              @onManualTrigger={{this.rete.renderer.onManualTrigger}}
+              @onSocketRendered={{this.rete.renderer.onSocketRendered}}
+              @onEditNode={{@onEditNode}}
+              @workflowEnabled={{this.workflowEnabled}}
+            />
+          {{/in-element}}
+        {{/each}}
+
+        {{#each this.connectionEntries as |entry|}}
+          {{#in-element entry.element insertBefore=null}}
+            {{! template-lint-disable no-forbidden-elements }}
+            {{#if entry.isLoopBack}}
+              <svg class="workflow-loop-back" style={{SVG_STYLE}}>
+                <path
+                  class="workflow-loop-back__path"
+                  fill="none"
+                  stroke="var(--primary-low-mid)"
+                  stroke-width="1.5"
+                  d={{entry.pathD}}
+                />
+                <polygon
+                  class="workflow-loop-back__arrow"
+                  fill="var(--primary-low-mid)"
+                  points={{entry.loopArrowPoints}}
+                />
+                <foreignObject
+                  class="workflow-loop-back__button-fo"
+                  width="28"
+                  height="28"
+                  x={{entry.loopButtonX}}
+                  y={{entry.loopButtonY}}
+                >
+                  <button
+                    type="button"
+                    class="workflow-loop-back__add-btn"
+                    {{on
+                      "click"
+                      (fn this.handleLoopBackAdd entry.loopNodeClientId)
+                    }}
+                  >+</button>
+                </foreignObject>
+              </svg>
+            {{else}}
+              <svg
+                class={{concatClass
+                  "workflow-connection"
+                  (if entry.isPseudo "--pseudo")
+                }}
+                style={{SVG_STYLE}}
+              >
+                <path
+                  class="workflow-connection__hit"
+                  fill="none"
+                  stroke="transparent"
+                  stroke-width="12"
+                  pointer-events="stroke"
+                  style="cursor:pointer"
+                  d={{entry.pathD}}
+                />
+                <path
+                  class="workflow-connection__visible"
+                  fill="none"
+                  stroke={{if
+                    entry.isPseudo
+                    "var(--tertiary)"
+                    "var(--primary-low-mid)"
+                  }}
+                  stroke-width="1.5"
+                  stroke-dasharray={{if entry.isPseudo "6 3" ""}}
+                  opacity={{if entry.isPseudo "0.6" ""}}
+                  d={{entry.pathD}}
+                />
+                <path
+                  class="workflow-connection__arrow"
+                  d="M -9 -5 L 0 0 L -9 5 Z"
+                  fill={{if
+                    entry.isPseudo
+                    "var(--tertiary)"
+                    "var(--primary-low-mid)"
+                  }}
+                  stroke={{if
+                    entry.isPseudo
+                    "var(--tertiary)"
+                    "var(--primary-low-mid)"
+                  }}
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                  transform={{entry.arrowTransform}}
+                />
+                {{#unless entry.isPseudo}}
+                  <foreignObject
+                    class="workflow-connection__toolbar-fo"
+                    width="48"
+                    height="22"
+                    x={{entry.toolbarX}}
+                    y={{entry.toolbarY}}
+                  >
+                    <ConnectionToolbar
+                      @hitPathSelector=".workflow-connection__hit"
+                      @foreignObjectSelector=".workflow-connection__toolbar-fo"
+                      @svgElement={{entry.element}}
+                      @onAdd={{fn
+                        this.handleConnectionToolbarAdd
+                        entry.connectionInfo
+                      }}
+                      @onDelete={{fn
+                        this.handleConnectionToolbarDelete
+                        entry.connectionInfo
+                      }}
+                    />
+                  </foreignObject>
+                {{/unless}}
+              </svg>
+            {{/if}}
+          {{/in-element}}
+        {{/each}}
+
+        {{#each this.handleEntries as |entry|}}
+          {{#in-element entry.areaElement insertBefore=null}}
+            {{! template-lint-disable no-forbidden-elements }}
+            <svg class="workflow-handle" style={{entry.svgStyle}}>
               <path
-                class="workflow-loop-back__path"
                 fill="none"
                 stroke="var(--primary-low-mid)"
                 stroke-width="1.5"
                 d={{entry.pathD}}
               />
-              <polygon
-                class="workflow-loop-back__arrow"
-                fill="var(--primary-low-mid)"
-                points={{entry.loopArrowPoints}}
-              />
               <foreignObject
-                class="workflow-loop-back__button-fo"
-                width="28"
-                height="28"
-                x={{entry.loopButtonX}}
-                y={{entry.loopButtonY}}
+                class="workflow-handle__button-fo"
+                width="14"
+                height="14"
+                x={{entry.buttonX}}
+                y={{entry.buttonY}}
               >
                 <button
                   type="button"
-                  class="workflow-loop-back__add-btn"
+                  class="workflow-handle__add-btn"
                   {{on
                     "click"
-                    (fn this.handleLoopBackAdd entry.loopNodeClientId)
+                    (fn this.handleHandleAdd entry.nodeClientId entry.outputKey)
                   }}
-                >+</button>
+                >
+                  {{icon "plus"}}
+                </button>
               </foreignObject>
             </svg>
-          {{else}}
-            <svg
-              class={{concatClass
-                "workflow-connection"
-                (if entry.isPseudo "--pseudo")
-              }}
-              style={{SVG_STYLE}}
-            >
-              <path
-                class="workflow-connection__hit"
-                fill="none"
-                stroke="transparent"
-                stroke-width="12"
-                pointer-events="stroke"
-                style="cursor:pointer"
-                d={{entry.pathD}}
-              />
-              <path
-                class="workflow-connection__visible"
-                fill="none"
-                stroke={{if
-                  entry.isPseudo
-                  "var(--tertiary)"
-                  "var(--primary-low-mid)"
-                }}
-                stroke-width="1.5"
-                stroke-dasharray={{if entry.isPseudo "6 3" ""}}
-                opacity={{if entry.isPseudo "0.6" ""}}
-                d={{entry.pathD}}
-              />
-              <path
-                class="workflow-connection__arrow"
-                d="M -9 -5 L 0 0 L -9 5 Z"
-                fill={{if
-                  entry.isPseudo
-                  "var(--tertiary)"
-                  "var(--primary-low-mid)"
-                }}
-                stroke={{if
-                  entry.isPseudo
-                  "var(--tertiary)"
-                  "var(--primary-low-mid)"
-                }}
-                stroke-width="2"
-                stroke-linejoin="round"
-                transform={{entry.arrowTransform}}
-              />
-              {{#unless entry.isPseudo}}
-                <foreignObject
-                  class="workflow-connection__toolbar-fo"
-                  width="48"
-                  height="22"
-                  x={{entry.toolbarX}}
-                  y={{entry.toolbarY}}
-                >
-                  <ConnectionToolbar
-                    @hitPathSelector=".workflow-connection__hit"
-                    @foreignObjectSelector=".workflow-connection__toolbar-fo"
-                    @svgElement={{entry.element}}
-                    @onAdd={{fn
-                      this.handleConnectionToolbarAdd
-                      entry.connectionInfo
-                    }}
-                    @onDelete={{fn
-                      this.handleConnectionToolbarDelete
-                      entry.connectionInfo
-                    }}
-                  />
-                </foreignObject>
-              {{/unless}}
-            </svg>
-          {{/if}}
-        {{/in-element}}
-      {{/each}}
-
-      {{#each this.handleEntries as |entry|}}
-        {{#in-element entry.areaElement insertBefore=null}}
-          {{! template-lint-disable no-forbidden-elements }}
-          <svg class="workflow-handle" style={{entry.svgStyle}}>
-            <path
-              fill="none"
-              stroke="var(--primary-low-mid)"
-              stroke-width="1.5"
-              d={{entry.pathD}}
-            />
-            <foreignObject
-              class="workflow-handle__button-fo"
-              width="14"
-              height="14"
-              x={{entry.buttonX}}
-              y={{entry.buttonY}}
-            >
-              <button
-                type="button"
-                class="workflow-handle__add-btn"
-                {{on
-                  "click"
-                  (fn this.handleHandleAdd entry.nodeClientId entry.outputKey)
-                }}
-              >
-                {{icon "plus"}}
-              </button>
-            </foreignObject>
-          </svg>
-        {{/in-element}}
-      {{/each}}
-
-      {{#if this.areaContentElement}}
-        {{#each @stickyNotes key="clientId" as |note|}}
-          {{#in-element this.areaContentElement insertBefore=null}}
-            <StickyNoteComponent
-              @note={{note}}
-              @isSelected={{this.isStickyNoteSelected note.clientId}}
-              @zoom={{this.areaTransform.k}}
-              @onSelect={{fn this.selectStickyNote note.clientId}}
-              @onBeforeMutation={{@onStickyNoteBeforeMutation}}
-              @onMove={{fn @onStickyNoteMove note.clientId}}
-              @onResize={{fn @onStickyNoteResize note.clientId}}
-              @onUpdateText={{fn @onStickyNoteUpdateText note.clientId}}
-              @onChangeColor={{fn @onStickyNoteChangeColor note.clientId}}
-              @onDelete={{fn this.deleteStickyNote note.clientId}}
-              @onTranslateSelected={{fn this.translateSelected note.clientId}}
-              @onAfterMutation={{@onNodeDragEnd}}
-            />
           {{/in-element}}
         {{/each}}
-      {{/if}}
 
-      <Controls
-        @onUndo={{@onUndo}}
-        @onRedo={{@onRedo}}
-        @canUndo={{@canUndo}}
-        @canRedo={{@canRedo}}
-        @onZoomIn={{this.zoomIn}}
-        @onZoomOut={{this.zoomOut}}
-        @onFitToView={{this.fitToView}}
-        @onAutoLayout={{this.autoLayout}}
-      />
+        {{#if this.areaContentElement}}
+          {{#each @stickyNotes key="clientId" as |note|}}
+            {{#in-element this.areaContentElement insertBefore=null}}
+              <StickyNoteComponent
+                @note={{note}}
+                @isSelected={{this.isStickyNoteSelected note.clientId}}
+                @zoom={{this.areaTransform.k}}
+                @onSelect={{fn this.selectStickyNote note.clientId}}
+                @onBeforeMutation={{@onStickyNoteBeforeMutation}}
+                @onMove={{fn @onStickyNoteMove note.clientId}}
+                @onResize={{fn @onStickyNoteResize note.clientId}}
+                @onUpdateText={{fn @onStickyNoteUpdateText note.clientId}}
+                @onChangeColor={{fn @onStickyNoteChangeColor note.clientId}}
+                @onDelete={{fn this.deleteStickyNote note.clientId}}
+                @onTranslateSelected={{fn this.translateSelected note.clientId}}
+                @onAfterMutation={{@onNodeDragEnd}}
+              />
+            {{/in-element}}
+          {{/each}}
+        {{/if}}
 
-      <input
-        type="file"
-        accept=".json"
-        class="hidden"
-        {{didInsert this.registerFileInput}}
-        {{on "change" this.handleFileSelected}}
-      />
-
-      <label
-        class={{concatClass
-          "workflows-canvas__status"
-          (if this.workflowEnabled "is-published" "is-draft")
-        }}
-      >
-        {{i18n "discourse_workflows.enabled"}}
-        <input
-          type="checkbox"
-          checked={{this.workflowEnabled}}
-          {{on "click" this.toggleEnabled}}
-          class="workflows-canvas__status-checkbox"
+        <Controls
+          @onUndo={{@onUndo}}
+          @onRedo={{@onRedo}}
+          @canUndo={{@canUndo}}
+          @canRedo={{@canRedo}}
+          @onZoomIn={{this.zoomIn}}
+          @onZoomOut={{this.zoomOut}}
+          @onFitToView={{this.fitToView}}
+          @onAutoLayout={{this.autoLayout}}
         />
-      </label>
 
-      {{#if @onOpenNodePanel}}
-        <div class="workflows-canvas__toolbar-top-right">
-          <DButton
-            @action={{this.openNodePanelAtCenter}}
-            @icon="plus"
-            class="btn-default workflows-canvas__add-node-btn"
+        <input
+          type="file"
+          accept=".json"
+          class="hidden"
+          {{didInsert this.registerFileInput}}
+          {{on "change" this.handleFileSelected}}
+        />
+
+        <label
+          class={{concatClass
+            "workflows-canvas__status"
+            (if this.workflowEnabled "is-published" "is-draft")
+          }}
+        >
+          {{i18n "discourse_workflows.enabled"}}
+          <input
+            type="checkbox"
+            checked={{this.workflowEnabled}}
+            {{on "click" this.toggleEnabled}}
+            class="workflows-canvas__status-checkbox"
           />
+        </label>
 
-          <DMenu
-            @identifier="workflows-canvas-menu"
-            @icon="ellipsis-vertical"
-            class="btn-default workflows-canvas__menu-btn"
-          >
-            <:content as |args|>
-              <DropdownMenu as |dropdown|>
-                <dropdown.item>
-                  <DButton
-                    @action={{fn this.addStickyNoteAtCenter args.close}}
-                    @icon="note-sticky"
-                    @translatedLabel={{i18n
-                      "discourse_workflows.sticky_note.add"
-                    }}
-                    class="btn-transparent"
-                  />
-                </dropdown.item>
-                <dropdown.item>
-                  <DButton
-                    @action={{fn this.exportWorkflow args.close}}
-                    @icon="download"
-                    @translatedLabel={{i18n
-                      "discourse_workflows.canvas.export_nodes"
-                    }}
-                    @disabled={{this.showEmptyState}}
-                    class="btn-transparent"
-                  />
-                </dropdown.item>
-                <dropdown.item>
-                  <DButton
-                    @action={{fn this.openImportDialog args.close}}
-                    @icon="upload"
-                    @translatedLabel={{i18n
-                      "discourse_workflows.canvas.import_nodes"
-                    }}
-                    class="btn-transparent"
-                  />
-                </dropdown.item>
-              </DropdownMenu>
-            </:content>
-          </DMenu>
-        </div>
+        {{#if @onOpenNodePanel}}
+          <div class="workflows-canvas__toolbar-top-right">
+            <DButton
+              @action={{this.openNodePanelAtCenter}}
+              @icon="plus"
+              class="btn-default workflows-canvas__add-node-btn"
+            />
+
+            <DMenu
+              @identifier="workflows-canvas-menu"
+              @icon="ellipsis-vertical"
+              class="btn-default workflows-canvas__menu-btn"
+            >
+              <:content as |args|>
+                <DropdownMenu as |dropdown|>
+                  <dropdown.item>
+                    <DButton
+                      @action={{fn this.addStickyNoteAtCenter args.close}}
+                      @icon="note-sticky"
+                      @translatedLabel={{i18n
+                        "discourse_workflows.sticky_note.add"
+                      }}
+                      class="btn-transparent"
+                    />
+                  </dropdown.item>
+                  <dropdown.item>
+                    <DButton
+                      @action={{fn this.exportWorkflow args.close}}
+                      @icon="download"
+                      @translatedLabel={{i18n
+                        "discourse_workflows.canvas.export_nodes"
+                      }}
+                      @disabled={{this.showEmptyState}}
+                      class="btn-transparent"
+                    />
+                  </dropdown.item>
+                  <dropdown.item>
+                    <DButton
+                      @action={{fn this.openImportDialog args.close}}
+                      @icon="upload"
+                      @translatedLabel={{i18n
+                        "discourse_workflows.canvas.import_nodes"
+                      }}
+                      class="btn-transparent"
+                    />
+                  </dropdown.item>
+                </DropdownMenu>
+              </:content>
+            </DMenu>
+          </div>
+        {{/if}}
+
+        <CanvasContextMenu
+          @canvasElement={{this.canvasElement}}
+          @containerElement={{this.containerElement}}
+          @rete={{this.rete}}
+          @onEditNode={{@onEditNode}}
+          @onDeleteSelected={{this.deleteSelected}}
+          @onOpenNodePanel={{@onOpenNodePanel}}
+          @onAddStickyNote={{@onAddStickyNote}}
+          @onRegister={{this.registerContextMenu}}
+        />
       {{/if}}
-
-      <CanvasContextMenu
-        @canvasElement={{this.canvasElement}}
-        @containerElement={{this.containerElement}}
-        @rete={{this.rete}}
-        @onEditNode={{@onEditNode}}
-        @onDeleteSelected={{this.deleteSelected}}
-        @onOpenNodePanel={{@onOpenNodePanel}}
-        @onAddStickyNote={{@onAddStickyNote}}
-        @onRegister={{this.registerContextMenu}}
-      />
     </div>
   </template>
 }
