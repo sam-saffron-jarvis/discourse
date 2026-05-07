@@ -2,6 +2,7 @@ import Component from "@glimmer/component";
 import { action } from "@ember/object";
 import DModal from "discourse/components/d-modal";
 import Form from "discourse/components/form";
+import { popupAjaxError } from "discourse/lib/ajax-error";
 import { i18n } from "discourse-i18n";
 
 const COLUMN_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
@@ -21,8 +22,12 @@ export default class AddColumnModal extends Component {
 
   @action
   async handleSubmit(data) {
-    await this.args.model.onSave(data);
-    this.args.closeModal();
+    try {
+      await this.args.model.onSave(data);
+      this.args.closeModal();
+    } catch (error) {
+      popupAjaxError(error);
+    }
   }
 
   <template>

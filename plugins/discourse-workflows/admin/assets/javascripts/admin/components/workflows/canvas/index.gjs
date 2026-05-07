@@ -13,6 +13,7 @@ import DMenu from "discourse/float-kit/components/d-menu";
 import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
 import { ajax } from "discourse/lib/ajax";
+import { popupAjaxError } from "discourse/lib/ajax-error";
 import { i18n } from "discourse-i18n";
 import CanvasContextMenu from "./canvas-context-menu";
 import { exportWorkflowToFile, parseWorkflowImport } from "./canvas-file-io";
@@ -126,13 +127,17 @@ export default class WorkflowCanvas extends Component {
   }
 
   async #handleManualTrigger(clientId) {
-    await runManualTrigger({
-      node: this.#nodes().find((n) => n.clientId === clientId),
-      clientId,
-      workflowId: this.args.workflowId,
-      toasts: this.toasts,
-      router: this.router,
-    });
+    try {
+      await runManualTrigger({
+        node: this.#nodes().find((n) => n.clientId === clientId),
+        clientId,
+        workflowId: this.args.workflowId,
+        toasts: this.toasts,
+        router: this.router,
+      });
+    } catch (e) {
+      popupAjaxError(e);
+    }
   }
 
   #reteCallbacks() {

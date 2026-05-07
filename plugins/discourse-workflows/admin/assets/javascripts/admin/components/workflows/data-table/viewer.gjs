@@ -279,16 +279,12 @@ export default class DataTableViewer extends Component {
     this.modal.show(AddColumnModal, {
       model: {
         onSave: async (data) => {
-          try {
-            const result = await ajax(`${this.apiBasePath}/columns.json`, {
-              type: "POST",
-              data: { name: data.name, column_type: data.type },
-            });
-            this.dataTable = result.data_table;
-            await this.loadTable();
-          } catch (e) {
-            popupAjaxError(e);
-          }
+          const result = await ajax(`${this.apiBasePath}/columns.json`, {
+            type: "POST",
+            data: { name: data.name, column_type: data.type },
+          });
+          this.dataTable = result.data_table;
+          await this.loadTable();
         },
       },
     });

@@ -35,8 +35,14 @@ export default class WorkflowSettings extends Component {
         name: this.args.workflow.name,
       }),
       didConfirm: async () => {
-        await this.args.workflow.destroyRecord();
-        this.router.transitionTo("adminPlugins.show.discourse-workflows.index");
+        try {
+          await this.args.workflow.destroyRecord();
+          this.router.transitionTo(
+            "adminPlugins.show.discourse-workflows.index"
+          );
+        } catch (e) {
+          popupAjaxError(e);
+        }
       },
     });
   }
