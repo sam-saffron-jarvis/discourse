@@ -6,6 +6,7 @@ import { action } from "@ember/object";
 import { trustHTML } from "@ember/template";
 import CookText from "discourse/components/cook-text";
 import DMenu from "discourse/float-kit/components/d-menu";
+import DTooltip from "discourse/float-kit/components/d-tooltip";
 import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
 import autoFocus from "discourse/modifiers/auto-focus";
@@ -192,41 +193,56 @@ export default class StickyNote extends Component {
       {{on "dblclick" this.startEditing}}
     >
       <CanvasHoverToolbar>
-        <DMenu
-          @identifier="sticky-note-color-picker"
-          @inline={{true}}
-          class="workflow-canvas-toolbar__btn"
-          title={{i18n "discourse_workflows.sticky_note.change_color"}}
+        <DTooltip
+          @identifier="sticky-note-change-color"
+          @content={{i18n "discourse_workflows.sticky_note.change_color"}}
         >
           <:trigger>
-            {{icon "palette"}}
+            <DMenu
+              @identifier="sticky-note-color-picker"
+              @inline={{true}}
+              class="workflow-canvas-toolbar__btn"
+            >
+              <:trigger>
+                {{icon "palette"}}
+              </:trigger>
+              <:content as |args|>
+                <div class="workflow-sticky-note__color-picker">
+                  {{#each this.colorOptions as |colorOpt|}}
+                    <button
+                      type="button"
+                      class={{concatClass
+                        "workflow-sticky-note__color-swatch"
+                        (if (eq @note.color colorOpt.name) "is-active")
+                      }}
+                      style={{swatchStyle colorOpt.bg}}
+                      title={{colorOpt.name}}
+                      {{on
+                        "click"
+                        (fn this.selectColor colorOpt.name args.close)
+                      }}
+                    />
+                  {{/each}}
+                </div>
+              </:content>
+            </DMenu>
           </:trigger>
-          <:content as |args|>
-            <div class="workflow-sticky-note__color-picker">
-              {{#each this.colorOptions as |colorOpt|}}
-                <button
-                  type="button"
-                  class={{concatClass
-                    "workflow-sticky-note__color-swatch"
-                    (if (eq @note.color colorOpt.name) "is-active")
-                  }}
-                  style={{swatchStyle colorOpt.bg}}
-                  title={{colorOpt.name}}
-                  {{on "click" (fn this.selectColor colorOpt.name args.close)}}
-                />
-              {{/each}}
-            </div>
-          </:content>
-        </DMenu>
-        <button
-          type="button"
-          class="workflow-canvas-toolbar__btn"
-          title={{i18n "discourse_workflows.sticky_note.delete"}}
-          {{on "pointerdown" stopPropagation}}
-          {{on "click" this.handleDelete}}
+        </DTooltip>
+        <DTooltip
+          @identifier="sticky-note-delete"
+          @content={{i18n "discourse_workflows.sticky_note.delete"}}
         >
-          {{icon "trash-can"}}
-        </button>
+          <:trigger>
+            <button
+              type="button"
+              class="workflow-canvas-toolbar__btn"
+              {{on "pointerdown" stopPropagation}}
+              {{on "click" this.handleDelete}}
+            >
+              {{icon "trash-can"}}
+            </button>
+          </:trigger>
+        </DTooltip>
       </CanvasHoverToolbar>
 
       <div class="workflow-sticky-note__content">

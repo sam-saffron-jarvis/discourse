@@ -1,5 +1,6 @@
 import { fn } from "@ember/helper";
 import { on } from "@ember/modifier";
+import DTooltip from "discourse/float-kit/components/d-tooltip";
 import icon from "discourse/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import CanvasHoverToolbar from "./hover-toolbar";
@@ -15,21 +16,33 @@ function stopAndCall(callback, e) {
     @visibilityQuery=".workflow-connection__toolbar-fo"
     @inline={{true}}
   >
-    <button
-      type="button"
-      class="workflow-canvas-toolbar__btn"
-      title={{i18n "discourse_workflows.canvas.add_step"}}
-      {{on "click" (fn stopAndCall @onAdd)}}
+    <DTooltip
+      @identifier="workflow-connection-add-step"
+      @content={{i18n "discourse_workflows.canvas.add_step"}}
     >
-      {{icon "plus"}}
-    </button>
-    <button
-      type="button"
-      class="workflow-canvas-toolbar__btn"
-      title={{i18n "discourse_workflows.canvas.remove_connection"}}
-      {{on "click" (fn stopAndCall @onDelete)}}
+      <:trigger>
+        <button
+          type="button"
+          class="workflow-canvas-toolbar__btn"
+          {{on "click" (fn stopAndCall @onAdd)}}
+        >
+          {{icon "plus"}}
+        </button>
+      </:trigger>
+    </DTooltip>
+    <DTooltip
+      @identifier="workflow-connection-remove"
+      @content={{i18n "discourse_workflows.canvas.remove_connection"}}
     >
-      {{icon "trash-can"}}
-    </button>
+      <:trigger>
+        <button
+          type="button"
+          class="workflow-canvas-toolbar__btn"
+          {{on "click" (fn stopAndCall @onDelete)}}
+        >
+          {{icon "trash-can"}}
+        </button>
+      </:trigger>
+    </DTooltip>
   </CanvasHoverToolbar>
 </template>
