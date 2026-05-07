@@ -94,7 +94,7 @@ export default class VariablesManager extends CrudManager {
           @emoji="👋"
           @title={{i18n
             "discourse_workflows.variables.empty_title"
-            username=this.currentUser.username
+            username=this.currentUser.displayName
           }}
           @description={{i18n
             "discourse_workflows.variables.empty_description"

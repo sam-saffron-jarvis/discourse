@@ -74,7 +74,7 @@ export default class WorkflowsIndex extends Component {
           @emoji="👋"
           @title={{i18n
             "discourse_workflows.empty_title"
-            username=this.currentUser.username
+            username=this.currentUser.displayName
           }}
           @description={{i18n "discourse_workflows.empty_description"}}
           @buttonLabel="discourse_workflows.create_first_workflow"

@@ -16,7 +16,6 @@ const STATUS_ICONS = {
   error: "circle-xmark",
   running: "spinner",
   waiting: "clock",
-
 };
 
 function statusIcon(status) {
@@ -135,7 +134,7 @@ export default class ExecutionsManager extends Component {
           @emoji="👋"
           @title={{i18n
             "discourse_workflows.executions.empty_title"
-            username=this.currentUser.username
+            username=this.currentUser.displayName
           }}
           @description={{i18n
             "discourse_workflows.executions.empty_description"

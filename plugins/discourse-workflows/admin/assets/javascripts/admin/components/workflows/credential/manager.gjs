@@ -98,7 +98,7 @@ export default class CredentialsManager extends CrudManager {
           @emoji="🔐"
           @title={{i18n
             "discourse_workflows.credentials.empty_title"
-            username=this.currentUser.username
+            username=this.currentUser.displayName
           }}
           @description={{i18n
             "discourse_workflows.credentials.empty_description"

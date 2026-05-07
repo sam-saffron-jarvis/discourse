@@ -89,7 +89,7 @@ export default class DataTablesManager extends CrudManager {
           @emoji="👋"
           @title={{i18n
             "discourse_workflows.data_tables.empty_title"
-            username=this.currentUser.username
+            username=this.currentUser.displayName
           }}
           @description={{i18n
             "discourse_workflows.data_tables.empty_description"
