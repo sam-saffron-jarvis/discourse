@@ -7,6 +7,8 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
   fab!(:group)
 
   let(:assign_allowed_group) { Group.find_by(name: "staff") }
+  let(:sandbox) { DiscourseWorkflows::JsSandbox.new({ "$json" => {} }) }
+  after { sandbox.dispose }
 
   before do
     SiteSetting.discourse_workflows_enabled = true
@@ -16,14 +18,20 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
   def execute_node(configuration:, item:, run_as_user: Discourse.system_user)
     action = described_class.new(configuration: configuration)
     input_items = [item]
-    resolver = DiscourseWorkflows::ExpressionResolver.new({ "$json" => item.fetch("json") { {} } })
+    resolver =
+      DiscourseWorkflows::ExpressionResolver.new(
+        { "$json" => item.fetch("json") { {} } },
+        sandbox: sandbox,
+      )
     exec_ctx =
-      DiscourseWorkflows::NodeExecutionContext.new(
+      DiscourseWorkflows::Executor::NodeExecutionContext.new(
         input_items: input_items,
-        run_as_user: run_as_user,
+        user: run_as_user,
         resolver: resolver,
         configuration: configuration,
-        configuration_schema: described_class.configuration_schema,
+        property_schema: described_class.property_schema,
+        node_context: {
+        },
       )
     items = action.execute(exec_ctx)[0]
     items.first["json"]
@@ -42,8 +50,9 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
 
         result = execute_node(configuration: config, item: item)
 
-        expect(result["assigned_user"]["user_id"]).to eq(user.id)
-        expect(result["assigned_user"]["username"]).to eq(user.username)
+        expect(result["assignee"]["type"]).to eq("user")
+        expect(result["assignee"]["user"]["user_id"]).to eq(user.id)
+        expect(result["assignee"]["user"]["username"]).to eq(user.username)
         expect(Assignment.exists?(target: topic, assigned_to: user)).to eq(true)
       end
 
@@ -55,7 +64,9 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
 
         result = execute_node(configuration: config, item: item)
 
-        expect(result["assigned_user"]["user_id"]).to be_nil
+        expect(result["assignee"]["type"]).to eq("group")
+        expect(result["assignee"]["group"]["id"]).to eq(group.id)
+        expect(result["assignee"]["group"]["name"]).to eq(group.name)
         expect(Assignment.exists?(target: topic, assigned_to: group)).to eq(true)
       end
 
@@ -66,7 +77,9 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
           "assignee" => "nonexistent",
         }
 
-        expect { execute_node(configuration: config, item: item) }.to raise_error(RuntimeError)
+        expect { execute_node(configuration: config, item: item) }.to raise_error(
+          ActiveRecord::RecordNotFound,
+        )
       end
 
       context "when topic is already assigned" do
@@ -83,8 +96,9 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
 
           result = execute_node(configuration: config, item: item)
 
-          expect(result["assigned_user"]["username"]).to eq(user.username)
-          expect(result["unassigned_user"]["username"]).to eq(other_user.username)
+          expect(result["assignee"]["user"]["username"]).to eq(user.username)
+          expect(result["previously_assigned"]["type"]).to eq("user")
+          expect(result["previously_assigned"]["user"]["username"]).to eq(other_user.username)
           expect(Assignment.find_by(target: topic).assigned_to).to eq(user)
         end
 
@@ -98,7 +112,7 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
 
           result = execute_node(configuration: config, item: item)
 
-          expect(result["assigned_user"]["username"]).to eq(user.username)
+          expect(result["assignee"]["user"]["username"]).to eq(user.username)
           expect(Assignment.find_by(target: topic).assigned_to).to eq(user)
         end
 
@@ -137,7 +151,8 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
 
         result = execute_node(configuration: config, item: item)
 
-        expect(result["unassigned_user"]["username"]).to eq(user.username)
+        expect(result["previously_assigned"]["type"]).to eq("user")
+        expect(result["previously_assigned"]["user"]["username"]).to eq(user.username)
         expect(Assignment.exists?(target: topic)).to eq(false)
       end
 

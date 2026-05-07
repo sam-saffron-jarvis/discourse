@@ -13,7 +13,7 @@ if defined?(DiscourseWorkflows)
                         },
                         resolver: ->(topic) do
                           assignment = Assignment.find_by(target: topic)
-                            { assigned_to: assignment&.assigned_to&.display_name }
+                          { assigned_to: assignment&.assigned_to&.display_name }
                         end
 
           def self.identifier
@@ -73,29 +73,26 @@ if defined?(DiscourseWorkflows)
 
           def self.output_schema
             {
-              assigned_user: {
+              assignee: {
                 type: :object,
-                fields: DiscourseWorkflows::Schemas::User.fields,
+                fields: DiscourseWorkflows::Schemas::Assignee.fields,
                 visible_if: {
                   operation: "assign",
                 },
               },
-              unassigned_user: {
+              previously_assigned: {
                 type: :object,
-                fields: DiscourseWorkflows::Schemas::User.fields,
-                visible_if: {
-                  operation: "unassign",
-                },
+                fields: DiscourseWorkflows::Schemas::Assignee.fields,
               },
             }
           end
 
           def execute(exec_ctx)
-            run_as_user = exec_ctx.run_as_user
+            actor = exec_ctx.user
             items =
               exec_ctx.input_items.map do |item|
                 config = exec_ctx.get_parameters(item)
-                result = process(run_as_user, config)
+                result = process(actor, config)
                 wrap(result)
               end
             [items]
@@ -103,22 +100,21 @@ if defined?(DiscourseWorkflows)
 
           private
 
-          def process(run_as_user, config)
+          def process(actor, config)
             topic = Topic.find(config["topic_id"])
-            assigner = ::Assigner.new(topic, run_as_user)
+            assigner = ::Assigner.new(topic, actor)
+            previously_assigned = topic.assignment&.assigned_to
 
             case config["operation"]
             when "unassign"
-              previously_assigned = topic.assignment&.assigned_to
-              previous_user = previously_assigned.is_a?(User) ? previously_assigned : nil
               assigner.unassign
 
-              { unassigned_user: DiscourseWorkflows::Schemas::User.resolve(previous_user) }
+              {
+                previously_assigned:
+                  DiscourseWorkflows::Schemas::Assignee.resolve(previously_assigned),
+              }
             else
               assignee = find_assignee(config["assignee"])
-
-              previously_assigned = topic.assignment&.assigned_to
-              previous_user = previously_assigned.is_a?(User) ? previously_assigned : nil
               assigner.unassign if config["replace_existing"] != false && topic.assignment
 
               result = assigner.assign(assignee)
@@ -130,22 +126,16 @@ if defined?(DiscourseWorkflows)
                       )
               end
 
-              assigned_user = assignee.is_a?(User) ? assignee : nil
               {
-                assigned_user: DiscourseWorkflows::Schemas::User.resolve(assigned_user),
-                unassigned_user: DiscourseWorkflows::Schemas::User.resolve(previous_user),
+                assignee: DiscourseWorkflows::Schemas::Assignee.resolve(assignee),
+                previously_assigned:
+                  DiscourseWorkflows::Schemas::Assignee.resolve(previously_assigned),
               }
             end
           end
 
           def find_assignee(identifier)
-            User.find_by(username: identifier) || ::Group.find_by(name: identifier) ||
-              raise(
-                I18n.t(
-                  "discourse_assign.discourse_workflows.assign_topic.assignee_not_found",
-                  assignee: identifier,
-                ),
-              )
+            User.find_by(username: identifier) || ::Group.find_by!(name: identifier)
           end
         end
       end
