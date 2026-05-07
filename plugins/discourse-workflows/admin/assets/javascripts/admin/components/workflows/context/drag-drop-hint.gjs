@@ -1,19 +1,19 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { on } from "@ember/modifier";
+import { service } from "@ember/service";
 import icon from "discourse/helpers/d-icon";
-import KeyValueStore from "discourse/lib/key-value-store";
 import { i18n } from "discourse-i18n";
 
-const STORE_NAMESPACE = "discourse_workflows_";
-const HINT_DISMISSED_KEY = "drag-drop-hint-dismissed";
-const store = new KeyValueStore(STORE_NAMESPACE);
+const HINT_DISMISSED_KEY = "workflows-drag-drop-hint-dismissed";
 
 export default class DragDropHint extends Component {
-  @tracked dismissed = store.get(HINT_DISMISSED_KEY) === "true";
+  @service keyValueStore;
+
+  @tracked dismissed = this.keyValueStore.get(HINT_DISMISSED_KEY) === "true";
 
   dismiss = () => {
-    store.set({ key: HINT_DISMISSED_KEY, value: "true" });
+    this.keyValueStore.set({ key: HINT_DISMISSED_KEY, value: "true" });
     this.dismissed = true;
   };
 
