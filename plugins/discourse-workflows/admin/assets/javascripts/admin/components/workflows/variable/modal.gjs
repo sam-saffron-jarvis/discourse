@@ -5,11 +5,23 @@ import Form from "discourse/components/form";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { i18n } from "discourse-i18n";
 
+const KEY_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 export default class VariableModal extends Component {
   formData = {
     key: this.args.model.variable?.key || "",
     value: this.args.model.variable?.value || "",
   };
+
+  @action
+  validateKey(name, value, { addError }) {
+    if (value && !KEY_PATTERN.test(value)) {
+      addError(name, {
+        title: i18n("discourse_workflows.variables.key"),
+        message: i18n("discourse_workflows.variables.key_invalid"),
+      });
+    }
+  }
 
   @action
   async handleSubmit(data) {
@@ -43,6 +55,7 @@ export default class VariableModal extends Component {
             @type="input"
             @format="full"
             @validation="required"
+            @validate={{this.validateKey}}
             as |field|
           >
             <field.Control

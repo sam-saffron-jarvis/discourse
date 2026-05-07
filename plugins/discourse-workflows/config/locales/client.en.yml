@@ -574,6 +574,7 @@ en:
         add: "Add variable"
         key: "Key"
         key_placeholder: "my_variable"
+        key_invalid: "Must start with a letter or underscore and contain only letters, numbers, and underscores."
         value: "Value"
         value_placeholder: "Variable value"
         no_variables: "No variables defined yet."
