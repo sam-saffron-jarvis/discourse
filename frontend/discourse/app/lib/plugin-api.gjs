@@ -784,6 +784,10 @@ class _PluginApi {
   /**
    * Add a new button in the topic admin menu.
    *
+   * Optionally pass a `section` to group buttons under a labelled subheader.
+   * Adjacent buttons sharing the same `section.id` are grouped together;
+   * provide either an i18n `label` key or a pre-translated `translatedLabel`.
+   *
    * Example:
    *
    * ```
@@ -795,6 +799,7 @@ class _PluginApi {
    *     icon: 'mug-saucer',
    *     className: 'hot-coffee',
    *     label: 'coffee.title',
+   *     section: { id: 'beverages', label: 'beverages.title' },
    *   };
    * });
    * ```

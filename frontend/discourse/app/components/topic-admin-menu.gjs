@@ -13,6 +13,7 @@ import DDropdownMenu from "discourse/ui-kit/d-dropdown-menu";
 import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 import dIcon from "discourse/ui-kit/helpers/d-icon";
 
+
 export default class TopicAdminMenu extends Component {
   @service adminTopicMenuButtons;
   @service currentUser;
@@ -41,6 +42,35 @@ export default class TopicAdminMenu extends Component {
         return callback(this.args.topic);
       })
       .filter(Boolean);
+  }
+
+  get extraButtonGroups() {
+    const groups = [];
+    let currentGroup = null;
+
+    for (const button of this.extraButtons) {
+      const sectionId = button.section?.id ?? null;
+
+      if (!currentGroup || currentGroup.id !== sectionId) {
+        let sectionLabel = null;
+        if (button.section) {
+          sectionLabel =
+            button.section.translatedLabel ??
+            (button.section.label ? i18n(button.section.label) : null);
+        }
+
+        currentGroup = {
+          id: sectionId,
+          label: sectionLabel,
+          buttons: [],
+        };
+        groups.push(currentGroup);
+      }
+
+      currentGroup.buttons.push(button);
+    }
+
+    return groups;
   }
 
   get details() {
@@ -338,16 +368,30 @@ export default class TopicAdminMenu extends Component {
                 </dropdown.item>
               {{/if}}
 
-              {{#each this.extraButtons as |button|}}
+
+              {{#each this.extraButtonGroups as |group index|}}
+                {{#if group.label}}
+                  {{#if
+                    (or
+                      this.currentUser.staff this.showNestedRepliesToggle index
+                    )
+                  }}
+                    <dropdown.divider />
+                  {{/if}}
+                  <dropdown.subheader>{{group.label}}</dropdown.subheader>
+                {{/if}}
+
+                {{#each group.buttons as |button|}}
                 <dropdown.item>
-                  <DButton
+                    <DButton
                     @label={{button.label}}
                     @translatedLabel={{button.translatedLabel}}
                     @icon={{button.icon}}
                     class={{dConcatClass "btn-transparent" button.className}}
                     @action={{fn this.onExtraButtonAction button.action}}
-                  />
+                    />
                 </dropdown.item>
+                {{/each}}
               {{/each}}
             {{/if}}
           </DDropdownMenu>

@@ -25,6 +25,10 @@ export default {
             icon: entry.icon,
             translatedLabel: entry.label,
             className: `workflow-topic-admin-btn-${entry.workflow_id}`,
+            section: {
+              id: "discourse-workflows",
+              label: "discourse_workflows.title",
+            },
             action: () => {
               ajax("/discourse-workflows/trigger-topic-admin-button", {
                 type: "POST",
