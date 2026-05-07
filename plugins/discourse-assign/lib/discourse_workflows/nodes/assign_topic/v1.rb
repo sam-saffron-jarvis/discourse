@@ -13,15 +13,7 @@ if defined?(DiscourseWorkflows)
                         },
                         resolver: ->(topic) do
                           assignment = Assignment.find_by(target: topic)
-                          if assignment
-                            {
-                              assigned_to:
-                                assignment.assigned_to.try(:username) ||
-                                  assignment.assigned_to.try(:name),
-                            }
-                          else
-                            { assigned_to: nil }
-                          end
+                            { assigned_to: assignment&.assigned_to&.display_name }
                         end
 
           def self.identifier
