@@ -135,6 +135,8 @@ export default class WorkflowsIndex extends Component {
         <td class="workflows-index__last-run">
           {{#if workflow.last_execution_at}}
             {{formatDate workflow.last_execution_at format="medium"}}
+          {{else}}
+            {{i18n "discourse_workflows.last_execution_never"}}
           {{/if}}
         </td>
         <td class="workflows-index__status">
