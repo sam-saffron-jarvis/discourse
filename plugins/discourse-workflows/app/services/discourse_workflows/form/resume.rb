@@ -7,10 +7,15 @@ module DiscourseWorkflows
     policy :workflows_enabled, class_name: DiscourseWorkflows::Policy::WorkflowsEnabled
 
     params do
+      attribute :action_token, :string
       attribute :resume_token, :string
+      attribute :action_type, :string
       attribute :form_data, default: -> { {} }
 
+      before_validation { self.resume_token, self.action_type = action_token.to_s.split(":", 2) }
+
       validates :resume_token, presence: true
+      validates :action_type, presence: true
       validate :form_data_must_be_hash
 
       def form_data_must_be_hash

@@ -3,9 +3,17 @@
 RSpec.describe DiscourseWorkflows::Form::Resume do
   describe described_class::Contract, type: :model do
     it { is_expected.to validate_presence_of(:resume_token) }
+    it { is_expected.to validate_presence_of(:action_type) }
+
+    it "splits action_token into resume_token and action_type before validation" do
+      contract = described_class.new(action_token: "tok-123:submit")
+      contract.valid?
+      expect(contract.resume_token).to eq("tok-123")
+      expect(contract.action_type).to eq("submit")
+    end
 
     it "requires form_data to be a hash" do
-      contract = described_class.new(resume_token: "token", form_data: "not_a_hash")
+      contract = described_class.new(action_token: "tok:submit", form_data: "not_a_hash")
       expect(contract).not_to be_valid
       expect(contract.errors[:form_data]).to include("is invalid")
     end
@@ -45,7 +53,8 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
     end
 
     let(:form_data) { { "feedback" => "Looks good" } }
-    let(:params) { { resume_token: resume_token, form_data: form_data } }
+    let(:action_type) { "submit" }
+    let(:params) { { action_token: "#{resume_token}:#{action_type}", form_data: form_data } }
 
     context "when workflows are disabled" do
       before { SiteSetting.discourse_workflows_enabled = false }
@@ -54,7 +63,7 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
     end
 
     context "when contract is invalid" do
-      let(:params) { { resume_token: nil } }
+      let(:params) { { action_token: nil } }
 
       it { is_expected.to fail_a_contract }
     end
