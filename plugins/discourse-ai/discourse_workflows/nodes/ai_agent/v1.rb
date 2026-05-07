@@ -97,7 +97,7 @@ if defined?(DiscourseWorkflows)
             agent_record =
               ::AiAgent.find_by(id: agent_id) || raise("AI Agent with id #{agent_id} not found")
 
-            raise "AI Agent '#{agent_record.name}' is disabled" if !agent_record.enabled
+            raise("AI Agent '#{agent_record.name}' is disabled") if !agent_record.enabled
 
             log.info("Agent: #{agent_record.name}")
             log.info("LLM: #{agent_record.default_llm_id}")
