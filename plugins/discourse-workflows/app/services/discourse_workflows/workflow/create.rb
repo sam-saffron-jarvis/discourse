@@ -31,6 +31,7 @@ module DiscourseWorkflows
       DiscourseWorkflows::Workflow.create(
         name: params.name,
         created_by: guardian.user,
+        updated_by: guardian.user,
         enabled: false,
       )
     end

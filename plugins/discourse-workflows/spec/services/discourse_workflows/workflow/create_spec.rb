@@ -73,6 +73,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Create do
         expect(result[:workflow]).to have_attributes(
           name: "My Workflow",
           created_by: user,
+          updated_by: user,
           enabled: false,
         )
       end
