@@ -126,12 +126,10 @@ module DiscourseDataExplorer
             DiscourseDataExplorer::Queries.default.filter_map do |_, attributes|
               next if persisted_ids.include?(attributes[:id])
               DiscourseDataExplorer::Query.new(
-                  id: attributes[:id],
-                  name: attributes[:name],
-                  sql: attributes[:sql],
-                ) do |q|
-                q.user_id = Discourse::SYSTEM_USER_ID
-              end
+                id: attributes[:id],
+                name: attributes[:name],
+                sql: attributes[:sql],
+              ) { |q| q.user_id = Discourse::SYSTEM_USER_ID }
             end
 
           all_queries = (persisted + unpersisted_defaults).sort_by(&:name)

@@ -30,7 +30,10 @@ module DiscourseWorkflows
         newly_stale.each do |topic|
           trigger = DiscourseWorkflows::Nodes::StaleTopic::V1.new(topic)
 
-          DiscourseWorkflows::TriggerDispatcher.enqueue(published_trigger, trigger_data: trigger.output)
+          DiscourseWorkflows::TriggerDispatcher.enqueue(
+            published_trigger,
+            trigger_data: trigger.output,
+          )
         end
       end
     end

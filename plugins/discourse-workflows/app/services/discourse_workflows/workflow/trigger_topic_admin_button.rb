@@ -22,7 +22,9 @@ module DiscourseWorkflows
     def fetch_published_trigger(params:)
       DiscourseWorkflows::Workflow::Action::FindPublishedTriggers.call(
         trigger_type: "trigger:topic_admin_button",
-        filter: ->(published_trigger) { published_trigger.trigger_node_id == params.trigger_node_id },
+        filter: ->(published_trigger) do
+          published_trigger.trigger_node_id == params.trigger_node_id
+        end,
       ).first
     end
 
