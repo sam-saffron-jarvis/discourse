@@ -185,7 +185,7 @@ end
 #  updated_at      :datetime         not null
 #  trigger_node_id :string
 #  waiting_node_id :string
-#  workflow_id     :integer          not null
+#  workflow_id     :bigint           not null
 #
 # Indexes
 #

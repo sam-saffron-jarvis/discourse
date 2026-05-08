@@ -235,7 +235,7 @@ end
 #  updated_at           :datetime         not null
 #  created_by_id        :integer          not null
 #  draft_version_id     :bigint
-#  error_workflow_id    :integer
+#  error_workflow_id    :bigint
 #  published_version_id :bigint
 #  updated_by_id        :integer
 #

@@ -67,11 +67,13 @@ end
 #  dependency_type      :string(50)       not null
 #  created_at           :datetime         not null
 #  node_id              :string(100)
-#  workflow_id          :integer          not null
+#  published_version_id :bigint
+#  workflow_id          :bigint           not null
 #  workflow_version_id  :bigint
 #
 # Indexes
 #
+#  idx_dwf_deps_published_version_id                               (published_version_id)
 #  idx_dwf_deps_workflow_version_id                                (workflow_version_id)
 #  idx_workflow_deps_type_key                                      (dependency_type,dependency_key)
 #  index_discourse_workflows_workflow_dependencies_on_workflow_id  (workflow_id)
