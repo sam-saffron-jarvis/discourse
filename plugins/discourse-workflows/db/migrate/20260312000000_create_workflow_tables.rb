@@ -9,7 +9,7 @@ class CreateWorkflowTables < ActiveRecord::Migration[7.2]
       t.jsonb :connections, default: []
       t.jsonb :static_data, default: {}
       t.jsonb :settings
-      t.integer :error_workflow_id
+      t.bigint :error_workflow_id
       t.string :run_as_username, default: "system"
       t.integer :created_by_id, null: false
       t.integer :updated_by_id
@@ -22,7 +22,7 @@ class CreateWorkflowTables < ActiveRecord::Migration[7.2]
     add_index :discourse_workflows_workflows, :nodes, using: :gin, name: "idx_workflows_nodes_gin"
 
     create_table :discourse_workflows_executions do |t|
-      t.integer :workflow_id, null: false
+      t.bigint :workflow_id, null: false
       t.integer :status, null: false, default: 0
       t.integer :execution_mode, default: 0, null: false
       t.jsonb :trigger_data, default: {}
@@ -89,7 +89,7 @@ class CreateWorkflowTables < ActiveRecord::Migration[7.2]
     add_index :discourse_workflows_credentials, :credential_type
 
     create_table :discourse_workflows_workflow_dependencies do |t|
-      t.integer :workflow_id, null: false
+      t.bigint :workflow_id, null: false
       t.string :dependency_type, null: false, limit: 50
       t.string :dependency_key, null: false, limit: 500
       t.string :node_id, limit: 100
