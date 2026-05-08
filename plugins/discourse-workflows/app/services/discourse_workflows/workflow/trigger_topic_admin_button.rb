@@ -13,42 +13,27 @@ module DiscourseWorkflows
     end
 
     policy :can_manage_workflows, class_name: Policy::CanManageWorkflows
-    model :workflow
-    model :trigger_node
+    model :published_trigger
     model :topic
     step :enqueue_workflow
 
     private
 
-    def fetch_workflow(params:)
-      DiscourseWorkflows::WorkflowDependency
-        .joins(:workflow)
-        .where(
-          dependency_type: "node_type",
-          dependency_key: "trigger:topic_admin_button",
-          node_id: params.trigger_node_id,
-          discourse_workflows_workflows: {
-            enabled: true,
-          },
-        )
-        .first
-        &.workflow
-    end
-
-    def fetch_trigger_node(params:, workflow:)
-      workflow.find_node(params.trigger_node_id)
+    def fetch_published_trigger(params:)
+      DiscourseWorkflows::Workflow::Action::FindPublishedTriggers.call(
+        trigger_type: "trigger:topic_admin_button",
+        filter: ->(published_trigger) { published_trigger.trigger_node_id == params.trigger_node_id },
+      ).first
     end
 
     def fetch_topic(params:)
       Topic.find_by(id: params.topic_id)
     end
 
-    def enqueue_workflow(workflow:, trigger_node:, topic:, guardian:)
+    def enqueue_workflow(published_trigger:, topic:, guardian:)
       trigger = DiscourseWorkflows::Nodes::TopicAdminButton::V1.new(topic)
-      Jobs.enqueue(
-        Jobs::DiscourseWorkflows::ExecuteWorkflow,
-        workflow_id: workflow.id,
-        trigger_node_id: trigger_node["id"],
+      DiscourseWorkflows::TriggerDispatcher.enqueue(
+        published_trigger,
         trigger_data: trigger.output,
         user_id: guardian.user.id,
       )

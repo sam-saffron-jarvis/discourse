@@ -19,10 +19,10 @@ RSpec.describe SiteSerializer do
                    "icon" => "bolt",
                  }
         end
-      Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
     end
 
-    it "includes enabled topic admin button workflows" do
+    it "includes published topic admin button workflows" do
       data = described_class.new(Site.new(guardian), scope: guardian, root: false).as_json
 
       expect(data[:topic_admin_button_workflows]).to contain_exactly(
@@ -53,15 +53,15 @@ RSpec.describe SiteSerializer do
       update_workflow_node(workflow, "trigger-1") do |node|
         node.merge("configuration" => { "label" => "Run workflow" })
       end
-      DiscourseWorkflows::WorkflowDependency.clear_cache!
+      publish_workflow!(workflow)
 
       data = described_class.new(Site.new(guardian), scope: guardian, root: false).as_json
 
       expect(data[:topic_admin_button_workflows].first[:icon]).to be_nil
     end
 
-    it "excludes disabled workflows" do
-      workflow.update!(enabled: false)
+    it "excludes unpublished workflows" do
+      unpublish_workflow!(workflow)
       DiscourseWorkflows::WorkflowDependency.clear_cache!
 
       data = described_class.new(Site.new(guardian), scope: guardian, root: false).as_json

@@ -19,7 +19,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "wait-1", "after-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       freeze_time do
         execution = described_class.new(workflow, "trigger-1", {}).run
@@ -52,7 +53,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "form-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       allow(MessageBus).to receive(:publish)
 
@@ -79,7 +81,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "wait-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       freeze_time do
         execution = described_class.new(workflow, "trigger-1", {}).run
@@ -105,7 +108,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "wait-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       freeze_time do
         execution = described_class.new(workflow, "trigger-1", {}).run
@@ -136,7 +140,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "wait-1", "after-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       execution = described_class.new(workflow, "trigger-1", {}).run
       expect(execution.status).to eq("waiting")

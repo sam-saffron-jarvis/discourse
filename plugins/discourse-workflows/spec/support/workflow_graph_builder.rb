@@ -48,9 +48,37 @@ def build_workflow_graph
 end
 
 def workflow_nodes_with_update(workflow, node_id)
-  workflow.nodes.map { |node| node["id"] == node_id ? yield(node) : node }
+  workflow.nodes.map do |workflow_node|
+    node = workflow_node.deep_dup
+    next node unless node["id"] == node_id
+
+    updated_node = yield node
+    updated_node.is_a?(Hash) ? updated_node : node
+  end
 end
 
 def update_workflow_node(workflow, node_id, &block)
   workflow.update!(nodes: workflow_nodes_with_update(workflow, node_id, &block))
+end
+
+def publish_workflow!(workflow)
+  version =
+    workflow.workflow_versions.create!(
+      version_number: workflow.next_version_number,
+      name: workflow.name,
+      nodes: workflow.nodes,
+      connections: workflow.connections,
+      settings: workflow.settings || {},
+      static_data: workflow.static_data || {},
+      created_by: workflow.created_by,
+      updated_by: workflow.updated_by,
+    )
+
+  workflow.update!(draft_version: version, published_version: version)
+  DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow, version:)
+  workflow.reload
+end
+
+def unpublish_workflow!(workflow)
+  workflow.update!(published_version: nil)
 end

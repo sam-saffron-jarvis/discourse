@@ -11,7 +11,7 @@ RSpec.describe DiscourseWorkflows::Execution::CheckStaleTopics do
         build_workflow_graph do |g|
           g.node "trigger-1", "trigger:stale_topic", configuration: { "hours" => 24 }
         end
-      Fabricate(:discourse_workflows_workflow, enabled: true, created_by: admin, **graph)
+      Fabricate(:discourse_workflows_workflow, published: true, created_by: admin, **graph)
     end
 
     context "when plugin is disabled" do
@@ -20,8 +20,8 @@ RSpec.describe DiscourseWorkflows::Execution::CheckStaleTopics do
       it { is_expected.to fail_a_policy(:workflows_enabled) }
     end
 
-    context "when no enabled stale topic trigger nodes exist" do
-      before { workflow.update!(enabled: false) }
+    context "when no published stale topic trigger nodes exist" do
+      before { unpublish_workflow!(workflow) }
 
       it { is_expected.to fail_to_find_a_model(:stale_trigger_nodes) }
     end
@@ -37,6 +37,7 @@ RSpec.describe DiscourseWorkflows::Execution::CheckStaleTopics do
         expect(job_args).to include(
           "trigger_node_id" => "trigger-1",
           "workflow_id" => workflow.id,
+          "workflow_version_id" => workflow.published_version_id,
           "trigger_data" => include("topic" => include("id" => topic.id)),
         )
       end

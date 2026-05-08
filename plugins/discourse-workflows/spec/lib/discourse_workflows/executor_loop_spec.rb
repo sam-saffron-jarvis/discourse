@@ -38,7 +38,8 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.chain "process-1", "loop-1"
           g.connect "loop-1", "done-1", output: "done"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       trigger_data = {}
       execution = described_class.new(workflow, "trigger-1", trigger_data).run
@@ -74,7 +75,8 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.chain "process-1", "loop-1"
           g.connect "loop-1", "done-1", output: "done"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       trigger_data = { items: [{ name: "a" }, { name: "b" }, { name: "c" }] }
       execution = described_class.new(workflow, "trigger-1", trigger_data).run

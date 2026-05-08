@@ -4,9 +4,11 @@ module DiscourseWorkflows
   class WorkflowSerializer < ApplicationSerializer
     attributes :id,
                :name,
-               :enabled,
                :nodes,
                :connections,
+               :draft_version_id,
+               :published_version_id,
+               :has_unpublished_changes,
                :error_workflow_id,
                :error_workflow_name,
                :created_at,
@@ -24,6 +26,10 @@ module DiscourseWorkflows
 
     def connections
       object.connections || []
+    end
+
+    def has_unpublished_changes
+      object.has_unpublished_changes?
     end
 
     def created_by

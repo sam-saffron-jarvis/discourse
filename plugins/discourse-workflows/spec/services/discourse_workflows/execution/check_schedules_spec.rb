@@ -11,7 +11,7 @@ RSpec.describe DiscourseWorkflows::Execution::CheckSchedules do
         build_workflow_graph do |g|
           g.node "trigger-1", "trigger:schedule", configuration: configuration
         end
-      Fabricate(:discourse_workflows_workflow, enabled: true, created_by: user, **graph)
+      Fabricate(:discourse_workflows_workflow, published: true, created_by: user, **graph)
     end
 
     context "when plugin is disabled" do
@@ -34,6 +34,7 @@ RSpec.describe DiscourseWorkflows::Execution::CheckSchedules do
 
         job = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last
         expect(job["args"].first["workflow_id"]).to eq(workflow.id)
+        expect(job["args"].first["workflow_version_id"]).to eq(workflow.published_version_id)
       end
     end
 
@@ -231,14 +232,16 @@ RSpec.describe DiscourseWorkflows::Execution::CheckSchedules do
       end
     end
 
-    context "when workflow is disabled" do
+    context "when workflow is unpublished" do
       it "does not enqueue" do
         freeze_time Time.utc(2026, 3, 18, 9, 0)
-        create_schedule_workflow(
-          configuration: {
-            "rules" => [{ "interval" => "cron", "cron" => "0 9 * * *" }],
-          },
-        ).update!(enabled: false)
+        workflow =
+          create_schedule_workflow(
+            configuration: {
+              "rules" => [{ "interval" => "cron", "cron" => "0 9 * * *" }],
+            },
+          )
+        unpublish_workflow!(workflow)
 
         expect { result }.not_to change { Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size }
       end

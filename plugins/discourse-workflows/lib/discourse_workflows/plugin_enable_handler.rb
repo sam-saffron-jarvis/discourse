@@ -24,11 +24,22 @@ module DiscourseWorkflows
     end
 
     def restart_seconds_chains!
-      Workflow.enabled.find_each do |workflow|
-        workflow.each_seconds_schedule_rule do |node, rule, rule_index|
-          ScheduleRule.start_seconds_chain!(workflow, node["id"], rule_index, rule)
+      Workflow
+        .published
+        .includes(:published_version)
+        .find_each do |workflow|
+          workflow.each_seconds_schedule_rule(published: true) do |node, rule, rule_index|
+            ScheduleRule.start_seconds_chain!(
+              DiscourseWorkflows::PublishedTrigger.new(
+                workflow: workflow,
+                workflow_version: workflow.published_version,
+                trigger_node: node,
+              ),
+              rule_index,
+              rule,
+            )
+          end
         end
-      end
     end
   end
 end

@@ -74,8 +74,8 @@ RSpec.describe DiscourseWorkflows::Workflow::Create do
           name: "My Workflow",
           created_by: user,
           updated_by: user,
-          enabled: false,
         )
+        expect(result[:workflow]).not_to be_published
       end
 
       it "populates the workflow graph" do
@@ -83,6 +83,17 @@ RSpec.describe DiscourseWorkflows::Workflow::Create do
         workflow = result[:workflow].reload
         expect(workflow.nodes.size).to eq(2)
         expect(workflow.connections.size).to eq(1)
+      end
+
+      it "creates a draft version" do
+        result
+        workflow = result[:workflow].reload
+        expect(workflow.draft_version).to have_attributes(
+          name: "My Workflow",
+          nodes: workflow.nodes,
+          connections: workflow.connections,
+        )
+        expect(workflow.published_version_id).to be_nil
       end
 
       it "logs a staff action" do

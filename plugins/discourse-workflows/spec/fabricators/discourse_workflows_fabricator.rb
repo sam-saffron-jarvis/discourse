@@ -1,9 +1,28 @@
 # frozen_string_literal: true
 
 Fabricator(:discourse_workflows_workflow, class_name: "DiscourseWorkflows::Workflow") do
+  transient :published
+
   name { sequence(:name) { |n| "Workflow #{n}" } }
   created_by { Fabricate(:user) }
-  after_create { |workflow| DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow) }
+  after_create do |workflow, attrs|
+    version =
+      workflow.workflow_versions.create!(
+        version_number: workflow.next_version_number,
+        name: workflow.name,
+        nodes: workflow.nodes || [],
+        connections: workflow.connections || [],
+        settings: workflow.settings || {},
+        static_data: workflow.static_data || {},
+        created_by: workflow.created_by,
+        updated_by: workflow.updated_by,
+      )
+    workflow.update_columns(
+      draft_version_id: version.id,
+      published_version_id: attrs[:published] ? version.id : nil,
+    )
+    DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow.reload, version:)
+  end
 end
 
 Fabricator(:discourse_workflows_execution, class_name: "DiscourseWorkflows::Execution") do

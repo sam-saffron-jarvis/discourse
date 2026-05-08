@@ -16,7 +16,7 @@ RSpec.describe "Data Table workflow integration" do
     )
   end
 
-  fab!(:workflow) { Fabricate(:discourse_workflows_workflow, enabled: true, created_by: admin) }
+  fab!(:workflow) { Fabricate(:discourse_workflows_workflow, published: true, created_by: admin) }
 
   before do
     graph =
@@ -43,7 +43,7 @@ RSpec.describe "Data Table workflow integration" do
       end
 
     workflow.update!(**graph)
-    DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+    publish_workflow!(workflow)
   end
 
   it "inserts a data table row when a post is created" do
@@ -80,6 +80,7 @@ RSpec.describe "Data Table workflow integration" do
     columns = action_node["configuration"]["columns"]
     columns["post_author"] = columns.delete("author")
     workflow.update!(nodes: nodes)
+    publish_workflow!(workflow)
 
     topic = Fabricate(:topic, category: category, user: admin)
     trigger_data = {

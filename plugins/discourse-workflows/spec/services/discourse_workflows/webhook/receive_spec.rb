@@ -19,7 +19,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
                    "http_method" => "POST",
                  }
         end
-      Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
     end
 
     let(:params) do
@@ -66,7 +66,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
                    }
             g.chain "trigger-1", "wait-1"
           end
-        Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+        Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
       end
 
       let(:waiting_execution) do
@@ -163,7 +163,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
     end
 
     context "when triggering new workflows" do
-      before { DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow) }
+      before { publish_workflow!(workflow) }
 
       context "when path does not match any webhook node" do
         let(:params) { super().merge(path: "unknown") }
@@ -177,8 +177,8 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
         it { is_expected.to fail_to_find_a_model(:webhook_nodes) }
       end
 
-      context "when workflow is disabled" do
-        before { workflow.update!(enabled: false) }
+      context "when workflow is unpublished" do
+        before { unpublish_workflow!(workflow) }
 
         it { is_expected.to fail_to_find_a_model(:webhook_nodes) }
       end
@@ -232,7 +232,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
               },
             )
           end
-          DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+          publish_workflow!(workflow)
         end
 
         context "when request has valid basic auth" do
@@ -305,7 +305,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
                        "authentication" => "none",
                      }
             end
-          Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+          Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
         end
 
         before do
@@ -319,8 +319,8 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
               },
             )
           end
-          DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
-          DiscourseWorkflows::WorkflowDependencyIndexer.call(unprotected_workflow)
+          publish_workflow!(workflow)
+          publish_workflow!(unprotected_workflow)
         end
 
         context "when request has no auth" do
@@ -362,7 +362,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
                 ),
             )
           end
-          DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+          publish_workflow!(workflow)
         end
 
         it { is_expected.to run_successfully }

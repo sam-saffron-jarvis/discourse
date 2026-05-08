@@ -22,7 +22,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "action-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
 
       trigger_data = {
         topic_id: topic.id,

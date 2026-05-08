@@ -20,6 +20,9 @@ module DiscourseWorkflows
     transaction do
       model :workflow, :create_workflow
       step :populate_graph
+      model :draft_version, :create_draft_version
+      step :assign_draft_version
+      step :index_draft_dependencies
     end
 
     step :log
@@ -32,7 +35,6 @@ module DiscourseWorkflows
         name: params.name,
         created_by: guardian.user,
         updated_by: guardian.user,
-        enabled: false,
       )
     end
 
@@ -44,6 +46,18 @@ module DiscourseWorkflows
           connections_data: params.connections,
         )
       fail!(workflow.errors.full_messages) if result == false
+    end
+
+    def create_draft_version(workflow:, guardian:)
+      workflow.create_draft_version!(user: guardian.user)
+    end
+
+    def assign_draft_version(workflow:, draft_version:)
+      workflow.update!(draft_version:)
+    end
+
+    def index_draft_dependencies(workflow:, draft_version:)
+      DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow, version: draft_version)
     end
 
     def log(workflow:, guardian:)

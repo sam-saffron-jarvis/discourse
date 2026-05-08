@@ -8,10 +8,11 @@ module DiscourseWorkflows
     SnapshotConnection =
       Struct.new(:source_node_id, :source_output, :target_node_id, keyword_init: true)
 
-    attr_reader :nodes, :connections
+    attr_reader :nodes, :connections, :workflow_name
 
     def initialize(workflow_data)
       data = workflow_data.deep_stringify_keys
+      @workflow_name = data["workflow_name"]
       @nodes_by_id = {}
       @nodes =
         data
@@ -56,8 +57,30 @@ module DiscourseWorkflows
       @nodes_by_id[connection.target_node_id]
     end
 
+    def node_has_reachable_downstream_of_type?(node_id, type)
+      visited = Set.new
+      queue = [node_id.to_s]
+
+      while (current = queue.shift)
+        next if visited.include?(current)
+        visited << current
+
+        @connections_by_source
+          .fetch(current) { [] }
+          .each do |connection|
+            target_node = target_node(connection)
+            next unless target_node
+            return true if target_node.type == type
+
+            queue << target_node.id
+          end
+      end
+
+      false
+    end
+
     def to_h
-      {
+      result = {
         "nodes" =>
           nodes.map do |n|
             {
@@ -78,10 +101,27 @@ module DiscourseWorkflows
             }
           end,
       }
+      result["workflow_name"] = workflow_name if workflow_name.present?
+      result
     end
 
-    def self.from_workflow(workflow)
-      new("nodes" => workflow.nodes, "connections" => workflow.connections)
+    def self.from_workflow(workflow, published: false)
+      nodes = published ? workflow.published_nodes : workflow.nodes
+      connections = published ? workflow.published_connections : workflow.connections
+      workflow_name = published ? workflow.published_version&.name : workflow.draft_version&.name
+      new(
+        "nodes" => nodes,
+        "connections" => connections,
+        "workflow_name" => workflow_name || workflow.name,
+      )
+    end
+
+    def self.from_version(workflow, version)
+      new(
+        "nodes" => version.nodes,
+        "connections" => version.connections,
+        "workflow_name" => version.name || workflow.name,
+      )
     end
   end
 end

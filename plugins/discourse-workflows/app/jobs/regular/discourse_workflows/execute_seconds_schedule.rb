@@ -7,12 +7,17 @@ module Jobs
         return unless SiteSetting.discourse_workflows_enabled
 
         workflow_id = args[:workflow_id]
+        workflow_version_id = args[:workflow_version_id]
         node_id = args[:trigger_node_id]
         rule_index = args[:rule_index]
         token = args[:token]
 
-        workflow = ::DiscourseWorkflows::Workflow.find_by(id: workflow_id)
-        return if workflow.nil? || !workflow.enabled?
+        workflow =
+          ::DiscourseWorkflows::Workflow.includes(:published_version).find_by(id: workflow_id)
+        return if workflow.nil? || !workflow.published?
+        return if workflow.published_version_id != workflow_version_id.to_i
+
+        workflow_version = workflow.published_version
         unless ::DiscourseWorkflows::ScheduleRule.seconds_token_valid?(
                  workflow,
                  node_id,
@@ -22,8 +27,14 @@ module Jobs
           return
         end
 
-        node = workflow.nodes.find { |n| n["id"] == node_id }
+        node = workflow_version.nodes.find { |n| n["id"] == node_id }
         return if node.nil?
+        published_trigger =
+          ::DiscourseWorkflows::PublishedTrigger.new(
+            workflow: workflow,
+            workflow_version: workflow_version,
+            trigger_node: node,
+          )
 
         rules =
           ::DiscourseWorkflows::ScheduleRule.rules_from_configuration(node["configuration"] || {})
@@ -38,10 +49,8 @@ module Jobs
           now,
         )
 
-        Jobs.enqueue(
-          Jobs::DiscourseWorkflows::ExecuteWorkflow,
-          workflow_id: workflow.id,
-          trigger_node_id: node_id,
+        ::DiscourseWorkflows::TriggerDispatcher.enqueue(
+          published_trigger,
           trigger_data: ::DiscourseWorkflows::Nodes::Schedule::V1.new.output,
         )
 
@@ -50,6 +59,7 @@ module Jobs
           interval.seconds,
           Jobs::DiscourseWorkflows::ExecuteSecondsSchedule,
           workflow_id: workflow_id,
+          workflow_version_id: workflow_version_id,
           trigger_node_id: node_id,
           rule_index: rule_index,
           token: token,

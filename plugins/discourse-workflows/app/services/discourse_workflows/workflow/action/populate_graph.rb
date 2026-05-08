@@ -62,9 +62,7 @@ module DiscourseWorkflows
         attributes[:static_data] = workflow.static_data.except(*removed_ids.to_a)
       end
 
-      return false unless workflow.update(**attributes)
-      DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
-      true
+      workflow.update(**attributes)
     end
 
     def validate_nodes

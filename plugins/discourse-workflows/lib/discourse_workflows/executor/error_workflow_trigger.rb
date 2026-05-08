@@ -19,7 +19,8 @@ module DiscourseWorkflows
         error_workflow = @workflow.error_workflow
         return unless eligible?(error_workflow)
 
-        trigger_node = error_workflow.nodes.find { |n| n["type"] == "trigger:error" }
+        workflow_version = error_workflow.published_version
+        trigger_node = workflow_version.nodes.find { |n| n["type"] == "trigger:error" }
         unless trigger_node
           Rails.logger.warn(
             "discourse-workflows: error workflow #{error_workflow.id} has no trigger:error node, skipping error handling",
@@ -30,6 +31,7 @@ module DiscourseWorkflows
         Jobs.enqueue(
           Jobs::DiscourseWorkflows::ExecuteWorkflow,
           workflow_id: error_workflow.id,
+          workflow_version_id: workflow_version.id,
           trigger_node_id: trigger_node["id"],
           trigger_data: build_error_data(error),
           execution_mode: "error_mode",
@@ -40,7 +42,7 @@ module DiscourseWorkflows
       private
 
       def eligible?(error_workflow)
-        error_workflow&.enabled? && error_workflow.id != @workflow.id
+        error_workflow&.published? && error_workflow.id != @workflow.id
       end
 
       def build_error_data(error)

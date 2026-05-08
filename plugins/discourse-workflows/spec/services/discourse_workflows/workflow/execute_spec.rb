@@ -11,7 +11,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Execute do
     fab!(:user)
     fab!(:workflow) do
       graph = build_workflow_graph { |g| g.node "trigger-1", "trigger:manual" }
-      Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
     end
 
     let(:params) { { workflow_id: workflow.id, trigger_node_id: "trigger-1" } }
@@ -49,6 +49,30 @@ RSpec.describe DiscourseWorkflows::Workflow::Execute do
 
       it "finds the workflow via dependency index" do
         expect { result }.to change { DiscourseWorkflows::Execution.count }.by(1)
+      end
+    end
+
+    context "when a matched workflow version is provided" do
+      let!(:matched_version) { workflow.published_version }
+      let(:params) do
+        {
+          workflow_id: workflow.id,
+          workflow_version_id: matched_version.id,
+          trigger_node_id: "trigger-1",
+        }
+      end
+
+      before do
+        update_workflow_node(workflow, "trigger-1") { |node| node["id"] = "trigger-2" }
+        publish_workflow!(workflow)
+      end
+
+      it { is_expected.to run_successfully }
+
+      it "executes the matched version instead of the current published version" do
+        expect(result[:workflow_version]).to eq(matched_version)
+        workflow_data = result[:execution].execution_data.workflow_data
+        expect(workflow_data["nodes"]).to contain_exactly(include("id" => "trigger-1"))
       end
     end
 

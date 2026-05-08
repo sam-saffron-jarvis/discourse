@@ -86,6 +86,7 @@ module DiscourseWorkflows
             },
             options: {
               tags: tag_names.presence,
+              skip_workflows: true,
             },
             guardian: Guardian.new(author),
           ) do

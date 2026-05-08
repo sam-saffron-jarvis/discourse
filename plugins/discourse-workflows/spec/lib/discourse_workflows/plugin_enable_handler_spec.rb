@@ -3,7 +3,7 @@
 RSpec.describe DiscourseWorkflows::PluginEnableHandler do
   describe ".handle!" do
     it "reschedules waiting executions that have a waiting_until" do
-      workflow = Fabricate(:discourse_workflows_workflow, enabled: true)
+      workflow = Fabricate(:discourse_workflows_workflow, published: true)
       execution =
         Fabricate(
           :discourse_workflows_execution,
@@ -27,7 +27,7 @@ RSpec.describe DiscourseWorkflows::PluginEnableHandler do
       expect(enqueued.first["args"].first["execution_id"]).to eq(execution.id)
     end
 
-    it "restarts seconds chains for enabled workflows with seconds rules" do
+    it "restarts seconds chains for published workflows with seconds rules" do
       graph =
         build_workflow_graph do |g|
           g.node "trigger-1",
@@ -36,9 +36,9 @@ RSpec.describe DiscourseWorkflows::PluginEnableHandler do
                    "rules" => [{ "interval" => "seconds", "seconds_between_triggers" => 10 }],
                  }
         end
-      workflow = Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+      workflow = Fabricate(:discourse_workflows_workflow, published: true, **graph)
 
-      disabled_graph =
+      unpublished_graph =
         build_workflow_graph do |g|
           g.node "trigger-1",
                  "trigger:schedule",
@@ -46,7 +46,7 @@ RSpec.describe DiscourseWorkflows::PluginEnableHandler do
                    "rules" => [{ "interval" => "seconds", "seconds_between_triggers" => 10 }],
                  }
         end
-      Fabricate(:discourse_workflows_workflow, enabled: false, **disabled_graph)
+      Fabricate(:discourse_workflows_workflow, published: false, **unpublished_graph)
 
       Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs.clear
 
@@ -66,7 +66,7 @@ RSpec.describe DiscourseWorkflows::PluginEnableHandler do
                    "rules" => [{ "interval" => "minutes", "minutes_between_triggers" => 5 }],
                  }
         end
-      Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, published: true, **graph)
 
       Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs.clear
 

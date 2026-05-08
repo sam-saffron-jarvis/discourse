@@ -7,7 +7,7 @@ module DiscourseWorkflows
     MAX_MEMORY_BYTES = 10.megabytes
     MARSHAL_STACK_DEPTH = 20
 
-    attr_reader :log
+    attr_reader :js_context, :log
 
     class BudgetExceededError < StandardError
     end

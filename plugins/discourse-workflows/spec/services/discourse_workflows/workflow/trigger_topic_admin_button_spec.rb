@@ -21,7 +21,7 @@ RSpec.describe DiscourseWorkflows::Workflow::TriggerTopicAdminButton do
                    "icon" => "gear",
                  }
         end
-      Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
     end
 
     let(:params) { { trigger_node_id: "trigger-1", topic_id: topic.id } }
@@ -45,13 +45,13 @@ RSpec.describe DiscourseWorkflows::Workflow::TriggerTopicAdminButton do
     context "when workflow is not found" do
       let(:params) { { trigger_node_id: "nonexistent", topic_id: topic.id } }
 
-      it { is_expected.to fail_to_find_a_model(:workflow) }
+      it { is_expected.to fail_to_find_a_model(:published_trigger) }
     end
 
-    context "when workflow is disabled" do
-      before { workflow.update!(enabled: false) }
+    context "when workflow is unpublished" do
+      before { unpublish_workflow!(workflow) }
 
-      it { is_expected.to fail_to_find_a_model(:workflow) }
+      it { is_expected.to fail_to_find_a_model(:published_trigger) }
     end
 
     context "when topic does not exist" do
@@ -69,6 +69,7 @@ RSpec.describe DiscourseWorkflows::Workflow::TriggerTopicAdminButton do
         expect(job["args"].first).to include(
           "trigger_node_id" => "trigger-1",
           "workflow_id" => workflow.id,
+          "workflow_version_id" => workflow.published_version_id,
           "user_id" => admin.id,
         )
         expect(job["args"].first["trigger_data"]["topic"]).to include(

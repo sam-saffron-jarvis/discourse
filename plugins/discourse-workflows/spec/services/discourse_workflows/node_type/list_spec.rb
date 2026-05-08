@@ -40,7 +40,7 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
           :topic_id,
           :raw,
           :reply_to_post_number,
-          :user_id,
+          :author_username,
         )
       end
 

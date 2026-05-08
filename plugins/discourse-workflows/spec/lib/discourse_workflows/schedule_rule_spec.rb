@@ -330,20 +330,29 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
                    "rules" => [{ "interval" => "cron", "cron" => "0 9 * * *" }],
                  }
         end
-      Fabricate(:discourse_workflows_workflow, enabled: true, created_by: user, **graph)
+      Fabricate(:discourse_workflows_workflow, published: true, created_by: user, **graph)
     end
 
-    let(:node) { schedule_workflow.nodes.first }
+    let(:workflow_version) { schedule_workflow.published_version }
+    let(:node) { workflow_version.nodes.first }
+    let(:published_trigger) do
+      DiscourseWorkflows::PublishedTrigger.new(
+        workflow: schedule_workflow,
+        workflow_version: workflow_version,
+        trigger_node: node,
+      )
+    end
 
     it "enqueues a workflow execution job when a rule matches" do
       freeze_time Time.utc(2026, 3, 18, 9, 0)
 
       expect {
-        described_class.fire_matching_trigger!(schedule_workflow, node, Time.current.utc)
+        described_class.fire_matching_trigger!(published_trigger, Time.current.utc)
       }.to change { Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size }.by(1)
 
       job = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last
       expect(job["args"].first["workflow_id"]).to eq(schedule_workflow.id)
+      expect(job["args"].first["workflow_version_id"]).to eq(workflow_version.id)
       expect(job["args"].first["trigger_node_id"]).to eq("trigger-1")
     end
 
@@ -351,7 +360,7 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       freeze_time Time.utc(2026, 3, 18, 10, 0)
 
       expect {
-        described_class.fire_matching_trigger!(schedule_workflow, node, Time.current.utc)
+        described_class.fire_matching_trigger!(published_trigger, Time.current.utc)
       }.not_to change { Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size }
     end
 
@@ -359,10 +368,10 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       freeze_time Time.utc(2026, 3, 18, 9, 0)
       now = Time.current.utc
 
-      described_class.fire_matching_trigger!(schedule_workflow, node, now)
+      described_class.fire_matching_trigger!(published_trigger, now)
       expect(Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size).to eq(1)
 
-      described_class.fire_matching_trigger!(schedule_workflow, node, now)
+      described_class.fire_matching_trigger!(published_trigger, now)
       expect(Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size).to eq(1)
     end
 
@@ -375,8 +384,15 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
         },
       }
 
+      seconds_match =
+        DiscourseWorkflows::PublishedTrigger.new(
+          workflow: schedule_workflow,
+          workflow_version: workflow_version,
+          trigger_node: seconds_node,
+        )
+
       expect {
-        described_class.fire_matching_trigger!(schedule_workflow, seconds_node, Time.current.utc)
+        described_class.fire_matching_trigger!(seconds_match, Time.current.utc)
       }.not_to change { Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size }
     end
   end
@@ -391,15 +407,23 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
                    "rules" => [{ "interval" => "seconds", "seconds_between_triggers" => 10 }],
                  }
         end
-      Fabricate(:discourse_workflows_workflow, enabled: true, created_by: user, **graph)
+      Fabricate(:discourse_workflows_workflow, published: true, created_by: user, **graph)
     end
 
-    let(:node) { seconds_workflow.nodes.first }
+    let(:workflow_version) { seconds_workflow.published_version }
+    let(:node) { workflow_version.nodes.first }
+    let(:published_trigger) do
+      DiscourseWorkflows::PublishedTrigger.new(
+        workflow: seconds_workflow,
+        workflow_version: workflow_version,
+        trigger_node: node,
+      )
+    end
 
     it "starts a seconds chain when no recent trigger exists" do
       freeze_time Time.utc(2026, 3, 18, 9, 0)
 
-      described_class.restart_stalled_chains!(seconds_workflow, node, Time.current.utc)
+      described_class.restart_stalled_chains!(published_trigger, Time.current.utc)
       expect(Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs.size).to eq(1)
     end
 
@@ -407,7 +431,7 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       freeze_time Time.utc(2026, 3, 18, 9, 0)
 
       described_class.mark_seconds_triggered!(seconds_workflow, "trigger-1", 0, Time.current.utc)
-      described_class.restart_stalled_chains!(seconds_workflow, node, Time.current.utc)
+      described_class.restart_stalled_chains!(published_trigger, Time.current.utc)
       expect(Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs.size).to eq(0)
     end
 
@@ -420,7 +444,14 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
         },
       }
 
-      described_class.restart_stalled_chains!(seconds_workflow, cron_node, Time.current.utc)
+      cron_match =
+        DiscourseWorkflows::PublishedTrigger.new(
+          workflow: seconds_workflow,
+          workflow_version: workflow_version,
+          trigger_node: cron_node,
+        )
+
+      described_class.restart_stalled_chains!(cron_match, Time.current.utc)
       expect(Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs.size).to eq(0)
     end
   end
@@ -428,7 +459,15 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
   describe ".start_seconds_chain!" do
     it "stores a token and enqueues a job" do
       rule = { "interval" => "seconds", "seconds_between_triggers" => 10 }
-      described_class.start_seconds_chain!(workflow, "trigger-1", 0, rule)
+      published_trigger =
+        DiscourseWorkflows::PublishedTrigger.new(
+          workflow: workflow,
+          workflow_version: workflow.draft_version,
+          trigger_node: {
+            "id" => "trigger-1",
+          },
+        )
+      described_class.start_seconds_chain!(published_trigger, 0, rule)
 
       data = workflow.reload.node_static_data("trigger-1")
       expect(data.dig("seconds_tokens", "0")).to be_present
@@ -458,7 +497,15 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
   describe ".seconds_token_valid?" do
     it "returns true for matching token" do
       rule = { "interval" => "seconds", "seconds_between_triggers" => 10 }
-      described_class.start_seconds_chain!(workflow, "trigger-1", 0, rule)
+      published_trigger =
+        DiscourseWorkflows::PublishedTrigger.new(
+          workflow: workflow,
+          workflow_version: workflow.draft_version,
+          trigger_node: {
+            "id" => "trigger-1",
+          },
+        )
+      described_class.start_seconds_chain!(published_trigger, 0, rule)
       token = workflow.reload.node_static_data("trigger-1").dig("seconds_tokens", "0")
 
       expect(described_class.seconds_token_valid?(workflow, "trigger-1", 0, token)).to be(true)

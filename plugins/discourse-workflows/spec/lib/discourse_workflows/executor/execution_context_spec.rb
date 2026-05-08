@@ -57,6 +57,14 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionContext do
       )
     end
 
+    it "uses the configured workflow name" do
+      execution_context.use_workflow_nodes([], workflow_name: "Snapshot workflow")
+
+      expect(execution_context.resolver_context["__execution"]["workflow_name"]).to eq(
+        "Snapshot workflow",
+      )
+    end
+
     it "appends webhook suffix to resume_url when present" do
       context = execution_context.resolver_context("__webhook_suffix" => "my-hook/path")
       expect(context["__execution"]["resume_url"]).to match(
@@ -91,6 +99,19 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionContext do
 
       expect(execution_context.resolver_context["__node_contexts"]).to eq(
         "Node A" => {
+          "counter" => 1,
+        },
+      )
+    end
+
+    it "uses restored workflow nodes for node context names" do
+      workflow.update!(nodes: [{ "id" => "1", "name" => "Renamed draft node" }])
+      execution_context.use_workflow_nodes([{ "id" => "1", "name" => "Snapshot node" }])
+
+      execution_context.restore!(context: {}, node_contexts: { "1" => { "counter" => 1 } })
+
+      expect(execution_context.resolver_context["__node_contexts"]).to eq(
+        "Snapshot node" => {
           "counter" => 1,
         },
       )

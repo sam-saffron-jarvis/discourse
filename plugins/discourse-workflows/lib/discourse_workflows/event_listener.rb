@@ -8,19 +8,17 @@ module DiscourseWorkflows
       trigger = trigger_class.new(*args)
       return unless trigger.valid?
 
-      DiscourseWorkflows::WorkflowDependency
-        .enabled_trigger_entries(trigger_class.identifier)
-        .each do |entry|
-          Jobs.enqueue(
-            Jobs::DiscourseWorkflows::ExecuteWorkflow,
-            workflow_id: entry[:workflow_id],
-            trigger_node_id: entry[:node_id],
+      DiscourseWorkflows::Workflow::Action::FindPublishedTriggers
+        .call(trigger_type: trigger_class.identifier)
+        .each do |published_trigger|
+          DiscourseWorkflows::TriggerDispatcher.enqueue(
+            published_trigger,
             trigger_data: trigger.output,
           )
         rescue => e
           Rails.logger.error(
             "discourse-workflows: trigger #{trigger_class.identifier} failed " \
-              "for workflow #{entry[:workflow_id]}: #{e.message}",
+              "for workflow #{published_trigger.workflow_id}: #{e.message}",
           )
         end
     end

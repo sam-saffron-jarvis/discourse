@@ -14,7 +14,7 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
                  "icon" => "gear",
                }
       end
-    Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+    Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
   end
 
   describe "POST /discourse-workflows/trigger-topic-admin-button" do
@@ -61,7 +61,10 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
              }
 
         job = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last
-        expect(job["args"].first["trigger_node_id"]).to eq("trigger-1")
+        expect(job["args"].first).to include(
+          "trigger_node_id" => "trigger-1",
+          "workflow_version_id" => workflow.published_version_id,
+        )
       end
 
       it "returns 400 when contract is invalid" do
@@ -80,8 +83,8 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
         expect(response).to have_http_status(:not_found)
       end
 
-      it "returns 404 when workflow is disabled" do
-        workflow.update!(enabled: false)
+      it "returns 404 when workflow is unpublished" do
+        unpublish_workflow!(workflow)
 
         post "/discourse-workflows/trigger-topic-admin-button.json",
              params: {

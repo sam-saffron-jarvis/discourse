@@ -12,37 +12,50 @@ RSpec.describe Jobs::DiscourseWorkflows::ExecuteSecondsSchedule do
                  "rules" => [{ "interval" => "seconds", "seconds_between_triggers" => seconds }],
                }
       end
-    workflow = Fabricate(:discourse_workflows_workflow, enabled: true, created_by: user, **graph)
+    workflow = Fabricate(:discourse_workflows_workflow, published: true, created_by: user, **graph)
 
     rule = { "interval" => "seconds", "seconds_between_triggers" => seconds }
-    DiscourseWorkflows::ScheduleRule.start_seconds_chain!(workflow, "trigger-1", 0, rule)
+    DiscourseWorkflows::ScheduleRule.start_seconds_chain!(
+      DiscourseWorkflows::PublishedTrigger.new(
+        workflow: workflow,
+        workflow_version: workflow.published_version,
+        trigger_node: workflow.published_version.nodes.first,
+      ),
+      0,
+      rule,
+    )
     token = workflow.reload.node_static_data("trigger-1").dig("seconds_tokens", "0")
 
     Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs.clear
 
-    [workflow, token]
+    [workflow, workflow.published_version, token]
   end
 
   it "executes the workflow and reschedules" do
-    workflow, token = create_seconds_workflow(seconds: 10)
+    workflow, workflow_version, token = create_seconds_workflow(seconds: 10)
 
     described_class.new.execute(
       workflow_id: workflow.id,
+      workflow_version_id: workflow_version.id,
       trigger_node_id: "trigger-1",
       rule_index: 0,
       token: token,
     )
 
     expect(Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size).to eq(1)
+    expect(Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last["args"].first).to include(
+      "workflow_version_id" => workflow_version.id,
+    )
     expect(Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs.size).to eq(1)
   end
 
-  it "does not execute when workflow is disabled" do
-    workflow, token = create_seconds_workflow(seconds: 10)
-    workflow.update!(enabled: false)
+  it "does not execute when workflow is unpublished" do
+    workflow, workflow_version, token = create_seconds_workflow(seconds: 10)
+    unpublish_workflow!(workflow)
 
     described_class.new.execute(
       workflow_id: workflow.id,
+      workflow_version_id: workflow_version.id,
       trigger_node_id: "trigger-1",
       rule_index: 0,
       token: token,
@@ -53,10 +66,11 @@ RSpec.describe Jobs::DiscourseWorkflows::ExecuteSecondsSchedule do
   end
 
   it "does not execute with stale token" do
-    workflow, _token = create_seconds_workflow(seconds: 10)
+    workflow, workflow_version, _token = create_seconds_workflow(seconds: 10)
 
     described_class.new.execute(
       workflow_id: workflow.id,
+      workflow_version_id: workflow_version.id,
       trigger_node_id: "trigger-1",
       rule_index: 0,
       token: "stale-token",
@@ -67,11 +81,12 @@ RSpec.describe Jobs::DiscourseWorkflows::ExecuteSecondsSchedule do
   end
 
   it "does not execute or reschedule when the plugin is disabled" do
-    workflow, token = create_seconds_workflow(seconds: 10)
+    workflow, workflow_version, token = create_seconds_workflow(seconds: 10)
     SiteSetting.discourse_workflows_enabled = false
 
     described_class.new.execute(
       workflow_id: workflow.id,
+      workflow_version_id: workflow_version.id,
       trigger_node_id: "trigger-1",
       rule_index: 0,
       token: token,
@@ -82,7 +97,7 @@ RSpec.describe Jobs::DiscourseWorkflows::ExecuteSecondsSchedule do
   end
 
   it "stops chain when rule changes to non-seconds" do
-    workflow, token = create_seconds_workflow(seconds: 10)
+    workflow, workflow_version, token = create_seconds_workflow(seconds: 10)
 
     workflow.update!(
       nodes: [
@@ -93,9 +108,11 @@ RSpec.describe Jobs::DiscourseWorkflows::ExecuteSecondsSchedule do
         ),
       ],
     )
+    publish_workflow!(workflow)
 
     described_class.new.execute(
       workflow_id: workflow.id,
+      workflow_version_id: workflow_version.id,
       trigger_node_id: "trigger-1",
       rule_index: 0,
       token: token,

@@ -40,7 +40,8 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.chain "code-1", "loop-1"
           g.connect "loop-1", "done-1", output: "done"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       execution = described_class.new(workflow, "trigger-1", {}).run
 

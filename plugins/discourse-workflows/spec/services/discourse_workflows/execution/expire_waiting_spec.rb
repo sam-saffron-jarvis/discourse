@@ -19,7 +19,8 @@ RSpec.describe DiscourseWorkflows::Execution::ExpireWaiting do
           g.node "wait-1", "flow:wait", name: "Wait", configuration: configuration
           g.chain "trigger-1", "wait-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       execution = DiscourseWorkflows::Executor.new(workflow, "trigger-1", {}).run
       execution.update!(timeout_action: timeout_action) if timeout_action

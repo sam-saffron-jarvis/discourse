@@ -29,7 +29,7 @@ RSpec.describe "Workflow: post created -> topic tags" do
     Fabricate(
       :discourse_workflows_workflow,
       created_by: admin,
-      enabled: true,
+      published: true,
       name: "Tag topics with new replies",
       **graph,
     )

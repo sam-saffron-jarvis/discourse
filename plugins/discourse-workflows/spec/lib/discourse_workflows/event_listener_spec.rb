@@ -7,7 +7,7 @@ RSpec.describe DiscourseWorkflows::EventListener do
 
   it "enqueues a job when a matching event fires" do
     graph = build_workflow_graph { |g| g.node "trigger-1", "trigger:topic_closed" }
-    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
     DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
 
     topic.update_status("closed", true, admin)
@@ -22,7 +22,7 @@ RSpec.describe DiscourseWorkflows::EventListener do
     SiteSetting.discourse_workflows_enabled = false
 
     graph = build_workflow_graph { |g| g.node "trigger-1", "trigger:topic_closed" }
-    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
     DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
 
     topic.update_status("closed", true, admin)

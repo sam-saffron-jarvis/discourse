@@ -7,6 +7,7 @@ module DiscourseWorkflows
     CACHE_KEY = "topic_admin_buttons"
 
     belongs_to :workflow, class_name: "DiscourseWorkflows::Workflow"
+    belongs_to :workflow_version, class_name: "DiscourseWorkflows::WorkflowVersion", optional: true
 
     TYPES = %w[
       credential_id
@@ -31,51 +32,28 @@ module DiscourseWorkflows
 
     def self.cached_topic_admin_buttons
       cache.defer_get_set(CACHE_KEY) do
-        enabled_workflows_with_node_type("trigger:topic_admin_button").map do |workflow, node|
-          {
-            trigger_node_id: node["id"],
-            workflow_id: workflow.id,
-            label: node.dig("configuration", "label"),
-            icon: node.dig("configuration", "icon"),
-          }
-        end
+        Workflow::Action::FindPublishedTriggers
+          .call(trigger_type: "trigger:topic_admin_button")
+          .map do |published_trigger|
+            {
+              trigger_node_id: published_trigger.trigger_node_id,
+              workflow_id: published_trigger.workflow_id,
+              label: published_trigger.trigger_node.dig("configuration", "label"),
+              icon: published_trigger.trigger_node.dig("configuration", "icon"),
+            }
+          end
       end
     end
 
     def self.workflows_referencing(type, key)
-      where(dependency_type: type, dependency_key: key.to_s).select(:workflow_id)
-    end
-
-    def self.enabled_workflows_with_node_type(type)
-      pairs =
-        joins(:workflow).where(
-          dependency_type: "node_type",
-          dependency_key: type,
-          discourse_workflows_workflows: {
-            enabled: true,
-          },
-        ).pluck(:workflow_id, :node_id)
-
-      return [] if pairs.empty?
-
-      workflows_by_id =
-        DiscourseWorkflows::Workflow.where(id: pairs.map(&:first).uniq).index_by(&:id)
-
-      pairs.filter_map do |workflow_id, node_id|
-        workflow = workflows_by_id[workflow_id]
-        node = workflow&.find_node(node_id)
-        [workflow, node] if workflow && node
-      end
-    end
-
-    def self.enabled_trigger_entries(trigger_type)
-      joins(
-        "INNER JOIN discourse_workflows_workflows ON discourse_workflows_workflows.id = discourse_workflows_workflow_dependencies.workflow_id",
-      )
-        .where(dependency_type: "node_type", dependency_key: trigger_type)
-        .where("discourse_workflows_workflows.enabled = true")
-        .pluck(:workflow_id, :node_id)
-        .map { |workflow_id, node_id| { workflow_id: workflow_id, node_id: node_id } }
+      joins(:workflow)
+        .where(dependency_type: type, dependency_key: key.to_s)
+        .where(
+          "discourse_workflows_workflow_dependencies.workflow_version_id IN " \
+            "(discourse_workflows_workflows.draft_version_id, " \
+            "discourse_workflows_workflows.published_version_id)",
+        )
+        .select(:workflow_id)
     end
   end
 end
@@ -84,15 +62,17 @@ end
 #
 # Table name: discourse_workflows_workflow_dependencies
 #
-#  id              :bigint           not null, primary key
-#  dependency_key  :string(500)      not null
-#  dependency_type :string(50)       not null
-#  created_at      :datetime         not null
-#  node_id         :string(100)
-#  workflow_id     :integer          not null
+#  id                   :bigint           not null, primary key
+#  dependency_key       :string(500)      not null
+#  dependency_type      :string(50)       not null
+#  created_at           :datetime         not null
+#  node_id              :string(100)
+#  workflow_id          :integer          not null
+#  workflow_version_id  :bigint
 #
 # Indexes
 #
+#  idx_dwf_deps_workflow_version_id                                (workflow_version_id)
 #  idx_workflow_deps_type_key                                      (dependency_type,dependency_key)
 #  index_discourse_workflows_workflow_dependencies_on_workflow_id  (workflow_id)
 #

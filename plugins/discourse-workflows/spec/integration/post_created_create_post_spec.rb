@@ -25,7 +25,7 @@ RSpec.describe "Workflow: post created -> create post" do
     Fabricate(
       :discourse_workflows_workflow,
       created_by: admin,
-      enabled: true,
+      published: true,
       name: "Reply to new posts",
       **graph,
     )

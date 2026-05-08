@@ -11,7 +11,7 @@ RSpec.describe DiscourseWorkflows::Workflow::ManualExecute do
     fab!(:admin)
     fab!(:workflow) do
       graph = build_workflow_graph { |g| g.node "trigger-1", "trigger:manual" }
-      Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
     end
 
     let(:params) { { workflow_id: workflow.id, trigger_node_id: "trigger-1" } }

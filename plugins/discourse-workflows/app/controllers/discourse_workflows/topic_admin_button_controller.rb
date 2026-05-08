@@ -16,8 +16,7 @@ module DiscourseWorkflows
             status: :bad_request,
           )
         end
-        on_model_not_found(:workflow) { raise Discourse::NotFound }
-        on_model_not_found(:trigger_node) { raise Discourse::NotFound }
+        on_model_not_found(:published_trigger) { raise Discourse::NotFound }
         on_model_not_found(:topic) { raise Discourse::NotFound }
         on_failed_policy(:can_manage_workflows) { raise Discourse::InvalidAccess }
       end

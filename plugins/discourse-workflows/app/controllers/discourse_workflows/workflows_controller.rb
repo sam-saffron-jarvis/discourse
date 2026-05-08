@@ -69,8 +69,15 @@ module DiscourseWorkflows
     end
 
     def update
+      workflow_attrs = workflow_params
+
+      if workflow_attrs.key?("published") &&
+           workflow_attrs.keys.all? { |key| %w[name published].include?(key) }
+        return update_published_state(workflow_attrs["published"])
+      end
+
       DiscourseWorkflows::Workflow::Update.call(
-        service_params.deep_merge(params: workflow_params.merge(workflow_id: params[:id])),
+        service_params.deep_merge(params: workflow_attrs.merge(workflow_id: params[:id])),
       ) do |result|
         on_success do |workflow:|
           render_serialized(workflow, DiscourseWorkflows::WorkflowSerializer, root: "workflow")
@@ -114,6 +121,35 @@ module DiscourseWorkflows
 
     def workflow_params
       params.require(:workflow).to_unsafe_h
+    end
+
+    def update_published_state(published)
+      service_class =
+        ActiveModel::Type::Boolean.new.cast(published) ? Workflow::Publish : Workflow::Unpublish
+
+      service_class.call(service_params.deep_merge(params: { workflow_id: params[:id] })) do
+        on_success do |workflow:|
+          render_serialized(workflow, DiscourseWorkflows::WorkflowSerializer, root: "workflow")
+        end
+        on_failure { render(json: failed_json, status: :unprocessable_entity) }
+        on_failed_contract do |contract|
+          render(
+            json: failed_json.merge(errors: contract.errors.full_messages),
+            status: :bad_request,
+          )
+        end
+        on_model_not_found(:workflow) { raise Discourse::NotFound }
+        on_model_not_found(:draft_version) do
+          render(json: failed_json, status: :unprocessable_entity)
+        end
+        on_failed_policy(:can_manage_workflows) { raise Discourse::InvalidAccess }
+        on_model_errors(:workflow) do |model|
+          render(
+            json: failed_json.merge(errors: model.errors.full_messages),
+            status: :unprocessable_entity,
+          )
+        end
+      end
     end
   end
 end

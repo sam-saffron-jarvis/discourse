@@ -24,7 +24,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
                    "response_mode" => "on_received",
                  }
         end
-      Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, published: true, **graph)
     end
 
     let(:dependencies) { { guardian: Guardian.new(user) } }
@@ -42,13 +42,13 @@ RSpec.describe DiscourseWorkflows::Form::Show do
     context "when workflow is not found" do
       let(:uuid) { "00000000-0000-0000-0000-000000000000" }
 
-      it { is_expected.to fail_to_find_a_model(:workflow) }
+      it { is_expected.to fail_to_find_a_model(:published_trigger) }
     end
 
-    context "when workflow is disabled" do
-      before { workflow.update!(enabled: false) }
+    context "when workflow is unpublished" do
+      before { unpublish_workflow!(workflow) }
 
-      it { is_expected.to fail_to_find_a_model(:workflow) }
+      it { is_expected.to fail_to_find_a_model(:published_trigger) }
     end
 
     context "when the form requires a logged-in user" do
@@ -56,7 +56,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
         trigger_node["configuration"]["authentication"] = "login_required"
         workflow.update!(nodes: workflow.nodes)
-        DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+        publish_workflow!(workflow)
       end
 
       context "without a current user" do
@@ -106,6 +106,20 @@ RSpec.describe DiscourseWorkflows::Form::Show do
           ),
         ).to be(true)
       end
+
+      context "when the draft workflow name changes after publishing" do
+        before do
+          trigger_node = workflow.nodes.find { |node| node["id"] == "trigger-1" }
+          trigger_node["configuration"]["form_title"] = "={{ $execution.workflow_name }}"
+          workflow.update!(nodes: workflow.nodes)
+          publish_workflow!(workflow)
+          workflow.update!(name: "Draft workflow name")
+        end
+
+        it "uses the published workflow name in execution expressions" do
+          expect(result[:form_data][:form_title]).to eq(workflow.published_version.name)
+        end
+      end
     end
 
     context "when form_description references $execution.resume_url" do
@@ -113,7 +127,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
         trigger_node["configuration"]["form_description"] = "={{ $execution.resume_url }}"
         workflow.update!(nodes: workflow.nodes)
-        DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+        publish_workflow!(workflow)
       end
 
       it "resolves $execution.resume_url without materializing an execution" do
@@ -136,7 +150,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
             g.chain "trigger-1", "action-1", "form-action-1"
           end
         workflow.update!(nodes: workflow.nodes + extra[:nodes], connections: extra[:connections])
-        DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+        publish_workflow!(workflow)
       end
 
       it "detects the downstream form through intermediate nodes" do
@@ -160,7 +174,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
                    }
             g.chain "trigger-1", "form-action-1"
           end
-        Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+        Fabricate(:discourse_workflows_workflow, published: true, **graph)
       end
 
       let(:resume_token) { SecureRandom.uuid }
@@ -211,7 +225,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
                      }
               g.chain "trigger-1", "form-action-1"
             end
-          Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+          Fabricate(:discourse_workflows_workflow, published: true, **graph)
         end
 
         it "resolves $execution.resume_url from the execution context" do
@@ -235,7 +249,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
                      }
               g.chain "trigger-1", "form-action-1"
             end
-          Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+          Fabricate(:discourse_workflows_workflow, published: true, **graph)
         end
 
         before do
@@ -258,6 +272,34 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         end
       end
 
+      context "when the draft workflow name changes after execution pauses" do
+        fab!(:waiting_workflow) do
+          graph =
+            build_workflow_graph do |g|
+              g.node "trigger-1", "trigger:manual"
+              g.node "form-action-1",
+                     "action:form",
+                     configuration: {
+                       "form_title" => "={{ $execution.workflow_name }}",
+                       "form_fields" => [{ "field_label" => "Feedback", "field_type" => "text" }],
+                     }
+              g.chain "trigger-1", "form-action-1"
+            end
+          Fabricate(
+            :discourse_workflows_workflow,
+            name: "Published waiting workflow",
+            published: true,
+            **graph,
+          )
+        end
+
+        before { waiting_workflow.update!(name: "Draft waiting workflow") }
+
+        it "uses the execution snapshot workflow name" do
+          expect(result[:form_data][:form_title]).to eq("Published waiting workflow")
+        end
+      end
+
       context "when form_description references a previous node's context" do
         fab!(:waiting_workflow) do
           graph =
@@ -272,7 +314,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
                      }
               g.chain "trigger-1", "form-action-1"
             end
-          Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+          Fabricate(:discourse_workflows_workflow, published: true, **graph)
         end
 
         before do
@@ -293,6 +335,16 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         it "exposes node_contexts keyed by node name to the resolver" do
           expect(result[:form_data][:form_description]).to eq("Counter was 42")
         end
+
+        context "when the workflow draft renames the node after execution pauses" do
+          before do
+            update_workflow_node(waiting_workflow, "trigger-1") { |node| node["name"] = "Renamed" }
+          end
+
+          it "uses the execution snapshot node name" do
+            expect(result[:form_data][:form_description]).to eq("Counter was 42")
+          end
+        end
       end
 
       context "when a downstream form action exists" do
@@ -310,11 +362,28 @@ RSpec.describe DiscourseWorkflows::Form::Show do
               g.node "form-action-2", "action:form", configuration: { "form_fields" => [] }
               g.chain "trigger-1", "form-action-1", "form-action-2"
             end
-          Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+          Fabricate(:discourse_workflows_workflow, published: true, **graph)
         end
 
         it "sets has_downstream_form to true" do
           expect(result[:form_data][:has_downstream_form]).to be(true)
+        end
+
+        context "when the workflow is republished without the downstream form" do
+          before do
+            waiting_workflow.update!(
+              nodes: waiting_workflow.nodes.reject { |node| node["id"] == "form-action-2" },
+              connections:
+                waiting_workflow.connections.reject do |connection|
+                  connection["target_node_id"] == "form-action-2"
+                end,
+            )
+            publish_workflow!(waiting_workflow)
+          end
+
+          it "uses the execution snapshot graph" do
+            expect(result[:form_data][:has_downstream_form]).to be(true)
+          end
         end
       end
 
@@ -334,7 +403,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
               g.node "form-action-2", "action:form", configuration: { "form_fields" => [] }
               g.chain "trigger-1", "form-action-1", "action-between", "form-action-2"
             end
-          Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+          Fabricate(:discourse_workflows_workflow, published: true, **graph)
         end
 
         it "detects the downstream form through intermediate nodes" do

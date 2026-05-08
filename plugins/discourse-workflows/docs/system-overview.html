@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discourse Workflows — System Overview</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #252836;
+    --surface3: #2e3347;
+    --border: #3a3f57;
+    --text: #e2e5f0;
+    --muted: #8892b0;
+    --accent: #7c6af7;
+    --accent2: #5b8af0;
+    --trigger: #e8854a;
+    --condition: #e8c84a;
+    --action: #4ae8a0;
+    --flow: #4acee8;
+    --error: #e85a5a;
+    --success: #4ae880;
+    --waiting: #e8c84a;
+
+    --radius: 8px;
+    --radius-lg: 14px;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── TOP NAV ─────────────────────────────────────────── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,17,23,0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; gap: 2rem;
+  }
+  .logo { font-weight: 700; font-size: 1rem; color: var(--accent); white-space: nowrap; padding: 1rem 0; }
+  .tabs { display: flex; gap: 0; overflow-x: auto; }
+  .tab {
+    padding: .7rem 1.1rem;
+    font-size: .82rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color .15s, border-color .15s;
+    border-top: none; border-left: none; border-right: none;
+    background: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── SECTIONS ────────────────────────────────────────── */
+  section { display: none; padding: 2.5rem 2rem; max-width: 1200px; margin: 0 auto; }
+  section.active { display: block; }
+
+  h1 { font-size: 1.9rem; font-weight: 700; margin-bottom: .4rem; }
+  h2 { font-size: 1.3rem; font-weight: 600; margin: 2rem 0 1rem; color: var(--text); }
+  h3 { font-size: 1rem; font-weight: 600; margin: 1.2rem 0 .5rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: .75rem; }
+  p { color: var(--muted); margin-bottom: 1rem; font-size: .9rem; }
+  .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; }
+
+  /* ── CARDS / GRIDS ───────────────────────────────────── */
+  .grid { display: grid; gap: 1rem; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  @media (max-width: 900px) { .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    transition: border-color .2s, transform .15s;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card-title { font-size: .95rem; font-weight: 600; margin-bottom: .4rem; }
+  .card-desc { font-size: .82rem; color: var(--muted); line-height: 1.5; }
+
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: .15rem .5rem;
+    border-radius: 20px;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .badge-trigger { background: rgba(232,133,74,.15); color: var(--trigger); }
+  .badge-condition { background: rgba(232,200,74,.15); color: var(--condition); }
+  .badge-action { background: rgba(74,232,160,.15); color: var(--action); }
+  .badge-flow { background: rgba(74,206,232,.15); color: var(--flow); }
+  .badge-error { background: rgba(232,90,90,.15); color: var(--error); }
+  .badge-success { background: rgba(74,232,128,.15); color: var(--success); }
+  .badge-waiting { background: rgba(232,200,74,.15); color: var(--waiting); }
+
+  /* ── CODE ────────────────────────────────────────────── */
+  pre, code {
+    font-family: var(--mono);
+    font-size: .8rem;
+  }
+  pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    overflow-x: auto;
+    margin: .8rem 0;
+    line-height: 1.7;
+  }
+  code {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: .1rem .35rem;
+    border-radius: 4px;
+    font-size: .78rem;
+  }
+  pre code { background: none; border: none; padding: 0; }
+
+  .kw { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cmt { color: #546e7a; }
+  .num { color: #f78c6c; }
+  .fn { color: #82aaff; }
+  .var { color: #eeffff; }
+  .cls { color: #ffcb6b; }
+  .op { color: #89ddff; }
+
+  /* ── FLOW DIAGRAM ────────────────────────────────────── */
+  .flow-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: nowrap;
+    margin: .6rem 0;
+  }
+
+  .flow-node {
+    display: flex; flex-direction: column; align-items: center;
+    padding: .7rem 1.2rem;
+    border-radius: var(--radius);
+    font-size: .8rem;
+    font-weight: 600;
+    min-width: 130px;
+    text-align: center;
+    border: 1.5px solid;
+    position: relative;
+    cursor: default;
+    transition: transform .15s;
+  }
+  .flow-node:hover { transform: scale(1.03); }
+  .flow-node .fn-sub { font-size: .68rem; font-weight: 400; opacity: .8; margin-top: .2rem; }
+
+  .fn-trigger { background: rgba(232,133,74,.12); border-color: var(--trigger); color: var(--trigger); }
+  .fn-condition { background: rgba(232,200,74,.12); border-color: var(--condition); color: var(--condition); }
+  .fn-action { background: rgba(74,232,160,.12); border-color: var(--action); color: var(--action); }
+  .fn-flow { background: rgba(74,206,232,.12); border-color: var(--flow); color: var(--flow); }
+  .fn-engine { background: rgba(124,106,247,.12); border-color: var(--accent); color: var(--accent); }
+  .fn-error { background: rgba(232,90,90,.12); border-color: var(--error); color: var(--error); }
+
+  .flow-arrow {
+    color: var(--border);
+    font-size: 1.1rem;
+    padding: 0 .3rem;
+    flex-shrink: 0;
+    display: flex; align-items: center;
+  }
+  .flow-arrow.branch {
+    flex-direction: column; gap: .15rem; font-size: .65rem; color: var(--muted);
+    padding: 0 .5rem;
+  }
+  .flow-arrow.branch .ba { color: var(--border); font-size: 1rem; }
+
+  /* ── EXECUTION TIMELINE ──────────────────────────────── */
+  .timeline {
+    position: relative;
+    padding-left: 2.5rem;
+    margin: 1rem 0;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute; left: .7rem; top: 0; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .tl-step {
+    position: relative;
+    margin-bottom: 1.2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    transition: border-color .2s;
+  }
+  .tl-step:hover { border-color: var(--accent); }
+  .tl-step::before {
+    content: '';
+    position: absolute; left: -1.85rem; top: 1.2rem;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+  }
+  .tl-step.step-error::before { background: var(--error); }
+  .tl-step.step-wait::before { background: var(--waiting); }
+  .tl-step.step-filter::before { background: var(--flow); }
+  .tl-step-title { font-size: .9rem; font-weight: 600; margin-bottom: .3rem; display: flex; align-items: center; gap: .5rem; }
+  .tl-step-desc { font-size: .82rem; color: var(--muted); }
+
+  /* ── EXPRESSION TABLE ────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; margin: .8rem 0; }
+  th {
+    background: var(--surface2); color: var(--muted);
+    padding: .5rem .8rem; text-align: left;
+    font-weight: 600; font-size: .72rem; text-transform: uppercase;
+    letter-spacing: .05em;
+    border: 1px solid var(--border);
+  }
+  td {
+    padding: .55rem .8rem;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  td code { font-size: .75rem; }
+
+  /* ── ACCORDION ───────────────────────────────────────── */
+  .accordion-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: .5rem;
+    overflow: hidden;
+  }
+  .accordion-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .9rem 1.2rem;
+    background: var(--surface);
+    cursor: pointer;
+    font-size: .9rem;
+    font-weight: 600;
+    user-select: none;
+    transition: background .15s;
+  }
+  .accordion-header:hover { background: var(--surface2); }
+  .accordion-arrow { transition: transform .2s; color: var(--muted); }
+  .accordion-item.open .accordion-arrow { transform: rotate(90deg); }
+  .accordion-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height .3s ease;
+    background: var(--surface2);
+  }
+  .accordion-item.open .accordion-body { max-height: 2000px; }
+  .accordion-inner { padding: 1.2rem 1.5rem; }
+
+  /* ── CALLOUT ─────────────────────────────────────────── */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: rgba(124,106,247,.07);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: .9rem 1.2rem;
+    margin: 1rem 0;
+    font-size: .85rem;
+    color: var(--muted);
+  }
+  .callout strong { color: var(--text); }
+  .callout.warn { border-left-color: var(--error); background: rgba(232,90,90,.07); }
+  .callout.info { border-left-color: var(--flow); background: rgba(74,206,232,.07); }
+  .callout.tip { border-left-color: var(--action); background: rgba(74,232,160,.07); }
+
+  /* ── STATUS DOTS ─────────────────────────────────────── */
+  .status-row { display: flex; flex-wrap: wrap; gap: .6rem; margin: .8rem 0; }
+  .status-item {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .8rem; font-weight: 500;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── PILL LIST ───────────────────────────────────────── */
+  .pill-list { display: flex; flex-wrap: wrap; gap: .4rem; margin: .6rem 0; }
+  .pill {
+    font-size: .75rem;
+    padding: .2rem .6rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  /* ── TWO-COL LAYOUT ──────────────────────────────────── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── WEBHOOK FLOW ────────────────────────────────────── */
+  .wh-flow {
+    display: flex; flex-direction: column; gap: .5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin: 1rem 0;
+  }
+  .wh-step {
+    display: flex; align-items: flex-start; gap: 1rem;
+    padding: .7rem 1rem;
+    border-radius: var(--radius);
+    font-size: .85rem;
+  }
+  .wh-step:not(:last-child) { border-bottom: 1px solid var(--border); }
+  .wh-num {
+    flex-shrink: 0;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: .7rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: .1rem;
+  }
+  .wh-content .wh-title { font-weight: 600; margin-bottom: .2rem; }
+  .wh-content .wh-desc { color: var(--muted); font-size: .8rem; }
+
+  /* ── ANIMATION ───────────────────────────────────────── */
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+  .pulsing { animation: pulse 2s infinite; }
+  @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  .animate-in { animation: slideIn .3s ease both; }
+
+  /* ── INTERACTIVE EXEC SIM ────────────────────────────── */
+  #exec-sim { margin: 1.5rem 0; }
+  .exec-node-list { display: flex; flex-direction: column; gap: .5rem; }
+  .exec-node {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .7rem 1rem;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-size: .85rem;
+    transition: all .3s;
+  }
+  .exec-node .en-icon { font-size: 1.1rem; flex-shrink: 0; width: 26px; text-align: center; }
+  .exec-node .en-name { font-weight: 600; flex: 1; }
+  .exec-node .en-status { font-size: .72rem; font-weight: 600; padding: .1rem .5rem; border-radius: 10px; }
+  .exec-node .en-detail { font-size: .75rem; color: var(--muted); }
+  .exec-node.en-idle { opacity: .5; }
+  .exec-node.en-running { border-color: var(--accent); background: rgba(124,106,247,.08); }
+  .exec-node.en-success { border-color: var(--success); background: rgba(74,232,128,.08); }
+  .exec-node.en-error { border-color: var(--error); background: rgba(232,90,90,.08); }
+  .exec-node.en-waiting { border-color: var(--waiting); background: rgba(232,200,74,.08); }
+  .exec-node.en-filtered { border-color: var(--flow); background: rgba(74,206,232,.08); }
+
+  .sim-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .55rem 1.2rem;
+    border-radius: 6px;
+    border: none; cursor: pointer;
+    font-size: .82rem; font-weight: 600;
+    background: var(--accent);
+    color: white;
+    margin: .5rem .3rem .5rem 0;
+    transition: opacity .15s, transform .1s;
+  }
+  .sim-btn:hover { opacity: .85; }
+  .sim-btn:active { transform: scale(.96); }
+  .sim-btn.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+  /* ── EXPR PLAYGROUND ─────────────────────────────────── */
+  .expr-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin: 1rem 0;
+  }
+  .expr-header {
+    background: var(--surface2);
+    padding: .7rem 1.2rem;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .expr-input {
+    width: 100%; padding: .9rem 1.2rem;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: .85rem;
+    outline: none;
+    resize: none;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.6;
+  }
+  .expr-output {
+    padding: .8rem 1.2rem;
+    font-family: var(--mono);
+    font-size: .82rem;
+    color: var(--action);
+    min-height: 2.5rem;
+  }
+  .expr-output.error { color: var(--error); }
+
+  /* ── RESPONSIVE ──────────────────────────────────────── */
+  @media (max-width: 700px) {
+    section { padding: 1.5rem 1rem; }
+    .flow-row { flex-wrap: wrap; justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚡ Discourse Workflows</div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="nodes">Node Types</button>
+    <button class="tab" data-tab="execution">Execution Engine</button>
+    <button class="tab" data-tab="expressions">Expressions</button>
+    <button class="tab" data-tab="webhooks">Webhooks</button>
+    <button class="tab" data-tab="conditions">Conditions</button>
+    <button class="tab" data-tab="errors">Error Handling</button>
+    <button class="tab" data-tab="form">Form System</button>
+    <button class="tab" data-tab="data">Data Models</button>
+  </nav>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     OVERVIEW
+═══════════════════════════════════════════════════════════ -->
+<section id="tab-overview" class="active">
+  <h1>System Architecture</h1>
+  <p class="subtitle">Discourse Workflows is a visual automation engine inspired by n8n. Workflows are graphs of <strong style="color:var(--trigger)">trigger</strong>, <strong style="color:var(--condition)">condition</strong>, <strong style="color:var(--action)">action</strong>, and <strong style="color:var(--flow)">flow</strong> nodes connected by directed edges. Items (JSON objects) flow through the graph.</p>
+
+  <div class="flow-diagram" style="padding: 1.5rem 1rem;">
+    <svg viewBox="0 0 760 1010" width="100%" style="max-width:720px;display:block;margin:0 auto;overflow:visible;">
+      <defs>
+        <marker id="arr"         markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#4a5070"/></marker>
+        <marker id="arr-accent"  markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#7c6af7"/></marker>
+        <marker id="arr-left"    markerWidth="8" markerHeight="6" refX="1" refY="3" orient="auto"><path d="M8,0 L8,6 L0,3 z" fill="#7c6af7"/></marker>
+        <marker id="arr-error"   markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#e85a5a"/></marker>
+        <marker id="arr-wait"    markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#e8c84a"/></marker>
+        <marker id="arr-success" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#4ae880"/></marker>
+      </defs>
+
+      <!-- ── SECTION LABEL ───────────────────────────── -->
+      <text x="380" y="14" text-anchor="middle" font-size="10" fill="#8892b0" font-family="sans-serif" letter-spacing="2" font-weight="600">EVENT PIPELINE</text>
+
+      <!-- ── 1. External Event ──────────────────────── -->
+      <rect x="280" y="22" width="200" height="58" rx="8" fill="rgba(232,133,74,0.13)" stroke="#e8854a" stroke-width="1.5"/>
+      <text x="380" y="46" text-anchor="middle" font-size="12.5" fill="#e8854a" font-family="sans-serif" font-weight="700">⚡ External Event</text>
+      <text x="380" y="66" text-anchor="middle" font-size="10" fill="#e8854a" font-family="sans-serif" opacity="0.85">post_created · webhook · schedule · form</text>
+
+      <!-- arrow 1→2 -->
+      <line x1="380" y1="80" x2="380" y2="118" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- ── 2. EventListener ────────────────────────── -->
+      <rect x="280" y="120" width="200" height="58" rx="8" fill="rgba(124,106,247,0.12)" stroke="#7c6af7" stroke-width="1.5"/>
+      <text x="380" y="144" text-anchor="middle" font-size="12.5" fill="#7c6af7" font-family="sans-serif" font-weight="700">EventListener</text>
+      <text x="380" y="164" text-anchor="middle" font-size="10" fill="#7c6af7" font-family="sans-serif" opacity="0.7">lib/event_listener.rb</text>
+
+      <!-- arrow 2→3 -->
+      <line x1="380" y1="178" x2="380" y2="216" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- ── 3. Execute Service ──────────────────────── -->
+      <rect x="280" y="218" width="200" height="58" rx="8" fill="rgba(124,106,247,0.12)" stroke="#7c6af7" stroke-width="1.5"/>
+      <text x="380" y="242" text-anchor="middle" font-size="12.5" fill="#7c6af7" font-family="sans-serif" font-weight="700">Execute Service</text>
+      <text x="380" y="262" text-anchor="middle" font-size="10" fill="#7c6af7" font-family="sans-serif" opacity="0.7">services/workflow/execute.rb</text>
+
+      <!-- arrow 3→4 -->
+      <line x1="380" y1="276" x2="380" y2="314" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- ── 4. Sidekiq Job ──────────────────────────── -->
+      <rect x="280" y="316" width="200" height="58" rx="8" fill="rgba(124,106,247,0.12)" stroke="#7c6af7" stroke-width="1.5"/>
+      <text x="380" y="340" text-anchor="middle" font-size="12.5" fill="#7c6af7" font-family="sans-serif" font-weight="700">ExecuteWorkflow Job</text>
+      <text x="380" y="360" text-anchor="middle" font-size="10" fill="#7c6af7" font-family="sans-serif" opacity="0.7">Sidekiq async job</text>
+
+      <!-- arrow into loop (dashed, accent) -->
+      <line x1="380" y1="374" x2="380" y2="428" stroke="#7c6af7" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-accent)"/>
+
+      <!-- ── LOOP BOX ─────────────────────────────────── -->
+      <rect x="60" y="436" width="640" height="388" rx="12" fill="rgba(124,106,247,0.04)" stroke="#3a3f57" stroke-width="1.5" stroke-dasharray="7,4"/>
+      <text x="82" y="456" font-size="9.5" fill="#5a628a" font-family="sans-serif" font-weight="600" letter-spacing="1.8">PER-NODE LOOP  ·  process_queue()</text>
+
+      <!-- ── 5. Executor ─────────────────────────────── -->
+      <rect x="280" y="464" width="200" height="58" rx="8" fill="rgba(124,106,247,0.12)" stroke="#7c6af7" stroke-width="1.5"/>
+      <text x="380" y="488" text-anchor="middle" font-size="12.5" fill="#7c6af7" font-family="sans-serif" font-weight="700">Executor · execute_node()</text>
+      <text x="380" y="508" text-anchor="middle" font-size="10" fill="#7c6af7" font-family="sans-serif" opacity="0.7">dequeue next (node_id, items)</text>
+
+      <!-- arrow 5→6 -->
+      <line x1="380" y1="522" x2="380" y2="560" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- ── 6. ExpressionResolver ───────────────────── -->
+      <rect x="280" y="562" width="200" height="58" rx="8" fill="rgba(124,106,247,0.12)" stroke="#7c6af7" stroke-width="1.5"/>
+      <text x="380" y="586" text-anchor="middle" font-size="12.5" fill="#7c6af7" font-family="sans-serif" font-weight="700">ExpressionResolver</text>
+      <text x="380" y="606" text-anchor="middle" font-size="10" fill="#7c6af7" font-family="sans-serif" opacity="0.7">resolve = expressions for node params</text>
+
+      <!-- arrow 6→7 -->
+      <line x1="380" y1="620" x2="380" y2="658" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- ── 7. node_type.execute() ──────────────────── -->
+      <rect x="280" y="660" width="200" height="58" rx="8" fill="rgba(74,232,160,0.12)" stroke="#4ae8a0" stroke-width="1.5"/>
+      <text x="380" y="684" text-anchor="middle" font-size="12.5" fill="#4ae8a0" font-family="sans-serif" font-weight="700">node_type.execute()</text>
+      <text x="380" y="704" text-anchor="middle" font-size="10" fill="#4ae8a0" font-family="sans-serif" opacity="0.8">trigger · condition · action · flow</text>
+
+      <!-- arrow 7→8 -->
+      <line x1="380" y1="718" x2="380" y2="756" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- ── 8. Step Recorded ────────────────────────── -->
+      <rect x="280" y="758" width="200" height="58" rx="8" fill="rgba(124,106,247,0.12)" stroke="#7c6af7" stroke-width="1.5"/>
+      <text x="380" y="782" text-anchor="middle" font-size="12.5" fill="#7c6af7" font-family="sans-serif" font-weight="700">Step Recorded</text>
+      <text x="380" y="802" text-anchor="middle" font-size="10" fill="#7c6af7" font-family="sans-serif" opacity="0.7">status · input · output · error</text>
+
+      <!-- ── LOOP-BACK arrow (right side) ──────────────
+           right of Step Recorded → bend right → up → bend left → right of Executor -->
+      <path d="M480,787 L650,787 L650,493 L480,493"
+            fill="none" stroke="#7c6af7" stroke-width="1.5" stroke-dasharray="5,3"
+            marker-end="url(#arr-left)" opacity="0.6"/>
+      <text x="670" y="645" font-size="9" fill="#7c6af7" font-family="sans-serif"
+            text-anchor="middle" transform="rotate(90,670,645)" opacity="0.6">next node in queue</text>
+
+      <!-- ── Down from Step Recorded to branch bar ───── -->
+      <line x1="380" y1="816" x2="380" y2="862" stroke="#4a5070" stroke-width="1.5"/>
+      <!-- Horizontal branch bar -->
+      <line x1="150" y1="862" x2="610" y2="862" stroke="#4a5070" stroke-width="1.5"/>
+
+      <!-- Branch drop lines -->
+      <line x1="150" y1="862" x2="150" y2="896" stroke="#e85a5a" stroke-width="1.5" marker-end="url(#arr-error)"/>
+      <line x1="380" y1="862" x2="380" y2="896" stroke="#e8c84a" stroke-width="1.5" marker-end="url(#arr-wait)"/>
+      <line x1="610" y1="862" x2="610" y2="896" stroke="#4ae880" stroke-width="1.5" marker-end="url(#arr-success)"/>
+
+      <!-- Condition labels above terminals -->
+      <text x="150" y="885" text-anchor="middle" font-size="9" fill="#e85a5a" font-family="sans-serif" opacity="0.85">unhandled exception</text>
+      <text x="380" y="885" text-anchor="middle" font-size="9" fill="#e8c84a" font-family="sans-serif" opacity="0.85">WaitRequested raised</text>
+      <text x="610" y="885" text-anchor="middle" font-size="9" fill="#4ae880" font-family="sans-serif" opacity="0.85">queue exhausted</text>
+
+      <!-- ── Terminal: fail! ─────────────────────────── -->
+      <rect x="60" y="898" width="180" height="72" rx="8" fill="rgba(232,90,90,0.13)" stroke="#e85a5a" stroke-width="1.5"/>
+      <text x="150" y="922" text-anchor="middle" font-size="13" fill="#e85a5a" font-family="sans-serif" font-weight="700">💥 fail!</text>
+      <text x="150" y="940" text-anchor="middle" font-size="10" fill="#e85a5a" font-family="sans-serif" opacity="0.8">execution.status = error</text>
+      <text x="150" y="958" text-anchor="middle" font-size="10" fill="#e85a5a" font-family="sans-serif" opacity="0.8">error workflow triggered</text>
+
+      <!-- ── Terminal: pause! ────────────────────────── -->
+      <rect x="290" y="898" width="180" height="72" rx="8" fill="rgba(232,200,74,0.13)" stroke="#e8c84a" stroke-width="1.5"/>
+      <text x="380" y="922" text-anchor="middle" font-size="13" fill="#e8c84a" font-family="sans-serif" font-weight="700">⏸ pause!</text>
+      <text x="380" y="940" text-anchor="middle" font-size="10" fill="#e8c84a" font-family="sans-serif" opacity="0.8">execution.status = waiting</text>
+      <text x="380" y="958" text-anchor="middle" font-size="10" fill="#e8c84a" font-family="sans-serif" opacity="0.8">resume_token saved</text>
+
+      <!-- ── Terminal: finish! ───────────────────────── -->
+      <rect x="520" y="898" width="180" height="72" rx="8" fill="rgba(74,232,128,0.13)" stroke="#4ae880" stroke-width="1.5"/>
+      <text x="610" y="922" text-anchor="middle" font-size="13" fill="#4ae880" font-family="sans-serif" font-weight="700">✅ finish!</text>
+      <text x="610" y="940" text-anchor="middle" font-size="10" fill="#4ae880" font-family="sans-serif" opacity="0.8">execution.status = success</text>
+      <text x="610" y="958" text-anchor="middle" font-size="10" fill="#4ae880" font-family="sans-serif" opacity="0.8">all steps recorded</text>
+    </svg>
+  </div>
+
+  <h2>Core Concepts</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <div style="font-size:1.5rem; margin-bottom:.5rem;">📊</div>
+      <div class="card-title">Items</div>
+      <div class="card-desc">The unit of data flowing through the graph. Each item is <code>{"json": {...}}</code>. Nodes receive arrays of items and return arrays of items — one input fan can produce many outputs.</div>
+    </div>
+    <div class="card">
+      <div style="font-size:1.5rem; margin-bottom:.5rem;">🔀</div>
+      <div class="card-title">Connections</div>
+      <div class="card-desc">Directed edges between node output ports and node input ports. A node can have multiple output ports (e.g., IF node has <code>true</code> and <code>false</code> outputs). Items flow only through matching ports.</div>
+    </div>
+    <div class="card">
+      <div style="font-size:1.5rem; margin-bottom:.5rem;">🧠</div>
+      <div class="card-title">Execution Context</div>
+      <div class="card-desc">Tracks which nodes have run, their outputs, trigger data, current user, sandbox state. Persisted as JSON in <code>ExecutionData</code> and referenced during resumption.</div>
+    </div>
+    <div class="card">
+      <div style="font-size:1.5rem; margin-bottom:.5rem;">= { }</div>
+      <div class="card-title">Expressions</div>
+      <div class="card-desc">Any parameter value starting with <code>=</code> is a live JavaScript expression evaluated in a MiniRacer sandbox. <code>${"$"}{json.topic_id}</code>, <code>${"$"}("Fetch Topic").first().json.title</code>…</div>
+    </div>
+    <div class="card">
+      <div style="font-size:1.5rem; margin-bottom:.5rem;">📸</div>
+      <div class="card-title">Workflow Snapshot</div>
+      <div class="card-desc">When an execution starts, the current workflow structure (nodes + connections) is snapshotted. Long-running executions (with wait nodes) use the snapshot so mid-flight edits don't corrupt them.</div>
+    </div>
+    <div class="card">
+      <div style="font-size:1.5rem; margin-bottom:.5rem;">🔒</div>
+      <div class="card-title">Credentials</div>
+      <div class="card-desc">Encrypted API credentials (basic auth, bearer tokens) stored separately from workflows. Referenced by <code>credential_id</code> in HTTP request nodes, injected at runtime.</div>
+    </div>
+  </div>
+
+  <h2>Node Category Colors</h2>
+  <div class="status-row">
+    <div class="status-item"><div class="dot" style="background:var(--trigger)"></div> <span>Triggers — start a workflow in response to an event</span></div>
+    <div class="status-item"><div class="dot" style="background:var(--condition)"></div> <span>Conditions — branch or filter the item stream</span></div>
+    <div class="status-item"><div class="dot" style="background:var(--action)"></div> <span>Actions — perform side-effects, produce output</span></div>
+    <div class="status-item"><div class="dot" style="background:var(--flow)"></div> <span>Flow — transform, loop, split, sort, limit items</span></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     NODE TYPES
+═══════════════════════════════════════════════════════════ -->
+<section id="tab-nodes">
+  <h1>Node Types</h1>
+  <p class="subtitle">35 node types across four categories. Every node is versioned (<code>v1.rb</code>, <code>v2.rb</code>…) so old executions keep working when behaviour changes.</p>
+
+  <h2>⚡ Triggers</h2>
+  <p>Triggers are entry points. Exactly one per workflow. They listen to Discourse events, schedules, or inbound HTTP requests and produce the initial items.</p>
+  <div class="grid grid-3">
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">topic_created</div>
+      <div class="card-desc">Fires when a new topic is created. Output: <code>{ topic }</code></div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">post_created</div>
+      <div class="card-desc">Fires when any post is created. Output: <code>{ post, topic }</code></div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">webhook</div>
+      <div class="card-desc">Inbound HTTP POST. Auto-generates a unique URL. Output: <code>{ body, headers, query, method, webhook_url }</code></div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">schedule</div>
+      <div class="card-desc">Time-based. Supports seconds/minutes/hours/days/weeks intervals, weekday selection, and raw cron expressions.</div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">form_trigger</div>
+      <div class="card-desc">Triggered by a standalone public form submission. Pairs with the <code>form</code> action node for multi-page flows.</div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">manual</div>
+      <div class="card-desc">Admin-triggered from the editor. Used for testing and on-demand runs. No event payload.</div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">topic_closed / opened</div>
+      <div class="card-desc">Fires when a topic is closed or reopened. Output: <code>{ topic }</code></div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">topic_category_changed</div>
+      <div class="card-desc">Fires when a topic is moved to a different category.</div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">stale_topic</div>
+      <div class="card-desc">Scheduled scan: fires for topics with no activity after a configurable duration. Useful for auto-close / reminder workflows.</div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge badge-trigger">trigger</span>
+      </div>
+      <div class="card-title">topic_admin_button</div>
+      <div class="card-desc">Adds a custom button to the admin topic toolbar. Manually triggered by a staff member on a specific topic.</div>
+    </div>
+  </div>
+
+  <h2>🔀 Conditions</h2>
+  <p>Condition nodes split the item stream. Items go down the <code>true</code> or <code>false</code> output port based on evaluation.</p>
+  <div class="grid grid-2">
+    <div class="card" style="border-color:rgba(232,200,74,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-condition">condition</span></div>
+      <div class="card-title">if</div>
+      <div class="card-desc">
+        Evaluates one or more <strong>condition rules</strong> per item. Uses <code>and</code> / <code>or</code> combinator.<br><br>
+        Operators: <code>equals</code>, <code>not_equals</code>, <code>greater_than</code>, <code>less_than</code>, <code>contains</code>, <code>not_contains</code>, <code>is_empty</code>, <code>is_not_empty</code>, <code>regex</code>.<br><br>
+        Output ports: <strong style="color:var(--success)">true</strong> and <strong style="color:var(--error)">false</strong>.
+      </div>
+    </div>
+    <div class="card" style="border-color:rgba(232,200,74,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-condition">condition</span></div>
+      <div class="card-title">filter</div>
+      <div class="card-desc">
+        Similar to <code>if</code> but designed for collections. Items that <strong>pass</strong> flow to the <code>true</code> port; rejected items flow to <code>false</code>.<br><br>
+        Useful when working with <code>loop_over_items</code> or <code>list_topics</code> — filter down before performing actions.
+      </div>
+    </div>
+  </div>
+
+  <h2>🎬 Actions</h2>
+  <p>Action nodes perform side-effects. They receive items, do something (create a post, call an API…), and produce output items containing the result.</p>
+  <div class="grid grid-3">
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">create_topic</div>
+      <div class="card-desc">Creates a new Discourse topic. Params: <code>title</code>, <code>raw</code>, <code>category_id</code>, <code>tag_names</code>, <code>username</code>. Output: <code>{ topic, post_id, post_number }</code></div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">create_post</div>
+      <div class="card-desc">Creates a reply in an existing topic. Params: <code>raw</code>, <code>topic_id</code>, <code>username</code>.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">http_request</div>
+      <div class="card-desc">Full HTTP client. GET/POST/PUT/DELETE/PATCH. JSON, form, raw body. Auth: none, basic, bearer. Output: <code>{ status, headers, body }</code></div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">form</div>
+      <div class="card-desc">Pauses execution and displays a form to the user. Resumes when the form is submitted. Output: form field values.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">respond_to_webhook</div>
+      <div class="card-desc">Sends an HTTP response back to the webhook caller. Supports JSON body, redirect, custom headers, and status codes.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">badge</div>
+      <div class="card-desc">Awards a Discourse badge to a user. Params: badge id, user id.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">set_fields</div>
+      <div class="card-desc">Mutates the current item's JSON — add, update, or remove fields. Like n8n's Edit Fields node.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">fetch_topic</div>
+      <div class="card-desc">Loads a full topic from the DB given a topic_id. Enriches the item stream with topic data.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">code</div>
+      <div class="card-desc">Runs arbitrary JavaScript in the sandbox to transform items. Full access to <code>$json</code>, <code>$input</code>, etc.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">log</div>
+      <div class="card-desc">Writes a message to the workflow execution log. Useful for debugging without producing side-effects.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">sticky_note</div>
+      <div class="card-desc">Attaches a sticky note annotation to the canvas (visual only, not an execution step).</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
+      <div class="card-title">topic_tags / group</div>
+      <div class="card-desc">Tag a topic or add/remove users from a group. Returns the updated resource.</div>
+    </div>
+  </div>
+
+  <h2>🔧 Flow Nodes</h2>
+  <div class="grid grid-3">
+    <div class="card" style="border-color:rgba(74,206,232,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-flow">flow</span></div>
+      <div class="card-title">wait</div>
+      <div class="card-desc">Pauses execution until a time interval elapses or an inbound webhook arrives. Max wait: 30 days. Optionally times out and takes a <code>timeout_action</code>.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,206,232,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-flow">flow</span></div>
+      <div class="card-title">loop_over_items</div>
+      <div class="card-desc">Iterates over an array one item at a time. Each item is passed individually to downstream nodes — like <code>forEach</code>.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,206,232,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-flow">flow</span></div>
+      <div class="card-title">split_out</div>
+      <div class="card-desc">Explodes an array field into separate items. E.g., one item with <code>tags: ["a","b"]</code> becomes two items.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,206,232,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-flow">flow</span></div>
+      <div class="card-title">sort</div>
+      <div class="card-desc">Sorts items by a field expression, ascending or descending.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,206,232,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-flow">flow</span></div>
+      <div class="card-title">limit</div>
+      <div class="card-desc">Truncates the item stream to a maximum count. Useful after <code>list_topics</code> to cap bulk operations.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,206,232,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-flow">flow</span></div>
+      <div class="card-title">list_topics</div>
+      <div class="card-desc">Queries Discourse topics by filter, category, tags, etc. Returns multiple items — one per topic.</div>
+    </div>
+    <div class="card" style="border-color:rgba(74,206,232,.3)">
+      <div style="margin-bottom:.5rem;"><span class="badge badge-flow">flow</span></div>
+      <div class="card-title">data_table</div>
+      <div class="card-desc">Reads from or writes to a persistent in-DB data table. Enables workflows to accumulate state across executions.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     EXECUTION ENGINE
+═══════════════════════════════════════════════════════════ -->
+<section id="tab-execution">
+  <h1>Execution Engine</h1>
+  <p class="subtitle">The executor is a queue-based graph traversal. It processes nodes in topological order, threading items between them, and handles waiting, errors, and branching.</p>
+
+  <h2>Interactive Simulation</h2>
+  <p>Press <strong>Run</strong> to watch a sample workflow execute step by step.</p>
+
+  <div id="exec-sim">
+    <div style="margin-bottom:1rem;">
+      <button class="sim-btn" id="btn-run">▶ Run</button>
+      <button class="sim-btn secondary" id="btn-reset">↺ Reset</button>
+      <button class="sim-btn secondary" id="btn-error">💥 Run with Error</button>
+    </div>
+    <div class="exec-node-list" id="exec-node-list">
+      <div class="exec-node en-idle" id="en-0">
+        <div class="en-icon">⚡</div>
+        <div>
+          <div class="en-name">post_created <span class="badge badge-trigger">trigger</span></div>
+          <div class="en-detail">Waiting for Discourse :post_created event</div>
+        </div>
+        <div class="en-status" style="background:var(--surface3);color:var(--muted)">idle</div>
+      </div>
+      <div class="exec-node en-idle" id="en-1">
+        <div class="en-icon">🔀</div>
+        <div>
+          <div class="en-name">IF: topic category = "support" <span class="badge badge-condition">condition</span></div>
+          <div class="en-detail">combinator: and · 1 condition</div>
+        </div>
+        <div class="en-status" style="background:var(--surface3);color:var(--muted)">idle</div>
+      </div>
+      <div class="exec-node en-idle" id="en-2">
+        <div class="en-icon">🌐</div>
+        <div>
+          <div class="en-name">HTTP Request: notify Slack <span class="badge badge-action">action</span></div>
+          <div class="en-detail">POST https://hooks.slack.com/…</div>
+        </div>
+        <div class="en-status" style="background:var(--surface3);color:var(--muted)">idle</div>
+      </div>
+      <div class="exec-node en-idle" id="en-3">
+        <div class="en-icon">✍️</div>
+        <div>
+          <div class="en-name">create_post: auto-reply <span class="badge badge-action">action</span></div>
+          <div class="en-detail">raw: = "Thanks for posting in support!"</div>
+        </div>
+        <div class="en-status" style="background:var(--surface3);color:var(--muted)">idle</div>
+      </div>
+    </div>
+    <div id="exec-log" style="margin-top:.8rem; font-size:.78rem; font-family:var(--mono); color:var(--muted); min-height:2rem;"></div>
+  </div>
+
+  <h2>Execution Algorithm</h2>
+  <div class="two-col">
+    <div>
+      <div class="timeline">
+        <div class="tl-step">
+          <div class="tl-step-title">1. Claim & Snapshot</div>
+          <div class="tl-step-desc">The executor locks the workflow execution row. If resuming (after a wait), the saved <code>WorkflowSnapshot</code> is rehydrated — guaranteeing structural consistency even if the admin edited the workflow mid-flight.</div>
+        </div>
+        <div class="tl-step">
+          <div class="tl-step-title">2. Seed Queue</div>
+          <div class="tl-step-desc">The trigger node is enqueued with its trigger data as the initial item: <code>[{ "json": { ...trigger_data } }]</code>.</div>
+        </div>
+        <div class="tl-step">
+          <div class="tl-step-title">3. Process Queue</div>
+          <div class="tl-step-desc">Pop next <code>(node_id, items)</code> from queue. Find node type in registry. Resolve all configuration expressions against current items. Call <code>node.execute(context)</code>.</div>
+        </div>
+        <div class="tl-step step-filter">
+          <div class="tl-step-title">4. Route Output</div>
+          <div class="tl-step-desc">Node returns a <code>NodeResult</code> — a map of port_name → items. For each downstream connection, enqueue the destination node with the matching port's items.</div>
+        </div>
+        <div class="tl-step step-wait">
+          <div class="tl-step-title">5. Wait (optional)</div>
+          <div class="tl-step-desc">If a node raises <code>WaitRequested</code>, the execution is paused: status=<code>waiting</code>, waiting node + resume_token saved. The Sidekiq job finishes but the execution is not complete.</div>
+        </div>
+        <div class="tl-step step-error">
+          <div class="tl-step-title">6. Complete / Fail</div>
+          <div class="tl-step-desc">When queue empties → <code>finish!</code>. On unhandled exception → <code>fail!</code> (saves error + triggers error workflow if configured). Sandbox is always disposed in <code>ensure</code>.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+<pre><span class="kw">def</span> <span class="fn">execute_flow</span>
+  <span class="fn">start_execution!</span>     <span class="cmt"># or resume_execution!</span>
+  <span class="fn">process_queue</span>
+  <span class="fn">finish!</span>
+<span class="kw">rescue</span> <span class="cls">WaitRequested</span> <span class="op">=></span> e
+  <span class="fn">begin_wait!</span>(e.waiting_until)
+<span class="kw">rescue</span> <span class="op">=></span> e
+  @store.<span class="fn">fail!</span>(error: e, steps: @steps)
+<span class="kw">ensure</span>
+  @sandbox&.dispose
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="fn">process_queue</span>
+  <span class="kw">while</span> (entry = @queue.<span class="fn">shift</span>)
+    node_id, items = entry
+    <span class="fn">execute_node</span>(node_id, items)
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="fn">execute_node</span>(node_id, items)
+  node     = @snapshot.<span class="fn">find_node</span>(node_id)
+  context  = <span class="cls">NodeExecutionContext</span>.<span class="fn">new</span>(...)
+  result   = node_type.<span class="fn">execute</span>(context)
+  <span class="fn">record_step!</span>(node, result)
+  <span class="fn">enqueue_downstream!</span>(node, result)
+<span class="kw">end</span></pre>
+
+      <div class="callout info">
+        <strong>Iteration guard:</strong> The executor tracks total iterations and aborts at 1,000 to prevent infinite loops. This guards against badly-wired graphs (e.g., cycles via data_table writes).
+      </div>
+
+      <div class="callout tip">
+        <strong>Parallelism:</strong> The queue is processed sequentially in a single Sidekiq job. There is no concurrent node execution — the graph is topologically ordered and each step is atomic.
+      </div>
+    </div>
+  </div>
+
+  <h2>Step Statuses</h2>
+  <div class="status-row">
+    <div class="status-item"><div class="dot" style="background:var(--success)"></div> <code>success</code> — node ran, output produced</div>
+    <div class="status-item"><div class="dot" style="background:var(--error)"></div> <code>error</code> — node raised an exception</div>
+    <div class="status-item"><div class="dot" style="background:var(--waiting)"></div> <code>waiting</code> — node paused execution (form, wait node)</div>
+    <div class="status-item"><div class="dot" style="background:var(--flow)"></div> <code>filtered</code> — condition node sent item to false port</div>
+    <div class="status-item"><div class="dot" style="background:var(--accent)"></div> <code>running</code> — node is currently executing</div>
+    <div class="status-item"><div class="dot" style="background:var(--muted)"></div> <code>skipped</code> — node type unavailable or issues detected</div>
+  </div>
+
+  <h2>Resume Flow (Wait Nodes)</h2>
+  <div class="wh-flow">
+    <div class="wh-step">
+      <div class="wh-num">1</div>
+      <div class="wh-content">
+        <div class="wh-title">Node raises WaitRequested</div>
+        <div class="wh-desc">The <code>form</code> or <code>wait</code> node calls <code>raise WaitRequested.new(waiting_until: time)</code>. The executor's rescue block catches it.</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">2</div>
+      <div class="wh-content">
+        <div class="wh-title">Execution paused</div>
+        <div class="wh-desc"><code>execution.status = "waiting"</code>. <code>resume_token</code> (UUID) and <code>waiting_until</code> saved. All steps so far persisted in <code>execution_data</code>.</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">3</div>
+      <div class="wh-content">
+        <div class="wh-title">External signal arrives</div>
+        <div class="wh-desc">Form submission or inbound webhook POST to <code>/workflows/webhooks/:execution_id/:suffix?token=TOKEN</code>.</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">4</div>
+      <div class="wh-content">
+        <div class="wh-title">Claim for resume</div>
+        <div class="wh-desc"><code>execution.claim_for_resume()</code> atomically sets status back to <code>running</code>. Returns false if already claimed (prevents double-resume).</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">5</div>
+      <div class="wh-content">
+        <div class="wh-title">Executor.resume()</div>
+        <div class="wh-desc">A new Sidekiq job calls <code>Executor.new(...).resume(execution, response_items)</code>. The snapshot is rehydrated, queue starts from the node after the wait point.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     EXPRESSIONS
+═══════════════════════════════════════════════════════════ -->
+<section id="tab-expressions">
+  <h1>Expression Engine</h1>
+  <p class="subtitle">Any parameter value can be a live JavaScript expression evaluated in an isolated MiniRacer (V8) sandbox. Expressions give you full access to the current item, previous node outputs, trigger data, and Discourse context.</p>
+
+  <h2>Syntax Forms</h2>
+  <div class="grid grid-2" style="margin-bottom:1.5rem;">
+    <div class="card">
+      <div class="card-title" style="font-family:var(--mono); color:var(--accent)">= expression</div>
+      <div class="card-desc" style="margin-top:.5rem;">The entire value is replaced by the expression result. If the expression returns an object, you get an object.</div>
+      <pre><span class="cmt">// Returns the topic title as a string</span>
+<span class="op">=</span> $json.topic.title
+
+<span class="cmt">// Returns an integer</span>
+<span class="op">=</span> $json.post.word_count * <span class="num">2</span>
+
+<span class="cmt">// Access a previous node's output</span>
+<span class="op">=</span> $(<span class="str">"Fetch Topic"</span>).first().json.category_id</pre>
+    </div>
+    <div class="card">
+      <div class="card-title" style="font-family:var(--mono); color:var(--accent)">= text {{ expr }} text</div>
+      <div class="card-desc" style="margin-top:.5rem;">String template: the value is a string with <code>{"{{ }}"}</code> interpolation blocks. Each block is independently evaluated and coerced to string.</div>
+      <pre><span class="cmt">// "Post #42 in topic: My Title"</span>
+<span class="op">=</span> Post #<span class="op">{{</span>$json.post.post_number<span class="op">}}</span> in topic: <span class="op">{{</span>$json.topic.title<span class="op">}}</span>
+
+<span class="cmt">// Combine static and dynamic parts</span>
+<span class="op">=</span> Hello <span class="op">{{</span>$json.user.name<span class="op">}}</span>, welcome!</pre>
+    </div>
+  </div>
+
+  <h2>Available Variables</h2>
+  <table>
+    <tr><th>Variable</th><th>Type</th><th>Description</th></tr>
+    <tr><td><code>$json</code></td><td>object</td><td>Current item's JSON payload. The primary data accessor.</td></tr>
+    <tr><td><code>$input.item</code></td><td>object</td><td>Full current item wrapper <code>{"{ json: {...} }"}</code></td></tr>
+    <tr><td><code>$input.all()</code></td><td>array</td><td>All input items for this execution step</td></tr>
+    <tr><td><code>$input.first()</code></td><td>object</td><td>First input item</td></tr>
+    <tr><td><code>$input.last()</code></td><td>object</td><td>Last input item</td></tr>
+    <tr><td><code>$("NodeName")</code></td><td>accessor</td><td>Outputs of the named node. Chain with <code>.first()</code>, <code>.all()</code>, <code>.item</code>.</td></tr>
+    <tr><td><code>$itemIndex</code></td><td>number</td><td>Zero-based index of the current item in the batch</td></tr>
+    <tr><td><code>$trigger</code></td><td>object</td><td>Raw trigger data from the event that started the workflow</td></tr>
+    <tr><td><code>$vars.KEY</code></td><td>any</td><td>Workflow-level variable (read-only, set via Variable model)</td></tr>
+    <tr><td><code>$site_settings.NAME</code></td><td>any</td><td>Discourse site setting value</td></tr>
+    <tr><td><code>$execution</code></td><td>object</td><td><code>{"{ id, workflow_id, workflow_name, resume_url }"}</code></td></tr>
+    <tr><td><code>$current_user</code></td><td>object</td><td><code>{"{ id, username, email, name, trust_level }"}</code> of the triggering user</td></tr>
+  </table>
+
+  <h2>Sandbox Architecture</h2>
+  <div class="two-col">
+    <div>
+      <p>Each execution gets a single <strong>MiniRacer</strong> (V8) context. The context is created once, pre-loaded with all node outputs, trigger data, and variables — then individual expression evaluations call into that shared context.</p>
+      <div class="callout warn">
+        <strong>Timeout:</strong> 30ms per expression evaluation. Exceeded → expression returns <code>null</code>, error logged.<br>
+        <strong>Memory cap:</strong> 10 MB per sandbox.<br>
+        <strong>Max injected JSON:</strong> 1 MB total.
+      </div>
+      <div class="callout">
+        <strong>Sandbox disposal:</strong> Always called in the executor's <code>ensure</code> block. Prevents V8 memory leaks even on crashes.
+      </div>
+    </div>
+    <div>
+<pre><span class="cmt"># lib/discourse_workflows/js_sandbox.rb</span>
+<span class="kw">class</span> <span class="cls">JsSandbox</span>
+  TIMEOUT_MS = <span class="num">30</span>
+  MAX_MEMORY = <span class="num">10</span> * <span class="num">1024</span> * <span class="num">1024</span>
+
+  <span class="kw">def</span> <span class="fn">evaluate</span>(expression)
+    @ctx.<span class="fn">eval</span>(expression, timeout: <span class="cls">TIMEOUT_MS</span>)
+  <span class="kw">rescue</span> <span class="cls">MiniRacer::ScriptTerminatedError</span>
+    <span class="fn">log_error</span>(<span class="str">"timeout"</span>)
+    <span class="kw">nil</span>
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">dispose</span>
+    @ctx&.dispose
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+    </div>
+  </div>
+
+  <h2>Expression Error Classification</h2>
+  <div class="grid grid-2">
+    <div class="card" style="border-color:rgba(232,90,90,.3)">
+      <div class="card-title">:undefined</div>
+      <div class="card-desc">Reference to a variable or property that doesn't exist. <strong>Silent</strong> — returns <code>null</code> without failing the execution. E.g., <code>$json.nonexistent_field</code></div>
+    </div>
+    <div class="card" style="border-color:rgba(232,90,90,.3)">
+      <div class="card-title">:invalid</div>
+      <div class="card-desc">Syntax error or runtime exception. <strong>Logged</strong> in the step's <code>expression_errors</code> array but execution continues with a <code>null</code> value.</div>
+    </div>
+  </div>
+
+  <h2>Live Expression Examples</h2>
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      Access trigger data and post attributes
+      <span class="accordion-arrow">▶</span>
+    </div>
+    <div class="accordion-body">
+      <div class="accordion-inner">
+<pre><span class="cmt">// In a post_created workflow</span>
+<span class="op">=</span> $json.post.raw                      <span class="cmt">// raw markdown content</span>
+<span class="op">=</span> $json.post.word_count               <span class="cmt">// integer</span>
+<span class="op">=</span> $json.topic.category_id             <span class="cmt">// integer</span>
+<span class="op">=</span> $json.topic.tags                    <span class="cmt">// array of strings</span>
+<span class="op">=</span> $json.user.username                 <span class="cmt">// string</span>
+<span class="op">=</span> $trigger.post.id                    <span class="cmt">// same as $json if trigger node</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      Reference outputs from a previous node
+      <span class="accordion-arrow">▶</span>
+    </div>
+    <div class="accordion-body">
+      <div class="accordion-inner">
+<pre><span class="cmt">// Assuming a node named "HTTP: Get User" ran earlier</span>
+<span class="op">=</span> $(<span class="str">"HTTP: Get User"</span>).first().json.body.username
+
+<span class="cmt">// All items from a list_topics node</span>
+<span class="op">=</span> $(<span class="str">"List Support Topics"</span>).all().length
+
+<span class="cmt">// Safely read nested with fallback</span>
+<span class="op">=</span> ($(<span class="str">"Fetch Topic"</span>).first()?.json?.category_id ?? <span class="num">1</span>)</pre>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      Use execution metadata and resume URL
+      <span class="accordion-arrow">▶</span>
+    </div>
+    <div class="accordion-body">
+      <div class="accordion-inner">
+<pre><span class="cmt">// Build an approval link in a post body</span>
+<span class="op">=</span> <span class="str">"Click here to approve: "</span> + $execution.resume_url
+
+<span class="cmt">// Include workflow name in a log entry</span>
+<span class="op">=</span> <span class="str">"Workflow "</span> + $execution.workflow_name + <span class="str">" ran for topic "</span> + $json.topic.id
+
+<span class="cmt">// Access site settings</span>
+<span class="op">=</span> $site_settings.max_post_length
+<span class="op">=</span> $site_settings.title              <span class="cmt">// forum title</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     WEBHOOKS
+═══════════════════════════════════════════════════════════ -->
+<section id="tab-webhooks">
+  <h1>Webhook System</h1>
+  <p class="subtitle">Webhooks serve three distinct purposes: triggering workflows from external services, resuming paused executions, and sending responses back to callers.</p>
+
+  <h2>1. Webhook Trigger</h2>
+  <div class="callout info">
+    <strong>URL format:</strong> <code>/workflows/webhooks/:path?token=:secret</code> — the path and token are auto-generated when you add a <code>webhook</code> trigger node.
+  </div>
+  <div class="wh-flow">
+    <div class="wh-step">
+      <div class="wh-num">1</div>
+      <div class="wh-content">
+        <div class="wh-title">Inbound HTTP request</div>
+        <div class="wh-desc">Any HTTP method. Body can be JSON or form-encoded. Token validated via HMAC. Rate limit: 20 req/10s per IP.</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">2</div>
+      <div class="wh-content">
+        <div class="wh-title">WebhookRequestParser</div>
+        <div class="wh-desc">Parses body (JSON or form). Strips sensitive headers (<code>Authorization</code>, <code>Cookie</code>). Max body: 1 MB. Returns <code>{ body, headers, query, method }</code>.</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">3</div>
+      <div class="wh-content">
+        <div class="wh-title">WorkflowDependency lookup</div>
+        <div class="wh-desc">Finds all published workflows whose trigger node matches this webhook path. Multiple workflows can share a webhook endpoint.</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">4</div>
+      <div class="wh-content">
+        <div class="wh-title">ExecuteWorkflow job enqueued</div>
+        <div class="wh-desc">One Sidekiq job per matching workflow. The webhook payload becomes the trigger item.</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">5</div>
+      <div class="wh-content">
+        <div class="wh-title">Response</div>
+        <div class="wh-desc">If the workflow contains a <code>respond_to_webhook</code> node, its output is used as the HTTP response. Otherwise a 200 OK is returned immediately (async execution).</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>2. Resume Webhook (Wait / Form)</h2>
+  <div class="callout">
+    <strong>URL format:</strong> <code>/workflows/webhooks/:execution_id/:suffix?token=:resume_token</code><br>
+    This URL is available as <code>$execution.resume_url</code> in expressions — you can embed it in emails, posts, or forms.
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="wh-flow">
+        <div class="wh-step">
+          <div class="wh-num">1</div>
+          <div class="wh-content">
+            <div class="wh-title">POST to resume URL</div>
+            <div class="wh-desc">External agent (user clicking a link, form submission) sends a request with the resume token in the query string.</div>
+          </div>
+        </div>
+        <div class="wh-step">
+          <div class="wh-num">2</div>
+          <div class="wh-content">
+            <div class="wh-title">Token validation</div>
+            <div class="wh-desc">Token must match <code>execution.resume_token</code>. Execution must be in <code>waiting</code> status and not past <code>waiting_until</code>.</div>
+          </div>
+        </div>
+        <div class="wh-step">
+          <div class="wh-num">3</div>
+          <div class="wh-content">
+            <div class="wh-title">Atomic claim</div>
+            <div class="wh-desc"><code>execution.claim_for_resume()</code> uses a database-level update with <code>WHERE status = 'waiting'</code> to prevent double-resume races.</div>
+          </div>
+        </div>
+        <div class="wh-step">
+          <div class="wh-num">4</div>
+          <div class="wh-content">
+            <div class="wh-title">Resume job enqueued</div>
+            <div class="wh-desc">Sidekiq job calls <code>Executor#resume(execution, response_items)</code>. Execution continues from the node after the wait point.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>Respond to Webhook Node</h3>
+<pre><span class="cmt"># Properties</span>
+response_type: <span class="str">"json"</span> | <span class="str">"redirect"</span>
+response_body: <span class="op">=</span> { status: <span class="str">"ok"</span> }
+status_code:   <span class="num">200</span>
+headers:       [{key: <span class="str">"X-Custom"</span>, value: <span class="str">"val"</span>}]
+
+redirect_url:  <span class="op">=</span> <span class="str">"https://example.com/done"</span>
+allowed_redirect_domains: [<span class="str">"example.com"</span>]</pre>
+
+      <div class="callout warn">
+        <strong>Security:</strong> Redirect URLs are validated against <code>allowed_redirect_domains</code>. Open redirects are blocked. Domains must be explicitly whitelisted per node.
+      </div>
+    </div>
+  </div>
+
+  <h2>3. HTTP Request Action (Outbound)</h2>
+  <div class="grid grid-2">
+    <div>
+<pre><span class="cmt"># Supported methods</span>
+method: <span class="str">"GET"</span> | <span class="str">"POST"</span> | <span class="str">"PUT"</span>
+      | <span class="str">"DELETE"</span> | <span class="str">"PATCH"</span>
+
+<span class="cmt"># Body types</span>
+content_type: <span class="str">"json"</span>            <span class="cmt"># Content-Type: application/json</span>
+content_type: <span class="str">"form_urlencoded"</span> <span class="cmt"># Content-Type: application/x-www-form-urlencoded</span>
+content_type: <span class="str">"raw"</span>             <span class="cmt"># Content-Type: custom</span>
+
+<span class="cmt"># Authentication</span>
+authentication: <span class="str">"none"</span>
+authentication: <span class="str">"basic_auth"</span>     <span class="cmt"># credential_id required</span>
+authentication: <span class="str">"bearer_token"</span>   <span class="cmt"># credential_id required</span>
+
+<span class="cmt"># Response output item</span>
+{ status: <span class="num">200</span>, headers: {...}, body: {...} }</pre>
+    </div>
+    <div>
+      <div class="callout">
+        <strong>never_error:</strong> By default, 4xx/5xx HTTP responses fail the step. Set <code>never_error: true</code> to treat all responses as success — useful when you want to check <code>$json.status</code> yourself in a downstream IF node.
+      </div>
+      <div class="callout">
+        <strong>Response size limit:</strong> Max <code>max_response_size_kb</code> (default 1024 KB). Responses exceeding this are truncated with an error flag in the output.
+      </div>
+      <div class="callout warn">
+        <strong>Credentials:</strong> Stored encrypted in the <code>DiscourseWorkflows::Credential</code> model. Never exposed in expressions or logs. Injected at request-build time by <code>Authenticator</code>.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CONDITIONS
+═══════════════════════════════════════════════════════════ -->
+<section id="tab-conditions">
+  <h1>Condition Evaluation</h1>
+  <p class="subtitle">The <code>if</code> and <code>filter</code> nodes evaluate a set of condition rules against each item. Items are partitioned into true/false output ports.</p>
+
+  <h2>Condition Rule Structure</h2>
+<pre>{
+  <span class="str">"combinator"</span>: <span class="str">"and"</span>,   <span class="cmt">// "and" = ALL rules must pass  |  "or" = ANY rule must pass</span>
+  <span class="str">"conditions"</span>: [
+    {
+      <span class="str">"left"</span>:     <span class="str">"= $json.topic.category_id"</span>,  <span class="cmt">// expression: left-hand value</span>
+      <span class="str">"operator"</span>: <span class="str">"equals"</span>,                   <span class="cmt">// comparison operation</span>
+      <span class="str">"right"</span>:    <span class="str">"5"</span>                          <span class="cmt">// literal or expression</span>
+    },
+    {
+      <span class="str">"left"</span>:     <span class="str">"= $json.post.word_count"</span>,
+      <span class="str">"operator"</span>: <span class="str">"greater_than"</span>,
+      <span class="str">"right"</span>:    <span class="str">"100"</span>
+    }
+  ]
+}</pre>
+
+  <h2>Operators</h2>
+  <table>
+    <tr><th>Operator</th><th>Description</th><th>Example right-hand value</th></tr>
+    <tr><td><code>equals</code></td><td>Strict equality (== after coercion)</td><td><code>"support"</code></td></tr>
+    <tr><td><code>not_equals</code></td><td>Not equal</td><td><code>"5"</code></td></tr>
+    <tr><td><code>greater_than</code></td><td>Numeric ></td><td><code>"100"</code></td></tr>
+    <tr><td><code>less_than</code></td><td>Numeric &lt;</td><td><code>"50"</code></td></tr>
+    <tr><td><code>greater_than_or_equal</code></td><td>Numeric >=</td><td><code>"0"</code></td></tr>
+    <tr><td><code>less_than_or_equal</code></td><td>Numeric &lt;=</td><td><code>"999"</code></td></tr>
+    <tr><td><code>contains</code></td><td>String or array includes value</td><td><code>"bug"</code></td></tr>
+    <tr><td><code>not_contains</code></td><td>String or array does not include value</td><td><code>"spam"</code></td></tr>
+    <tr><td><code>starts_with</code></td><td>String starts with value</td><td><code>"[HELP]"</code></td></tr>
+    <tr><td><code>ends_with</code></td><td>String ends with value</td><td><code>".pdf"</code></td></tr>
+    <tr><td><code>is_empty</code></td><td>Value is null, undefined, or empty string/array</td><td>—</td></tr>
+    <tr><td><code>is_not_empty</code></td><td>Value is present and non-empty</td><td>—</td></tr>
+    <tr><td><code>regex</code></td><td>Left matches regular expression in right</td><td><code>"^[A-Z]"</code></td></tr>
+  </table>
+
+  <h2>Execution Flow</h2>
+  <div class="two-col">
+    <div class="flow-diagram">
+      <div style="text-align:center; font-size:.75rem; color:var(--muted); margin-bottom:1rem;">IF Node — Item Partitioning</div>
+      <div class="flow-row">
+        <div class="flow-node fn-engine" style="min-width:100px;">Items in<div class="fn-sub">[A, B, C, D]</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-condition" style="min-width:120px;">Evaluate rules<div class="fn-sub">per item</div></div>
+      </div>
+      <div class="flow-row" style="margin-top:.5rem;">
+        <div style="width:100px; flex-shrink:0;"></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-arrow" style="flex-direction:column; gap:.3rem; align-items:center; padding:0 1rem;">
+          <div style="color:var(--success); font-size:.8rem; font-weight:600;">✓ true port</div>
+          <div style="height:1px; width:80px; background:var(--success); opacity:.4;"></div>
+          <div style="color:var(--error); font-size:.8rem; font-weight:600;">✗ false port</div>
+        </div>
+      </div>
+      <div class="flow-row" style="justify-content:flex-end; gap:1.5rem;">
+        <div class="flow-node fn-action" style="min-width:110px;">True branch<div class="fn-sub">[A, C] pass</div></div>
+        <div class="flow-node fn-error" style="min-width:110px;">False branch<div class="fn-sub">[B, D] fail</div></div>
+      </div>
+    </div>
+    <div>
+<pre><span class="cmt"># lib/discourse_workflows/nodes/if/v1.rb</span>
+<span class="kw">def</span> <span class="fn">execute</span>(context)
+  true_items  = []
+  false_items = []
+
+  context.items.<span class="fn">each</span> <span class="kw">do</span> |item|
+    result = <span class="fn">evaluate_conditions</span>(
+      context.configuration[:conditions],
+      context.configuration[:combinator],
+      item
+    )
+    result ? true_items <span class="op"><<</span> item
+           : false_items <span class="op"><<</span> item
+  <span class="kw">end</span>
+
+  <span class="cls">NodeResult</span>.<span class="fn">new</span>(
+    <span class="str">"true"</span>  <span class="op">=></span> true_items,
+    <span class="str">"false"</span> <span class="op">=></span> false_items
+  )
+<span class="kw">end</span></pre>
+
+      <div class="callout tip">
+        <strong>Both ports always get items</strong> — items that don't match go to false, not dropped. To drop items entirely, leave the false port unconnected or use the <code>filter</code> node.
+      </div>
+    </div>
+  </div>
+
+  <h2>Common Patterns</h2>
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      Category-based routing
+      <span class="accordion-arrow">▶</span>
+    </div>
+    <div class="accordion-body">
+      <div class="accordion-inner">
+<pre><span class="cmt">// Route support posts to Slack, other posts to a different action</span>
+{
+  combinator: <span class="str">"and"</span>,
+  conditions: [{
+    left: <span class="str">"= $json.topic.category_id"</span>,
+    operator: <span class="str">"equals"</span>,
+    right: <span class="str">"= $site_settings.support_category_id"</span>  <span class="cmt">// right can also be an expression</span>
+  }]
+}</pre>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      Multi-condition with OR
+      <span class="accordion-arrow">▶</span>
+    </div>
+    <div class="accordion-body">
+      <div class="accordion-inner">
+<pre><span class="cmt">// True if post has "urgent" tag OR word_count > 500</span>
+{
+  combinator: <span class="str">"or"</span>,
+  conditions: [
+    { left: <span class="str">"= $json.topic.tags"</span>, operator: <span class="str">"contains"</span>, right: <span class="str">"urgent"</span> },
+    { left: <span class="str">"= $json.post.word_count"</span>, operator: <span class="str">"greater_than"</span>, right: <span class="str">"500"</span> }
+  ]
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ERROR HANDLING
+═══════════════════════════════════════════════════════════ -->
+<section id="tab-errors">
+  <h1>Error Handling</h1>
+  <p class="subtitle">Errors are handled at three levels: individual expression errors (silent, logged), individual step errors (recorded, halt propagation), and workflow-level failures (trigger error workflow).</p>
+
+  <h2>Error Propagation Layers</h2>
+  <div class="timeline">
+    <div class="tl-step">
+      <div class="tl-step-title">Level 1: Expression Error</div>
+      <div class="tl-step-desc">A JavaScript expression fails (syntax error, undefined reference, timeout). <strong>Silent</strong> — the expression returns <code>null</code>. Errors are appended to the step's <code>expression_errors</code> array. Execution continues with the null value substituted.</div>
+    </div>
+    <div class="tl-step step-error">
+      <div class="tl-step-title">Level 2: Node Step Error</div>
+      <div class="tl-step-desc">The node's <code>execute()</code> method raises an exception. Step status is set to <code>error</code>. <strong>Downstream nodes are not enqueued</strong> — the branch dies here. Other branches in the workflow continue normally (errors are per-branch, not global).</div>
+    </div>
+    <div class="tl-step step-error">
+      <div class="tl-step-title">Level 3: Execution Failure</div>
+      <div class="tl-step-desc">The executor's top-level rescue catches any unhandled exception. <code>store.fail!(error: e, steps: @steps)</code> is called. Execution status → <code>error</code>. If an error workflow is configured, it's triggered.</div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-title">Level 4: Error Workflow</div>
+      <div class="tl-step-desc">A separate workflow designated as the error handler. Called with the failed execution's data as its trigger payload. Runs in <code>execution_mode: error_mode</code> to prevent infinite error loops (error workflows cannot themselves trigger error workflows).</div>
+    </div>
+  </div>
+
+  <h2>Execution Failure States</h2>
+  <div class="grid grid-3">
+    <div class="card" style="border-color:rgba(232,90,90,.3)">
+      <div class="badge badge-error" style="margin-bottom:.5rem;">error</div>
+      <div class="card-title">Execution Failed</div>
+      <div class="card-desc">An exception was raised and not caught by any node. The execution record has <code>status="error"</code> and the <code>error</code> column contains the exception message + backtrace summary.</div>
+    </div>
+    <div class="card" style="border-color:rgba(232,200,74,.3)">
+      <div class="badge badge-waiting" style="margin-bottom:.5rem;">waiting</div>
+      <div class="card-title">Paused (Not an Error)</div>
+      <div class="card-desc">Execution is suspended at a <code>wait</code> or <code>form</code> node. Not an error condition — will resume when triggered. Has a <code>waiting_until</code> deadline and a <code>resume_token</code>.</div>
+    </div>
+    <div class="card" style="border-color:rgba(232,90,90,.2)">
+      <div class="badge badge-error" style="margin-bottom:.5rem;">rate_limited</div>
+      <div class="card-title">Rate Limited</div>
+      <div class="card-desc">Webhook trigger hit the 20 req/10s limit. The inbound request is rejected with 429. No execution record is created.</div>
+    </div>
+    <div class="card">
+      <div class="badge" style="background:var(--surface3);color:var(--muted);margin-bottom:.5rem;">skipped</div>
+      <div class="card-title">Skipped</div>
+      <div class="card-desc">Workflow is disabled, or a node type doesn't exist in the registry (plugin removed mid-execution). The entire execution skips cleanly.</div>
+    </div>
+    <div class="card">
+      <div class="badge badge-waiting" style="margin-bottom:.5rem;">timeout</div>
+      <div class="card-title">Wait Timeout</div>
+      <div class="card-desc">An execution that was <code>waiting</code> exceeded <code>waiting_until</code>. A scheduled job calls <code>execution.fail_with_timeout!()</code>. Optional <code>timeout_action</code> parameter controls the fallback path.</div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.2)">
+      <div class="badge badge-trigger" style="margin-bottom:.5rem;">loop guard</div>
+      <div class="card-title">Max Iterations</div>
+      <div class="card-desc">The executor aborts after 1,000 queue iterations. This protects against cycles created by <code>data_table</code> write → read → write patterns.</div>
+    </div>
+  </div>
+
+  <h2>HTTP Request Error Handling</h2>
+  <div class="two-col">
+    <div>
+<pre><span class="cmt"># Default: 4xx/5xx fail the step</span>
+never_error: <span class="kw">false</span>  <span class="cmt">← default</span>
+
+<span class="cmt"># With never_error: true — inspect status manually</span>
+<span class="kw">IF</span> node:
+  left:     <span class="str">"= $json.status"</span>
+  operator: <span class="str">"greater_than"</span>
+  right:    <span class="str">"399"</span>
+  <span class="cmt">→ true branch handles the error</span>
+  <span class="cmt">→ false branch continues on success</span></pre>
+    </div>
+    <div>
+      <div class="callout warn">
+        <strong>No automatic retry.</strong> Failed HTTP requests are not retried by the executor. Build retry logic explicitly with a loop or re-trigger mechanism if needed.
+      </div>
+      <div class="callout">
+        <strong>Credential errors</strong> (bad token, credential not found) fail the step immediately with a descriptive error message referencing the credential ID.
+      </div>
+    </div>
+  </div>
+
+  <h2>Node Issues Pre-flight Check</h2>
+  <p>Before executing a node, <code>NodeIssues</code> validates its configuration. If critical issues are found, the step is marked <code>skipped</code> with a reason — the node never executes. This catches things like missing required parameters, invalid node types, or incompatible input shapes before they cause runtime errors.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FORM SYSTEM
+═══════════════════════════════════════════════════════════ -->
+<section id="tab-form">
+  <h1>Form System</h1>
+  <p class="subtitle">Forms pause workflow execution, display a UI to a user, then resume with the submission data. Two modes: an inline <code>form</code> action node (mid-workflow) and a standalone <code>form_trigger</code> (entry point).</p>
+
+  <h2>Two Form Modes</h2>
+  <div class="grid grid-2">
+    <div class="card" style="border-color:rgba(74,232,160,.3)">
+      <div class="badge badge-action" style="margin-bottom:.5rem;">action:form</div>
+      <div class="card-title">Mid-workflow Form</div>
+      <div class="card-desc">
+        A form that appears <strong>during</strong> an already-running workflow. The execution pauses (status=<code>waiting</code>) and a form URL is generated using <code>$execution.resume_url</code>. When submitted, the execution resumes from the node after the form.
+        <br><br>
+        Typical use: approval flows, collecting additional data mid-process.
+      </div>
+    </div>
+    <div class="card" style="border-color:rgba(232,133,74,.3)">
+      <div class="badge badge-trigger" style="margin-bottom:.5rem;">trigger:form_trigger</div>
+      <div class="card-title">Standalone Form Entry</div>
+      <div class="card-desc">
+        A public form URL that <strong>starts</strong> a new workflow execution. No pre-existing execution context. The form submission becomes the trigger payload.
+        <br><br>
+        Typical use: contact forms, intake questionnaires, event registrations.
+      </div>
+    </div>
+  </div>
+
+  <h2>Form Action Node Properties</h2>
+<pre>{
+  page_type:           <span class="str">"single"</span> | <span class="str">"multi"</span>,
+  form_title:          <span class="str">"= \"Request: \" + $json.topic.title"</span>,
+  form_description:    <span class="str">"Please fill in the details below."</span>,
+  form_fields: [
+    { type: <span class="str">"text"</span>,     name: <span class="str">"requestor_name"</span>, label: <span class="str">"Your name"</span>,    required: <span class="kw">true</span> },
+    { type: <span class="str">"email"</span>,    name: <span class="str">"email"</span>,          label: <span class="str">"Email"</span>,          required: <span class="kw">true</span> },
+    { type: <span class="str">"select"</span>,   name: <span class="str">"priority"</span>,      label: <span class="str">"Priority"</span>,       options: [<span class="str">"low"</span>,<span class="str">"high"</span>] },
+    { type: <span class="str">"checkbox"</span>, name: <span class="str">"agree"</span>,         label: <span class="str">"I agree to ToS"</span>, required: <span class="kw">true</span> },
+    { type: <span class="str">"textarea"</span>, name: <span class="str">"notes"</span>,         label: <span class="str">"Additional notes"</span>                  }
+  ],
+  on_submission:       <span class="str">"show_completion"</span> | <span class="str">"redirect"</span>,
+  completion_title:    <span class="str">"Thanks!"</span>,
+  completion_message:  <span class="str">"Your request has been submitted."</span>,
+  redirect_url:        <span class="str">"https://example.com/done"</span>
+}</pre>
+
+  <h2>Form Resume Flow</h2>
+  <div class="wh-flow">
+    <div class="wh-step">
+      <div class="wh-num">1</div>
+      <div class="wh-content">
+        <div class="wh-title">Form node executes</div>
+        <div class="wh-desc">Node renders form configuration as JSON. Raises <code>WaitRequested</code>. Execution pauses. <code>resume_url</code> is embedded in the form's HTML via template.</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">2</div>
+      <div class="wh-content">
+        <div class="wh-title">User sees form</div>
+        <div class="wh-desc">Form served from <code>/public/form-workflow/</code> — a standalone static page. Reads form config from the execution's waiting data. No Discourse login required (public forms).</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">3</div>
+      <div class="wh-content">
+        <div class="wh-title">Form submitted</div>
+        <div class="wh-desc">POST to <code>$execution.resume_url</code> with form fields as JSON body. <code>WebhookRequestParser</code> extracts the body.</div>
+      </div>
+    </div>
+    <div class="wh-step">
+      <div class="wh-num">4</div>
+      <div class="wh-content">
+        <div class="wh-title">Execution resumes</div>
+        <div class="wh-desc">Form submission data becomes new items available as <code>$json</code> in the next node. Original trigger data still accessible via <code>trigger</code> variable.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Form Field Types</h2>
+  <div class="pill-list">
+    <span class="pill">text</span>
+    <span class="pill">email</span>
+    <span class="pill">number</span>
+    <span class="pill">textarea</span>
+    <span class="pill">select</span>
+    <span class="pill">radio</span>
+    <span class="pill">checkbox</span>
+    <span class="pill">file</span>
+    <span class="pill">hidden</span>
+    <span class="pill">html</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DATA MODELS
+═══════════════════════════════════════════════════════════ -->
+<section id="tab-data">
+  <h1>Data Models</h1>
+  <p class="subtitle">The plugin uses six primary ActiveRecord models. Workflow structure is stored as JSONB. Execution history is stored with full step-level detail.</p>
+
+  <div class="accordion-item open">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      Workflow — workflow definition
+      <span class="accordion-arrow">▶</span>
+    </div>
+    <div class="accordion-body">
+      <div class="accordion-inner">
+        <table>
+          <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>id</code></td><td>integer</td><td>Primary key</td></tr>
+          <tr><td><code>name</code></td><td>string</td><td>Display name</td></tr>
+          <tr><td><code>description</code></td><td>text</td><td>Optional description</td></tr>
+          <tr><td><code>published_version_id</code></td><td>integer</td><td>Published version used by public triggers</td></tr>
+          <tr><td><code>nodes</code></td><td>JSONB</td><td>Array of <code>{"{ id, type, version, name, configuration, position }"}</code></td></tr>
+          <tr><td><code>connections</code></td><td>JSONB</td><td>Array of <code>{"{ source_node_id, source_port, target_node_id, target_port }"}</code></td></tr>
+          <tr><td><code>static_data</code></td><td>JSONB</td><td>Workflow-level persistent state (read/written by nodes)</td></tr>
+          <tr><td><code>settings</code></td><td>JSONB</td><td>Workflow settings (timezone, etc.)</td></tr>
+          <tr><td><code>run_as_username</code></td><td>string</td><td>Actions run as this user if no per-node username is set</td></tr>
+          <tr><td><code>error_workflow_id</code></td><td>integer</td><td>FK to another Workflow to handle failures</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      Execution — one run of a workflow
+      <span class="accordion-arrow">▶</span>
+    </div>
+    <div class="accordion-body">
+      <div class="accordion-inner">
+        <table>
+          <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>id</code></td><td>integer</td><td>Primary key</td></tr>
+          <tr><td><code>workflow_id</code></td><td>integer</td><td>FK to Workflow</td></tr>
+          <tr><td><code>status</code></td><td>enum</td><td><code>pending / running / success / error / waiting / rate_limited / skipped</code></td></tr>
+          <tr><td><code>trigger_node_id</code></td><td>string</td><td>Which node triggered this run</td></tr>
+          <tr><td><code>trigger_data</code></td><td>JSONB</td><td>Event payload at trigger time</td></tr>
+          <tr><td><code>started_at / finished_at</code></td><td>datetime</td><td>Wall-clock timestamps</td></tr>
+          <tr><td><code>run_time_ms</code></td><td>integer</td><td>Total execution duration</td></tr>
+          <tr><td><code>error</code></td><td>text</td><td>Exception message (if status=error)</td></tr>
+          <tr><td><code>waiting_node_id</code></td><td>string</td><td>Node that paused execution</td></tr>
+          <tr><td><code>waiting_until</code></td><td>datetime</td><td>Deadline for wait timeout</td></tr>
+          <tr><td><code>resume_token</code></td><td>string</td><td>UUID used to authenticate resume requests</td></tr>
+          <tr><td><code>execution_mode</code></td><td>integer</td><td>0=normal, 1=error_mode (prevents re-triggering error workflow)</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      ExecutionData — step-by-step execution log
+      <span class="accordion-arrow">▶</span>
+    </div>
+    <div class="accordion-body">
+      <div class="accordion-inner">
+        <p>One row per execution. The <code>data</code> column contains the full JSON execution trace:</p>
+<pre>{
+  <span class="str">"entries"</span>: {
+    <span class="str">"node-uuid-123"</span>: [{
+      <span class="str">"node_id"</span>:    <span class="str">"node-uuid-123"</span>,
+      <span class="str">"node_type"</span>:  <span class="str">"action:create_post"</span>,
+      <span class="str">"node_name"</span>:  <span class="str">"Auto Reply"</span>,
+      <span class="str">"position"</span>:   <span class="num">0</span>,
+      <span class="str">"status"</span>:     <span class="str">"success"</span>,
+      <span class="str">"input"</span>:      [{ <span class="str">"json"</span>: {...} }],
+      <span class="str">"output"</span>:     [{ <span class="str">"json"</span>: { <span class="str">"post_id"</span>: <span class="num">42</span> } }],
+      <span class="str">"started_at"</span>: <span class="str">"2024-01-15T10:30:00Z"</span>,
+      <span class="str">"finished_at"</span>:<span class="str">"2024-01-15T10:30:01Z"</span>,
+      <span class="str">"error"</span>:      <span class="kw">null</span>,
+      <span class="str">"metadata"</span>:   {}
+    }]
+  },
+  <span class="str">"context"</span>:      { <span class="str">"Auto Reply"</span>: [{ <span class="str">"json"</span>: {...} }] },
+  <span class="str">"node_contexts"</span>: { <span class="str">"node-uuid-123"</span>: { <span class="str">"static_data"</span>: {} } }
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      Other models: Credential, Variable, DataTable, WorkflowDependency
+      <span class="accordion-arrow">▶</span>
+    </div>
+    <div class="accordion-body">
+      <div class="accordion-inner">
+        <div class="grid grid-2">
+          <div>
+            <h3>Credential</h3>
+            <p>Encrypted API credentials. Fields: <code>name</code>, <code>type</code> (basic_auth/bearer_token), <code>data</code> (encrypted JSONB). Referenced by <code>credential_id</code> in HTTP request nodes.</p>
+            <h3>Variable</h3>
+            <p>Read-only key-value store. Accessible as <code>$vars.KEY</code> in expressions. Scoped per-workflow or global.</p>
+          </div>
+          <div>
+            <h3>DataTable</h3>
+            <p>Persistent tabular storage. Each table has a schema (columns + types). Workflows can read/write rows across executions — enables stateful automation.</p>
+            <h3>WorkflowDependency</h3>
+            <p>Index table: maps trigger type+key to workflow IDs. Used for fast lookup: "which workflows listen to event X?" Rebuilt when workflows are saved.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════════════════════════ -->
+<script>
+// ── Tab switching ──────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Accordion ──────────────────────────────────────────────
+function toggleAccordion(header) {
+  header.parentElement.classList.toggle('open');
+}
+
+// ── Execution Simulator ────────────────────────────────────
+const nodes = ['en-0', 'en-1', 'en-2', 'en-3'];
+let simTimer = null;
+
+function setNodeState(id, state, status, detail) {
+  const el = document.getElementById(id);
+  el.className = 'exec-node en-' + state;
+  const statusEl = el.querySelector('.en-status');
+  const detailEl = el.querySelector('.en-detail');
+
+  const stateColors = {
+    idle:     { bg: 'var(--surface3)', color: 'var(--muted)' },
+    running:  { bg: 'rgba(124,106,247,.2)', color: 'var(--accent)' },
+    success:  { bg: 'rgba(74,232,128,.2)', color: 'var(--success)' },
+    error:    { bg: 'rgba(232,90,90,.2)', color: 'var(--error)' },
+    waiting:  { bg: 'rgba(232,200,74,.2)', color: 'var(--waiting)' },
+    filtered: { bg: 'rgba(74,206,232,.2)', color: 'var(--flow)' },
+  };
+  const c = stateColors[state] || stateColors.idle;
+  statusEl.style.background = c.bg;
+  statusEl.style.color = c.color;
+  statusEl.textContent = status;
+  if (detail) detailEl.textContent = detail;
+}
+
+function log(msg, color) {
+  const el = document.getElementById('exec-log');
+  el.style.color = color || 'var(--muted)';
+  el.textContent = '→ ' + msg;
+}
+
+function resetSim() {
+  clearTimeout(simTimer);
+  setNodeState('en-0', 'idle', 'idle', 'Waiting for Discourse :post_created event');
+  setNodeState('en-1', 'idle', 'idle', 'combinator: and · 1 condition');
+  setNodeState('en-2', 'idle', 'idle', 'POST https://hooks.slack.com/…');
+  setNodeState('en-3', 'idle', 'idle', 'raw: = "Thanks for posting in support!"');
+  document.getElementById('exec-log').textContent = '';
+}
+
+function runSim(withError) {
+  resetSim();
+  const steps = [
+    [300, () => { setNodeState('en-0', 'running', 'running', 'Event received: post #1042 in topic #88'); log('Trigger fired: post_created', 'var(--trigger)'); }],
+    [1000, () => { setNodeState('en-0', 'success', 'success', 'Output: { post: {id:1042}, topic: {id:88, category_id:5} }'); log('Trigger output: 1 item produced'); }],
+    [1500, () => { setNodeState('en-1', 'running', 'running', 'Evaluating: $json.topic.category_id equals 5'); log('IF node: evaluating condition…', 'var(--condition)'); }],
+    [2400, () => { setNodeState('en-1', 'success', 'true', 'Item routed to true port — category_id=5 matches'); log('IF result: item → true port ✓', 'var(--success)'); }],
+    [2900, () => {
+      if (withError) {
+        setNodeState('en-2', 'running', 'running', 'Sending POST to Slack…');
+        log('HTTP Request: sending…', 'var(--flow)');
+      } else {
+        setNodeState('en-2', 'running', 'running', 'Sending POST to Slack…');
+        log('HTTP Request: sending…', 'var(--flow)');
+      }
+    }],
+    [4000, () => {
+      if (withError) {
+        setNodeState('en-2', 'error', 'error', 'HTTP 401 Unauthorized — invalid Slack token');
+        log('Step error: HTTP 401 — step failed, execution → fail!()', 'var(--error)');
+        setNodeState('en-3', 'idle', 'skipped', 'Not reached — upstream error');
+      } else {
+        setNodeState('en-2', 'success', 'success', 'HTTP 200 OK — { "ok": true }');
+        log('HTTP 200 OK — Slack notified ✓', 'var(--success)');
+      }
+    }],
+    [4800, () => {
+      if (!withError) {
+        setNodeState('en-3', 'running', 'running', 'Creating reply in topic #88…');
+        log('create_post: writing reply…', 'var(--action)');
+      }
+    }],
+    [6000, () => {
+      if (!withError) {
+        setNodeState('en-3', 'success', 'success', 'Post #1043 created ✓');
+        log('✅ Execution complete — 4 steps, status=success', 'var(--success)');
+      } else {
+        log('💥 Execution failed — error workflow triggered (if configured)', 'var(--error)');
+      }
+    }],
+  ];
+
+  steps.forEach(([delay, fn]) => {
+    simTimer = setTimeout(() => fn(), delay);
+  });
+}
+
+document.getElementById('btn-run').addEventListener('click', () => runSim(false));
+document.getElementById('btn-error').addEventListener('click', () => runSim(true));
+document.getElementById('btn-reset').addEventListener('click', resetSim);
+</script>
+</body>
+</html>

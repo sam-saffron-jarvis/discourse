@@ -164,13 +164,13 @@ export default class WorkflowsIndex extends Component {
           {{/if}}
         </td>
         <td class="d-table__cell --detail workflows-index__status">
-          {{#if workflow.enabled}}
-            <span class="workflows-index__badge is-enabled">
-              {{i18n "discourse_workflows.enabled"}}
+          {{#if workflow.published_version_id}}
+            <span class="workflows-index__badge is-published">
+              {{i18n "discourse_workflows.published"}}
             </span>
           {{else}}
-            <span class="workflows-index__badge is-disabled">
-              {{i18n "discourse_workflows.disabled"}}
+            <span class="workflows-index__badge is-unpublished">
+              {{i18n "discourse_workflows.unpublished"}}
             </span>
           {{/if}}
         </td>

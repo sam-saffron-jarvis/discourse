@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Jobs::DiscourseWorkflows::ResumeWebhookWaiting do
-  fab!(:workflow) { Fabricate(:discourse_workflows_workflow, enabled: true) }
+  fab!(:workflow) { Fabricate(:discourse_workflows_workflow, published: true) }
   fab!(:execution) do
     Fabricate(:discourse_workflows_execution, workflow: workflow, status: :waiting)
   end

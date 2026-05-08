@@ -52,7 +52,7 @@ module DiscourseWorkflows
     end
 
     def fetch_waiting_node(execution:)
-      execution.workflow.find_node(execution.waiting_node_id)
+      execution.find_waiting_node
     end
 
     def fetch_claimed_execution(execution:, params:)

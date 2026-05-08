@@ -23,7 +23,7 @@ module DiscourseWorkflows
           on_failed_policy(:authenticated_if_required) { raise Discourse::NotLoggedIn }
           on_failed_policy(:action_form) { raise Discourse::NotFound }
           on_failure { render(json: failed_json, status: :unprocessable_entity) }
-          on_model_not_found(:workflow) { raise Discourse::NotFound }
+          on_model_not_found(:published_trigger) { raise Discourse::NotFound }
           on_model_not_found(:form_node) { raise Discourse::NotFound }
         end
       else
@@ -48,8 +48,7 @@ module DiscourseWorkflows
           render json: { errors: form_validation.errors.map(&:to_h) }, status: :unprocessable_entity
         end
         on_failure { render(json: failed_json, status: :unprocessable_entity) }
-        on_model_not_found(:workflow) { raise Discourse::NotFound }
-        on_model_not_found(:trigger_node) { raise Discourse::NotFound }
+        on_model_not_found(:published_trigger) { raise Discourse::NotFound }
       end
     end
 

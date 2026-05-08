@@ -13,7 +13,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                  "http_method" => "POST",
                }
       end
-    Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+    Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
   end
 
   describe "POST /workflows/webhooks/:path" do
@@ -50,8 +50,8 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
       expect(response).to have_http_status(:not_found)
     end
 
-    it "returns 404 when workflow is disabled" do
-      workflow.update!(enabled: false)
+    it "returns 404 when workflow is unpublished" do
+      unpublish_workflow!(workflow)
       post "/workflows/webhooks/my-hook.json"
       expect(response).to have_http_status(:not_found)
     end
@@ -89,6 +89,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
       update_workflow_node(workflow, "webhook-1") do |node|
         node.merge("configuration" => { "path" => "my-hook", "http_method" => "PUT" })
       end
+      publish_workflow!(workflow)
 
       put "/workflows/webhooks/my-hook.json",
           params: { updated: true }.to_json,
@@ -268,6 +269,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
             },
           ],
         )
+        publish_workflow!(workflow)
       end
 
       it "redirects when respond_to_webhook node produces a redirect" do
@@ -510,6 +512,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
             },
           )
         end
+        publish_workflow!(workflow)
       end
 
       it "returns 401 with WWW-Authenticate when no auth header" do

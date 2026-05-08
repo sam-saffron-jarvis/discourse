@@ -106,7 +106,7 @@ RSpec.describe DiscourseWorkflows::WorkflowDependencyIndexer do
         build_workflow_graph do |g|
           g.node "t1", "trigger:webhook", configuration: { "path" => "new-path" }
         end
-      workflow.update!(nodes: updated[:nodes])
+      workflow.draft_version.update!(nodes: updated[:nodes])
       index(workflow)
 
       expect(dependency_rows(workflow).of_type("webhook_path").pluck(:dependency_key)).to eq(

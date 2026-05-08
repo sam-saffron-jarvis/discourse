@@ -25,7 +25,7 @@ RSpec.describe "Workflow: topic created -> create topic" do
     Fabricate(
       :discourse_workflows_workflow,
       created_by: admin,
-      enabled: true,
+      published: true,
       name: "Mirror new topics",
       **graph,
     )

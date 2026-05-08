@@ -21,8 +21,10 @@ module DiscourseWorkflows
     end
 
     only_if(:initial_request?) do
-      model :workflow, :fetch_workflow_by_uuid
-      model :form_node, :fetch_form_node_from_workflow
+      model :published_trigger, :fetch_published_trigger_by_uuid
+      model :workflow, :fetch_workflow_from_published_trigger
+      model :workflow_version, :fetch_workflow_version_from_published_trigger
+      model :form_node, :fetch_form_node_from_published_trigger
       policy :authenticated_if_required
       model :form_data, :build_form_data_from_config
     end
@@ -55,21 +57,24 @@ module DiscourseWorkflows
       waiting_execution.workflow
     end
 
-    def fetch_form_node_from_execution(waiting_execution:, workflow:)
-      workflow.find_node(waiting_execution.waiting_node_id)
+    def fetch_form_node_from_execution(waiting_execution:)
+      waiting_execution.find_waiting_node
     end
 
-    def fetch_workflow_by_uuid(params:)
-      DiscourseWorkflows::Workflow.where(enabled: true).find_by(
-        "nodes @> ?",
-        [{ type: "trigger:form", configuration: { uuid: params.uuid } }].to_json,
-      )
+    def fetch_published_trigger_by_uuid(params:)
+      Form::Action::FindPublishedTrigger.call(uuid: params.uuid)
     end
 
-    def fetch_form_node_from_workflow(params:, workflow:)
-      workflow
-        .nodes_of_type("trigger:form")
-        .find { |node| node.dig("configuration", "uuid") == params.uuid }
+    def fetch_workflow_from_published_trigger(published_trigger:)
+      published_trigger.workflow
+    end
+
+    def fetch_workflow_version_from_published_trigger(published_trigger:)
+      published_trigger.workflow_version
+    end
+
+    def fetch_form_node_from_published_trigger(published_trigger:)
+      published_trigger.trigger_node
     end
 
     def build_form_data_from_execution(
@@ -85,7 +90,7 @@ module DiscourseWorkflows
 
       node_contexts_by_name =
         (execution_data&.node_contexts || {}).each_with_object({}) do |(id, value), acc|
-          name = workflow.find_node(id)&.dig("name").presence || id.to_s
+          name = waiting_execution.workflow_node(id)&.dig("name").presence || id.to_s
           acc[name] = value
         end
 
@@ -95,7 +100,7 @@ module DiscourseWorkflows
           "__execution" => {
             "id" => waiting_execution.id,
             "workflow_id" => workflow.id,
-            "workflow_name" => workflow.name,
+            "workflow_name" => waiting_execution.workflow_snapshot_name,
             "resume_url" =>
               "#{Discourse.base_url}/workflows/webhooks/#{waiting_execution.id}?token=#{resume_token}",
           },
@@ -120,12 +125,12 @@ module DiscourseWorkflows
         form_fields: Workflow.resolve_field_keys(config["form_fields"] || []),
         response_mode: "on_received",
         has_downstream_form:
-          workflow.node_has_reachable_downstream_of_type?(form_node["id"], "action:form"),
+          waiting_execution.node_has_reachable_downstream_of_type?(form_node["id"], "action:form"),
         resume_token: resume_token,
       }
     end
 
-    def build_form_data_from_config(workflow:, form_node:, params:, guardian:)
+    def build_form_data_from_config(workflow:, workflow_version:, form_node:, params:, guardian:)
       resume_token =
         DiscourseWorkflows::FormTriggerToken.generate(
           workflow_id: workflow.id,
@@ -136,7 +141,7 @@ module DiscourseWorkflows
       exec_context = {
         "__execution" => {
           "workflow_id" => workflow.id,
-          "workflow_name" => workflow.name,
+          "workflow_name" => workflow_version.name,
           "resume_url" => "",
         },
       }
@@ -155,7 +160,11 @@ module DiscourseWorkflows
         form_fields: Workflow.resolve_field_keys(config["form_fields"] || []),
         response_mode: config["response_mode"] || "on_received",
         has_downstream_form:
-          workflow.node_has_reachable_downstream_of_type?(form_node["id"], "action:form"),
+          workflow.node_has_reachable_downstream_of_type?(
+            form_node["id"],
+            "action:form",
+            published: true,
+          ),
         resume_token: resume_token,
       }
     end

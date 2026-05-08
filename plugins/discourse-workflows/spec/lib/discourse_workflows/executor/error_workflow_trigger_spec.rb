@@ -15,18 +15,18 @@ RSpec.describe DiscourseWorkflows::Executor::ErrorWorkflowTrigger do
 
   def build_error_workflow
     graph = build_workflow_graph { |g| g.node "error-trigger-1", "trigger:error" }
-    Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+    Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
   end
 
-  def build_workflow_with_error_handler(error_wf: nil, error_wf_enabled: true, handler_opts: {})
-    if error_wf.nil? && error_wf_enabled
+  def build_workflow_with_error_handler(error_wf: nil, error_wf_published: true, handler_opts: {})
+    if error_wf.nil? && error_wf_published
       error_wf = build_error_workflow
     elsif error_wf.nil?
       error_wf = build_error_workflow
-      error_wf.update!(enabled: false)
+      unpublish_workflow!(error_wf)
     end
 
-    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true)
+    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, published: true)
     workflow.update!(error_workflow_id: error_wf.id)
     steps = build_steps(**handler_opts.slice(:last_failed_step))
     handler = build_handler(workflow, steps, **handler_opts.except(:last_failed_step))
@@ -48,6 +48,7 @@ RSpec.describe DiscourseWorkflows::Executor::ErrorWorkflowTrigger do
       job = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last
       expect(job).to be_present
       expect(job["args"].first["workflow_id"]).to eq(error_wf.id)
+      expect(job["args"].first["workflow_version_id"]).to eq(error_wf.published_version_id)
       expect(job["args"].first["execution_mode"]).to eq("error_mode")
       expect(job["args"].first["error_depth"]).to eq(1)
     end
@@ -63,19 +64,19 @@ RSpec.describe DiscourseWorkflows::Executor::ErrorWorkflowTrigger do
     end
 
     it "does not trigger when no error workflow is configured" do
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true)
+      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, published: true)
       handler = build_handler(workflow, build_steps)
       trigger_and_expect_no_jobs(handler)
     end
 
-    it "does not trigger when error workflow is disabled" do
-      _, handler = build_workflow_with_error_handler(error_wf_enabled: false)
+    it "does not trigger when error workflow is unpublished" do
+      _, handler = build_workflow_with_error_handler(error_wf_published: false)
       trigger_and_expect_no_jobs(handler)
     end
 
     it "does not trigger when error workflow has no error trigger node" do
-      error_wf = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true)
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true)
+      error_wf = Fabricate(:discourse_workflows_workflow, created_by: user, published: true)
+      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, published: true)
       workflow.update!(error_workflow_id: error_wf.id)
       handler = build_handler(workflow, build_steps)
       trigger_and_expect_no_jobs(handler)

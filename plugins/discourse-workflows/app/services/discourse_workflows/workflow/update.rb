@@ -7,7 +7,6 @@ module DiscourseWorkflows
     params do
       attribute :workflow_id, :integer
       attribute :name, :string
-      attribute :enabled, :boolean
       attribute :error_workflow_id, :integer
       attribute :nodes
       attribute :connections
@@ -22,24 +21,38 @@ module DiscourseWorkflows
       validates :name, presence: true, length: { maximum: 100 }
 
       def updatable_attributes
-        attrs = { name: }
-        attrs[:enabled] = enabled unless enabled.nil?
-        attrs[:error_workflow_id] = error_workflow_id
-        attrs
+        { name:, error_workflow_id: }
+      end
+
+      def graph_data_provided?
+        !nodes.nil? || !connections.nil?
       end
     end
 
     policy :can_manage_workflows, class_name: Policy::CanManageWorkflows
-    model :workflow
 
-    transaction do
-      step :update_workflow
-      only_if(:graph_data_provided) { step :populate_graph }
-      only_if(:error_workflow_changed_without_graph) { step :reindex_dependencies }
+    lock(:workflow_id) do
+      model :workflow
+
+      transaction do
+        model :workflow, :update_workflow
+        model :workflow, :save_workflow
+        only_if(:graph_data_provided) do
+          step :populate_graph
+          model :draft_version, :create_draft_version
+          step :assign_draft_version
+          step :index_draft_dependencies
+        end
+        only_if(:metadata_only_update) do
+          model :draft_version, :editable_draft_version
+          step :assign_draft_version
+          step :update_draft_version_metadata
+          step :index_draft_dependencies
+        end
+      end
     end
 
     step :expire_workflow_caches
-    only_if(:workflow_enabled) { step :start_seconds_schedules }
 
     private
 
@@ -48,11 +61,17 @@ module DiscourseWorkflows
     end
 
     def graph_data_provided(params:)
-      !params.nodes.nil? || !params.connections.nil?
+      params.graph_data_provided?
     end
 
     def update_workflow(workflow:, params:, guardian:)
-      workflow.update!(**params.updatable_attributes, updated_by: guardian.user)
+      workflow.assign_attributes(**params.updatable_attributes, updated_by: guardian.user)
+      workflow
+    end
+
+    def save_workflow(workflow:)
+      workflow.save
+      workflow
     end
 
     def populate_graph(workflow:, params:)
@@ -65,27 +84,33 @@ module DiscourseWorkflows
       fail!(workflow.errors.full_messages) if result == false
     end
 
+    def create_draft_version(workflow:, guardian:)
+      workflow.create_draft_version!(user: guardian.user)
+    end
+
+    def assign_draft_version(workflow:, draft_version:)
+      workflow.update!(draft_version:)
+    end
+
+    def index_draft_dependencies(workflow:, draft_version:)
+      DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow, version: draft_version)
+    end
+
+    def metadata_only_update(params:)
+      !graph_data_provided(params:)
+    end
+
+    def editable_draft_version(workflow:, guardian:)
+      workflow.editable_draft_version!(user: guardian.user)
+    end
+
+    def update_draft_version_metadata(workflow:, guardian:)
+      workflow.draft_version&.update(name: workflow.name, updated_by: guardian.user)
+    end
+
     def expire_workflow_caches
       Site.clear_cache
       DiscourseWorkflows::WorkflowDependency.clear_cache!
-    end
-
-    def workflow_enabled(workflow:)
-      workflow.enabled?
-    end
-
-    def error_workflow_changed_without_graph(workflow:, params:)
-      !graph_data_provided(params:) && workflow.saved_change_to_error_workflow_id?
-    end
-
-    def reindex_dependencies(workflow:)
-      DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
-    end
-
-    def start_seconds_schedules(workflow:)
-      workflow.each_seconds_schedule_rule do |node, rule, rule_index|
-        ScheduleRule.start_seconds_chain!(workflow, node["id"], rule_index, rule)
-      end
     end
   end
 end

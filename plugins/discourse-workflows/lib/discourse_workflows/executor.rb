@@ -23,8 +23,23 @@ module DiscourseWorkflows
       @trigger_node_id = trigger_node_id.to_s
       @trigger_data = trigger_data.deep_stringify_keys
       @options = options
+      workflow_version = @options.workflow_version
+      workflow_nodes =
+        if workflow_version
+          workflow_version.nodes
+        elsif @options.draft_execution
+          @workflow.nodes
+        else
+          @workflow.published_nodes
+        end
       @context =
-        ExecutionContext.new(workflow: @workflow, trigger_data: @trigger_data, user: @options.user)
+        ExecutionContext.new(
+          workflow: @workflow,
+          trigger_data: @trigger_data,
+          user: @options.user,
+          workflow_nodes: workflow_nodes,
+          workflow_name: workflow_version&.name,
+        )
       @store =
         ExecutionStore.new(
           trigger_node_id: @trigger_node_id,
@@ -49,7 +64,14 @@ module DiscourseWorkflows
       workflow = execution.workflow
       trigger_node_id = execution.trigger_node_id
 
-      unless workflow.find_node(trigger_node_id)
+      snapshot =
+        if execution.execution_data&.workflow_data.present?
+          WorkflowSnapshot.new(execution.execution_data.workflow_data)
+        else
+          WorkflowSnapshot.from_workflow(workflow, published: true)
+        end
+
+      unless snapshot.find_node(trigger_node_id)
         raise "Trigger node #{trigger_node_id} not found in workflow #{workflow.id}"
       end
 
@@ -61,7 +83,9 @@ module DiscourseWorkflows
     end
 
     def run
-      return @store.create_execution_with_status(:skipped) unless @workflow.enabled?
+      unless @workflow.published? || @options.draft_execution || @options.workflow_version
+        return @store.create_execution_with_status(:skipped)
+      end
       return @store.create_rate_limited_execution unless rate_limiter.within_limits?
 
       execute_flow(:start_execution!) do
@@ -418,12 +442,21 @@ module DiscourseWorkflows
 
     def preloaded_workflow_dependencies
       @preloaded_workflow_dependencies ||=
-        DiscourseWorkflows::WorkflowDependency
-          .where(workflow: @workflow)
-          .pluck(:node_id, :dependency_type, :dependency_key)
-          .each_with_object(Hash.new { |h, k| h[k] = Set.new }) do |(node_id, type, key), h|
-            h[node_id.to_s] << "#{type}:#{key}"
+        @snapshot
+          .nodes
+          .each_with_object(Hash.new { |h, k| h[k] = Set.new }) do |node, dependencies|
+            config = node.configuration || {}
+            node_dependencies(config).each do |type, key|
+              dependencies[node.id.to_s] << "#{type}:#{key}"
+            end
           end
+    end
+
+    def node_dependencies(config)
+      dependencies = []
+      dependencies << ["credential_id", config["credential_id"]] if config["credential_id"].present?
+      dependencies << ["data_table_id", config["data_table_id"]] if config["data_table_id"].present?
+      dependencies
     end
 
     def sandbox_budget_tracker

@@ -242,9 +242,9 @@ module DiscourseWorkflows
       def evaluate(expression)
         ensure_initialized!
         @sandbox.eval("(#{expression})")
-      rescue JsSandbox::BudgetExceededError, JsSandbox::SandboxError
+      rescue JsSandbox::BudgetExceededError
         raise
-      rescue MiniRacer::Error => e
+      rescue JsSandbox::SandboxError, MiniRacer::Error => e
         @expression_errors << { expression: expression, error: e.message, type: classify_error(e) }
         nil
       end

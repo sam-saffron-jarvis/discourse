@@ -18,15 +18,15 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
   end
 
   describe "POST /admin/plugins/discourse-workflows/executions" do
-    fab!(:enabled_workflow) do
+    fab!(:published_workflow) do
       graph = build_workflow_graph { |g| g.node "trigger-1", "trigger:manual" }
-      Fabricate(:discourse_workflows_workflow, created_by: admin, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
     end
 
     it "creates an execution" do
       post "/admin/plugins/discourse-workflows/executions.json",
            params: {
-             workflow_id: enabled_workflow.id,
+             workflow_id: published_workflow.id,
              trigger_node_id: "trigger-1",
            }
 
@@ -43,14 +43,14 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
     end
 
     it "passes current user to execution" do
-      DiscourseWorkflows::Workflow::Execute
+      DiscourseWorkflows::Workflow::ManualExecute
         .expects(:call)
         .with { |kwargs| kwargs.dig(:params, :user_id) == admin.id }
         .returns(Service::Base::Context.build)
 
       post "/admin/plugins/discourse-workflows/executions.json",
            params: {
-             workflow_id: enabled_workflow.id,
+             workflow_id: published_workflow.id,
              trigger_node_id: "trigger-1",
            }
     end

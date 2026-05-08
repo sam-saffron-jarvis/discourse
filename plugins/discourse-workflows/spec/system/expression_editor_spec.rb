@@ -133,7 +133,7 @@ RSpec.describe "Workflow Expression Editor" do
       expect(expression_editor).to have_expression_preview
       expect(expression_editor).to have_expression_preview_result(
         "invalid",
-        text: "invalid JavaScript",
+        text: "Invalid JavaScript",
       )
     end
 
@@ -150,7 +150,7 @@ RSpec.describe "Workflow Expression Editor" do
       expect(expression_editor).to have_expression_preview
       expect(expression_editor).to have_expression_preview_result(
         "warning",
-        text: "missing function call",
+        text: "Missing function call",
       )
     end
 

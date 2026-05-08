@@ -25,7 +25,7 @@ RSpec.describe "Workflow: topic category changed -> create post" do
     Fabricate(
       :discourse_workflows_workflow,
       created_by: admin,
-      enabled: true,
+      published: true,
       name: "Notify on category change",
       **graph,
     )
@@ -64,8 +64,8 @@ RSpec.describe "Workflow: topic category changed -> create post" do
     expect_no_workflow_jobs_for(topic)
   end
 
-  it "does not trigger when the workflow is disabled" do
-    DiscourseWorkflows::Workflow.update_all(enabled: false)
+  it "does not trigger when the workflow is unpublished" do
+    DiscourseWorkflows::Workflow.find_each { |workflow| unpublish_workflow!(workflow) }
     topic.change_category_to_id(target_category.id)
     expect_no_workflow_jobs_for(topic)
   end

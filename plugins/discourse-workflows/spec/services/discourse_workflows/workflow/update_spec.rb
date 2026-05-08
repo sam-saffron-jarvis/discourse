@@ -13,10 +13,10 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
     fab!(:user, :admin)
     fab!(:workflow) { Fabricate(:discourse_workflows_workflow, created_by: user) }
 
-    let(:params) { { workflow_id: workflow.id, name:, enabled:, nodes:, connections: } }
+    let(:params) { { workflow_id: workflow.id, name:, error_workflow_id:, nodes:, connections: } }
     let(:dependencies) { { guardian: user.guardian } }
     let(:name) { "Updated Workflow" }
-    let(:enabled) { true }
+    let(:error_workflow_id) { nil }
     let(:nodes) { [] }
     let(:connections) { [] }
 
@@ -46,6 +46,12 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
       it { is_expected.to fail_a_policy(:can_manage_workflows) }
     end
 
+    context "when error workflow is invalid" do
+      let(:error_workflow_id) { workflow.id }
+
+      it { is_expected.to fail_with_an_invalid_model(:workflow) }
+    end
+
     context "when graph population fails" do
       let(:nodes) { [{ client_id: "node_1", type: "trigger:manual", name: "Manual" }] }
 
@@ -69,9 +75,60 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
         result
         expect(workflow.reload.nodes.size).to eq(1)
       end
+
+      context "when the workflow is already published" do
+        before { publish_workflow!(workflow) }
+
+        it "creates a new draft version for metadata changes" do
+          published_version_id = workflow.published_version_id
+
+          result
+          workflow.reload
+
+          expect(workflow.draft_version_id).not_to eq(published_version_id)
+          expect(workflow.published_version_id).to eq(published_version_id)
+          expect(workflow.draft_version.name).to eq("Updated Workflow")
+        end
+
+        it "does not mutate the published version metadata" do
+          published_version_id = workflow.published_version_id
+          published_version_name = workflow.published_version.name
+
+          result
+
+          expect(DiscourseWorkflows::WorkflowVersion.find(published_version_id).name).to eq(
+            published_version_name,
+          )
+        end
+      end
+
+      it "fetches the workflow after acquiring the lock" do
+        lock_sequence = sequence("workflow update lock")
+
+        DistributedMutex
+          .expects(:synchronize)
+          .with("discourse_workflows/workflow/update:workflow_id:#{workflow.id}")
+          .in_sequence(lock_sequence)
+          .yields
+        DiscourseWorkflows::Workflow
+          .expects(:find_by)
+          .with(id: workflow.id)
+          .in_sequence(lock_sequence)
+          .returns(workflow)
+
+        result
+      end
+
+      context "when the workflow has no draft version" do
+        before { workflow.update_columns(draft_version_id: nil) }
+
+        it { is_expected.to fail_to_find_a_model(:draft_version) }
+      end
     end
 
     context "when everything's ok" do
+      before { publish_workflow!(workflow) }
+
       let(:nodes) do
         [
           {
@@ -101,7 +158,8 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
       it "updates the workflow attributes" do
         result
         workflow.reload
-        expect(workflow).to have_attributes(name: "Updated Workflow", enabled: true)
+        expect(workflow).to have_attributes(name: "Updated Workflow")
+        expect(workflow).to be_published
       end
 
       it "populates the workflow graph" do
@@ -111,12 +169,30 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
         expect(workflow.connections.size).to eq(1)
       end
 
+      it "creates an unpublished draft version" do
+        published_version_id = workflow.published_version_id
+        result
+        workflow.reload
+        expect(workflow.draft_version_id).not_to eq(published_version_id)
+        expect(workflow.published_version_id).to eq(published_version_id)
+        expect(workflow).to have_unpublished_changes
+      end
+
+      it "locks draft version creation for the workflow" do
+        DistributedMutex
+          .expects(:synchronize)
+          .with("discourse_workflows/workflow/update:workflow_id:#{workflow.id}")
+          .yields
+
+        result
+      end
+
       it "clears the site cache" do
         Site.expects(:clear_cache).once
         result
       end
 
-      context "when workflow is enabled with seconds schedule triggers" do
+      context "when graph data includes seconds schedule triggers" do
         let(:nodes) do
           [
             {
@@ -130,15 +206,6 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
           ]
         end
         let(:connections) { [] }
-
-        it "starts seconds schedule chains" do
-          DiscourseWorkflows::ScheduleRule.expects(:start_seconds_chain!).once
-          result
-        end
-      end
-
-      context "when workflow is not enabled" do
-        let(:enabled) { false }
 
         it "does not start seconds schedule chains" do
           DiscourseWorkflows::ScheduleRule.expects(:start_seconds_chain!).never

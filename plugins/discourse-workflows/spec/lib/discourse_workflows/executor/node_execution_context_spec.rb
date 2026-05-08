@@ -268,7 +268,10 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
 
       expect {
         ctx.http_request(method: "POST", url: "https://api.example.com/retry")
-      }.to raise_error(RuntimeError, "HTTP request failed with status 503")
+      }.to raise_error(
+        RuntimeError,
+        "HTTP POST https://api.example.com/retry failed with status 503",
+      )
       expect(WebMock).to have_requested(:post, "https://api.example.com/retry").once
     end
 

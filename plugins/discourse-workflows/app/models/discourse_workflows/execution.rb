@@ -115,7 +115,37 @@ module DiscourseWorkflows
         end
     end
 
+    def find_waiting_node
+      workflow_node(waiting_node_id)
+    end
+
+    def workflow_node(node_id)
+      return workflow.find_published_node(node_id) if workflow_data.blank?
+
+      WorkflowSnapshot.new(workflow_data).to_h["nodes"].find { |node| node["id"] == node_id.to_s }
+    end
+
+    def node_has_reachable_downstream_of_type?(node_id, type)
+      if workflow_data.present?
+        return(
+          WorkflowSnapshot.new(workflow_data).node_has_reachable_downstream_of_type?(node_id, type)
+        )
+      end
+
+      workflow.node_has_reachable_downstream_of_type?(node_id, type, published: true)
+    end
+
+    def workflow_snapshot_name
+      return WorkflowSnapshot.new(workflow_data).workflow_name if workflow_data.present?
+
+      workflow.published_version&.name || workflow.name
+    end
+
     private
+
+    def workflow_data
+      execution_data&.workflow_data
+    end
 
     def update_step_status_in_data!(node_id, from_status, to_status, error_msg = nil)
       return unless execution_data

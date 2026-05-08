@@ -8,9 +8,9 @@ import didUpdate from "@ember/render-modifiers/modifiers/did-update";
 import { service } from "@ember/service";
 import { trustHTML } from "@ember/template";
 import DButton from "discourse/components/d-button";
+import DComboButton from "discourse/components/d-combo-button";
 import DropdownMenu from "discourse/components/dropdown-menu";
 import DMenu from "discourse/float-kit/components/d-menu";
-import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
@@ -40,7 +40,8 @@ export default class WorkflowCanvas extends Component {
   @tracked isLoading = true;
   @tracked rete = null;
   @tracked areaTransform = { x: 0, y: 0, k: 1 };
-  @tracked workflowEnabledOverride = null;
+  @tracked workflowPublishedOverride = null;
+  @tracked hasUnpublishedChangesOverride = null;
   @tracked selectionVersion = 0;
   copiedEntities = { nodes: [], stickyNotes: [] };
   pasteOffset = 0;
@@ -60,8 +61,21 @@ export default class WorkflowCanvas extends Component {
     this.keyboard?.teardown();
   }
 
-  get workflowEnabled() {
-    return this.workflowEnabledOverride ?? this.args.workflowEnabled;
+  get workflowPublished() {
+    return (
+      this.workflowPublishedOverride ?? Boolean(this.args.workflowPublished)
+    );
+  }
+
+  get hasUnpublishedChanges() {
+    return (
+      this.hasUnpublishedChangesOverride ??
+      Boolean(this.args.hasUnpublishedChanges)
+    );
+  }
+
+  get publishDisabled() {
+    return this.workflowPublished && !this.hasUnpublishedChanges;
   }
 
   @action
@@ -71,9 +85,9 @@ export default class WorkflowCanvas extends Component {
   }
 
   @action
-  async toggleEnabled() {
-    const newValue = !this.workflowEnabled;
-    this.workflowEnabledOverride = newValue;
+  async publishWorkflow() {
+    this.workflowPublishedOverride = true;
+    this.hasUnpublishedChangesOverride = false;
     try {
       await ajax(
         `/admin/plugins/discourse-workflows/workflows/${this.args.workflowId}.json`,
@@ -82,16 +96,47 @@ export default class WorkflowCanvas extends Component {
           data: {
             workflow: {
               name: this.args.workflowName,
-              enabled: newValue,
+              published: true,
             },
           },
         }
       );
       if (this.args.workflow) {
-        this.args.workflow.enabled = newValue;
+        this.args.workflow.published_version_id =
+          this.args.workflow.draft_version_id;
+        this.args.workflow.has_unpublished_changes = false;
       }
+      this.workflowPublishedOverride = null;
+      this.hasUnpublishedChangesOverride = null;
     } catch {
-      this.workflowEnabledOverride = !newValue;
+      this.workflowPublishedOverride = this.args.workflowPublished;
+      this.hasUnpublishedChangesOverride = this.args.hasUnpublishedChanges;
+    }
+  }
+
+  @action
+  async unpublishWorkflow() {
+    this.menu.close("workflows-canvas-publish-menu");
+    this.workflowPublishedOverride = false;
+    try {
+      await ajax(
+        `/admin/plugins/discourse-workflows/workflows/${this.args.workflowId}.json`,
+        {
+          type: "PUT",
+          data: {
+            workflow: {
+              name: this.args.workflowName,
+              published: false,
+            },
+          },
+        }
+      );
+      if (this.args.workflow) {
+        this.args.workflow.published_version_id = null;
+      }
+      this.workflowPublishedOverride = null;
+    } catch {
+      this.workflowPublishedOverride = this.args.workflowPublished;
     }
   }
 
@@ -582,7 +627,7 @@ export default class WorkflowCanvas extends Component {
               @onManualTrigger={{this.rete.renderer.onManualTrigger}}
               @onSocketRendered={{this.rete.renderer.onSocketRendered}}
               @onEditNode={{@onEditNode}}
-              @workflowEnabled={{this.workflowEnabled}}
+              @workflowPublished={{this.workflowPublished}}
             />
           {{/in-element}}
         {{/each}}
@@ -676,23 +721,39 @@ export default class WorkflowCanvas extends Component {
           {{on "change" this.handleFileSelected}}
         />
 
-        <label
-          class={{concatClass
-            "workflows-canvas__status"
-            (if this.workflowEnabled "is-published" "is-draft")
-          }}
-        >
-          {{i18n "discourse_workflows.enabled"}}
-          <input
-            type="checkbox"
-            checked={{this.workflowEnabled}}
-            {{on "click" this.toggleEnabled}}
-            class="workflows-canvas__status-checkbox"
-          />
-        </label>
-
         {{#if @onOpenNodePanel}}
           <div class="workflows-canvas__toolbar-top-right">
+            <DComboButton
+              class={{if this.workflowPublished "--has-menu"}}
+              as |combo|
+            >
+              <combo.Button
+                @action={{this.publishWorkflow}}
+                @translatedLabel={{i18n "discourse_workflows.publish"}}
+                @disabled={{this.publishDisabled}}
+                class="btn-primary workflows-canvas__publish-btn"
+              />
+
+              {{#if this.workflowPublished}}
+                <combo.Menu
+                  @identifier="workflows-canvas-publish-menu"
+                  class="btn-primary"
+                >
+                  <DropdownMenu as |dropdown|>
+                    <dropdown.item>
+                      <DButton
+                        @action={{this.unpublishWorkflow}}
+                        @translatedLabel={{i18n
+                          "discourse_workflows.unpublish"
+                        }}
+                        class="btn-transparent"
+                      />
+                    </dropdown.item>
+                  </DropdownMenu>
+                </combo.Menu>
+              {{/if}}
+            </DComboButton>
+
             <DButton
               @action={{this.openNodePanelAtCenter}}
               @icon="plus"

@@ -28,11 +28,20 @@ module DiscourseWorkflows
       workflow.find_node(params.trigger_node_id)
     end
 
-    def run_workflow(params:, guardian:)
-      Workflow::Execute.call(
-        params: params.to_hash.merge(execution_mode: "normal", error_depth: 0),
-        guardian:,
-      ).execution
+    def run_workflow(workflow:, params:, guardian:)
+      options =
+        DiscourseWorkflows::Executor::ExecutionOptions.new(
+          user: guardian.user,
+          execution_mode: :normal,
+          error_depth: 0,
+          draft_execution: true,
+        )
+      DiscourseWorkflows::Executor.new(
+        workflow,
+        params.trigger_node_id,
+        params.trigger_data,
+        options,
+      ).run
     end
   end
 end

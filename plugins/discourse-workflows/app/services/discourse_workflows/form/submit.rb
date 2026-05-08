@@ -17,6 +17,7 @@ module DiscourseWorkflows
       end
     end
 
+    model :published_trigger
     model :workflow
     model :trigger_node
     policy :authenticated_if_required
@@ -43,17 +44,16 @@ module DiscourseWorkflows
       end
     end
 
-    def fetch_workflow(params:)
-      DiscourseWorkflows::Workflow.where(enabled: true).find_by(
-        "nodes @> ?",
-        [{ type: "trigger:form", configuration: { uuid: params.uuid } }].to_json,
-      )
+    def fetch_published_trigger(params:)
+      Form::Action::FindPublishedTrigger.call(uuid: params.uuid)
     end
 
-    def fetch_trigger_node(workflow:, params:)
-      workflow
-        .nodes_of_type("trigger:form")
-        .find { |node| node.dig("configuration", "uuid") == params.uuid }
+    def fetch_workflow(published_trigger:)
+      published_trigger.workflow
+    end
+
+    def fetch_trigger_node(published_trigger:)
+      published_trigger.trigger_node
     end
 
     def valid_initial_submission_token(workflow:, trigger_node:, params:)
@@ -66,20 +66,27 @@ module DiscourseWorkflows
         )
     end
 
-    def run_workflow(workflow:, trigger_node:, form_validation:, guardian:)
+    def run_workflow(published_trigger:, form_validation:, guardian:)
       trigger_data = {
         "form_data" => form_validation.data,
         "submitted_at" => Time.current.utc.iso8601,
       }
 
-      options = DiscourseWorkflows::Executor::ExecutionOptions.new(user: guardian.user)
-      DiscourseWorkflows::Executor.new(workflow, trigger_node["id"], trigger_data, options).run
+      DiscourseWorkflows::TriggerDispatcher.execute(
+        published_trigger,
+        trigger_data: trigger_data,
+        user: guardian.user,
+      )
     end
 
     def build_response_metadata(workflow:, trigger_node:)
       {
         has_downstream_form:
-          workflow.node_has_reachable_downstream_of_type?(trigger_node["id"], "action:form"),
+          workflow.node_has_reachable_downstream_of_type?(
+            trigger_node["id"],
+            "action:form",
+            published: true,
+          ),
         response_mode: trigger_node.dig("configuration", "response_mode") || "on_received",
       }
     end

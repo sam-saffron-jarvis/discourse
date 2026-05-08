@@ -155,17 +155,47 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
           params: {
             workflow: {
               name: "Updated Name",
-              enabled: true,
               nodes: [{ client_id: "t1", type: "trigger:topic_closed", name: "Topic Closed" }],
               connections: [],
             },
           }
 
       expect(response).to have_http_status(:ok)
-      expect(response.parsed_body["workflow"]).to include(
-        "name" => "Updated Name",
-        "enabled" => true,
+      expect(response.parsed_body["workflow"]).to include("name" => "Updated Name")
+      expect(response.parsed_body["workflow"]["published_version_id"]).to be_nil
+    end
+
+    it "publishes a workflow draft" do
+      workflow = Fabricate(:discourse_workflows_workflow, created_by: admin)
+
+      put "/admin/plugins/discourse-workflows/workflows/#{workflow.id}.json",
+          params: {
+            workflow: {
+              name: workflow.name,
+              published: true,
+            },
+          }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["workflow"]["published_version_id"]).to eq(
+        workflow.reload.published_version_id,
       )
+    end
+
+    it "unpublishes a workflow" do
+      workflow = Fabricate(:discourse_workflows_workflow, created_by: admin, published: true)
+
+      put "/admin/plugins/discourse-workflows/workflows/#{workflow.id}.json",
+          params: {
+            workflow: {
+              name: workflow.name,
+              published: false,
+            },
+          }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["workflow"]["published_version_id"]).to be_nil
+      expect(workflow.reload.published_version_id).to be_nil
     end
 
     it "updates error_workflow_id" do

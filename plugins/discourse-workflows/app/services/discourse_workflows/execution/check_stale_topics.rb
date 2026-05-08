@@ -13,27 +13,24 @@ module DiscourseWorkflows
     private
 
     def fetch_stale_trigger_nodes
-      DiscourseWorkflows::WorkflowDependency.enabled_workflows_with_node_type("trigger:stale_topic")
+      DiscourseWorkflows::Workflow::Action::FindPublishedTriggers.call(
+        trigger_type: "trigger:stale_topic",
+      )
     end
 
     def process_stale_trigger_nodes(stale_trigger_nodes:)
-      stale_trigger_nodes.each do |workflow, node|
+      stale_trigger_nodes.each do |published_trigger|
         newly_stale =
           DiscourseWorkflows::TriggerTracking.collect_stale_topics!(
-            workflow,
-            node,
+            published_trigger.workflow,
+            published_trigger.trigger_node,
             max_topics: MAX_TOPICS_PER_CYCLE,
           )
 
         newly_stale.each do |topic|
           trigger = DiscourseWorkflows::Nodes::StaleTopic::V1.new(topic)
 
-          Jobs.enqueue(
-            Jobs::DiscourseWorkflows::ExecuteWorkflow,
-            workflow_id: workflow.id,
-            trigger_node_id: node["id"],
-            trigger_data: trigger.output,
-          )
+          DiscourseWorkflows::TriggerDispatcher.enqueue(published_trigger, trigger_data: trigger.output)
         end
       end
     end

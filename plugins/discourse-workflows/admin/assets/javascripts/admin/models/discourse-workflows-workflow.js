@@ -6,8 +6,10 @@ import WorkflowNode from "./workflow-node";
 
 export default class DiscourseWorkflowsWorkflow extends RestModel {
   @tracked name;
-  @tracked enabled;
   @tracked error_workflow_id;
+  @tracked draft_version_id;
+  @tracked published_version_id;
+  @tracked has_unpublished_changes;
   @tracked last_execution_status;
   @tracked nodes = [];
   @tracked connections = [];
@@ -15,7 +17,6 @@ export default class DiscourseWorkflowsWorkflow extends RestModel {
   updateProperties() {
     return {
       name: this.name,
-      enabled: this.enabled,
       nodes: [
         ...this.nodes.map(WorkflowNode.serialize),
         ...(this.sticky_notes || []).map(StickyNote.serialize),

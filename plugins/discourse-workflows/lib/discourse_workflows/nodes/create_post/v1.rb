@@ -85,6 +85,7 @@ module DiscourseWorkflows
             topic_id: topic.id,
             raw: config["raw"],
             reply_to_post_number: config["reply_to_post_number"].presence,
+            skip_workflows: true,
           }.compact
         end
       end

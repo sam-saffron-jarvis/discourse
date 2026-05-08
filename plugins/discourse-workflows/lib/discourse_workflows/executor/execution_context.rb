@@ -18,11 +18,20 @@ module DiscourseWorkflows
         $itemIndex
       ].freeze
 
-      attr_reader :workflow, :trigger_data, :context, :user
+      attr_reader :workflow, :trigger_data, :context, :user, :workflow_name
       attr_accessor :execution
 
-      def initialize(workflow:, trigger_data:, user:, execution: nil)
+      def initialize(
+        workflow:,
+        trigger_data:,
+        user:,
+        execution: nil,
+        workflow_nodes: nil,
+        workflow_name: nil
+      )
         @workflow = workflow
+        @workflow_nodes = workflow_nodes
+        @workflow_name = workflow_name || workflow.name
         @trigger_data = trigger_data
         @user = user
         @execution = execution
@@ -40,6 +49,13 @@ module DiscourseWorkflows
         @context["$trigger"] ||= trigger_data
         @node_contexts_by_id = normalize_node_contexts(node_contexts)
         @context["__resume_token"] = resume_token
+      end
+
+      def use_workflow_nodes(workflow_nodes, workflow_name: nil)
+        @workflow_nodes = workflow_nodes
+        @workflow_name = workflow_name if workflow_name.present?
+        @nodes_by_id = nil
+        @nodes_by_name = nil
       end
 
       def store_context(key, value)
@@ -89,7 +105,7 @@ module DiscourseWorkflows
         "id" => ->(execution_context, _extra_context) { execution_context.execution&.id },
         "workflow_id" => ->(execution_context, _extra_context) { execution_context.workflow&.id },
         "workflow_name" => ->(execution_context, _extra_context) do
-          execution_context.workflow&.name
+          execution_context.workflow_name
         end,
         "resume_url" =>
           lambda do |execution_context, extra_context|
@@ -148,8 +164,7 @@ module DiscourseWorkflows
 
       def nodes_by_name
         @nodes_by_name ||=
-          workflow
-            .nodes
+          graph_nodes
             .each_with_object({}) do |node, by_name|
               name = node["name"].to_s
               next if name.blank?
@@ -160,7 +175,11 @@ module DiscourseWorkflows
       end
 
       def nodes_by_id
-        @nodes_by_id ||= workflow.nodes.index_by { |node| node["id"].to_s }
+        @nodes_by_id ||= graph_nodes.index_by { |node| node["id"].to_s }
+      end
+
+      def graph_nodes
+        @workflow_nodes || workflow.nodes
       end
     end
   end

@@ -15,7 +15,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
                  "response_mode" => "on_received",
                }
       end
-    Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+    Fabricate(:discourse_workflows_workflow, published: true, **graph)
   end
 
   let(:form_uuid) do
@@ -46,8 +46,8 @@ RSpec.describe DiscourseWorkflows::FormsController do
       expect(response).to have_http_status(:not_found)
     end
 
-    it "returns 404 for disabled workflow" do
-      workflow.update!(enabled: false)
+    it "returns 404 for unpublished workflow" do
+      unpublish_workflow!(workflow)
       get form_path
       expect(response).to have_http_status(:not_found)
     end
@@ -79,7 +79,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
         trigger_node["configuration"]["authentication"] = "login_required"
         workflow.update!(nodes: workflow.nodes)
-        DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+        publish_workflow!(workflow)
       end
 
       it "returns 403 for anonymous users" do
@@ -142,7 +142,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
         trigger_node["configuration"]["authentication"] = "login_required"
         workflow.update!(nodes: workflow.nodes)
-        DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+        publish_workflow!(workflow)
       end
 
       it "returns 403 for anonymous users" do
@@ -167,7 +167,14 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
   describe "PUT /workflows/form/:uuid.json" do
     it "returns 404 when no waiting execution matches the resume token" do
-      put form_path, params: { resume_token: "nonexistent-token" }, headers: origin_headers
+      put form_path,
+          params: {
+            action_token: "nonexistent-token:submit",
+            form_data: {
+              name: "Test User",
+            },
+          },
+          headers: origin_headers
       expect(response).to have_http_status(:not_found)
     end
 
@@ -181,8 +188,9 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
       put form_path,
           params: {
-            resume_token: "test-resume-token",
+            action_token: "test-resume-token:submit",
             form_data: {
+              name: "Test User",
             },
           },
           headers: origin_headers
@@ -232,6 +240,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
             },
           ],
         )
+        publish_workflow!(workflow)
       end
 
       it "resumes a waiting execution and returns a new resume token" do
@@ -254,7 +263,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
         put form_path,
             params: {
-              resume_token: resume_token,
+              action_token: "#{resume_token}:submit",
               form_data: {
                 email: "test@example.com",
               },
@@ -279,7 +288,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
         put form_path,
             params: {
-              resume_token: resume_token,
+              action_token: "#{resume_token}:submit",
               form_data: {
                 email: "test@example.com",
               },
@@ -289,7 +298,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
         put form_path,
             params: {
-              resume_token: resume_token,
+              action_token: "#{resume_token}:submit",
               form_data: {
                 email: "test@example.com",
               },

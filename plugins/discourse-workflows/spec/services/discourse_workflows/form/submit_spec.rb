@@ -28,7 +28,7 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
                    "response_mode" => "on_received",
                  }
         end
-      Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, published: true, **graph)
     end
 
     let(:uuid) { "a1b2c3d4-e5f6-7890-abcd-ef0123456789" }
@@ -53,13 +53,13 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
     context "when the workflow is not found" do
       let(:uuid) { "00000000-0000-0000-0000-000000000000" }
 
-      it { is_expected.to fail_to_find_a_model(:workflow) }
+      it { is_expected.to fail_to_find_a_model(:published_trigger) }
     end
 
-    context "when the workflow is disabled" do
-      before { workflow.update!(enabled: false) }
+    context "when the workflow is unpublished" do
+      before { unpublish_workflow!(workflow) }
 
-      it { is_expected.to fail_to_find_a_model(:workflow) }
+      it { is_expected.to fail_to_find_a_model(:published_trigger) }
     end
 
     context "when the form requires a logged-in user" do
@@ -67,7 +67,7 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
         trigger_node["configuration"]["authentication"] = "login_required"
         workflow.update!(nodes: workflow.nodes)
-        DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+        publish_workflow!(workflow)
       end
 
       context "without a current user" do
@@ -116,7 +116,7 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
                      "response_mode" => "on_received",
                    }
           end
-        Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+        Fabricate(:discourse_workflows_workflow, published: true, **graph)
       end
 
       let(:form_data) { { "age" => "abc" } }
@@ -183,7 +183,7 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
               g.chain "trigger-1", "action-1", "form-action-1"
             end
           workflow.update!(nodes: workflow.nodes + extra[:nodes], connections: extra[:connections])
-          DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow)
+          publish_workflow!(workflow)
         end
 
         it "detects the downstream form through intermediate nodes" do

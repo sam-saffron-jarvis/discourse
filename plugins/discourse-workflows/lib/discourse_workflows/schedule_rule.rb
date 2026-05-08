@@ -228,7 +228,9 @@ module DiscourseWorkflows
       (wrap(rule)[:seconds_between_triggers] || 30).to_i.clamp(1, 59)
     end
 
-    def start_seconds_chain!(workflow, node_id, rule_index, rule)
+    def start_seconds_chain!(published_trigger, rule_index, rule)
+      workflow = published_trigger.workflow
+      node_id = published_trigger.trigger_node_id
       token = SecureRandom.uuid
       data = workflow.node_static_data(node_id)
       seconds_tokens = data.fetch("seconds_tokens") { {} }
@@ -240,6 +242,7 @@ module DiscourseWorkflows
         interval.seconds,
         Jobs::DiscourseWorkflows::ExecuteSecondsSchedule,
         workflow_id: workflow.id,
+        workflow_version_id: published_trigger.workflow_version_id,
         trigger_node_id: node_id,
         rule_index: rule_index,
         token: token,
@@ -272,9 +275,11 @@ module DiscourseWorkflows
       )
     end
 
-    def fire_matching_trigger!(workflow, node, now)
-      node_id = node["id"]
-      configuration = (node["configuration"] || {}).with_indifferent_access
+    def fire_matching_trigger!(published_trigger, now)
+      workflow = published_trigger.workflow
+      node_id = published_trigger.trigger_node_id
+      configuration =
+        (published_trigger.trigger_node["configuration"] || {}).with_indifferent_access
       rules = rules_from_configuration(configuration)
 
       rules.each do |rule|
@@ -286,10 +291,8 @@ module DiscourseWorkflows
           next if TriggerTracking.triggered_this_minute?(workflow, node_id, now)
           TriggerTracking.mark_triggered!(workflow, node_id, now)
 
-          Jobs.enqueue(
-            Jobs::DiscourseWorkflows::ExecuteWorkflow,
-            workflow_id: workflow.id,
-            trigger_node_id: node_id,
+          DiscourseWorkflows::TriggerDispatcher.enqueue(
+            published_trigger,
             trigger_data: Nodes::Schedule::V1.new.output,
           )
           fired = true
@@ -301,16 +304,18 @@ module DiscourseWorkflows
       end
     end
 
-    def restart_stalled_chains!(workflow, node, now)
-      node_id = node["id"]
-      configuration = (node["configuration"] || {}).with_indifferent_access
+    def restart_stalled_chains!(published_trigger, now)
+      workflow = published_trigger.workflow
+      node_id = published_trigger.trigger_node_id
+      configuration =
+        (published_trigger.trigger_node["configuration"] || {}).with_indifferent_access
       rules = rules_from_configuration(configuration)
 
       rules.each_with_index do |rule, rule_index|
         next unless seconds_rule?(rule)
         next unless seconds_needs_watchdog?(workflow, node_id, rule_index, rule, now)
 
-        start_seconds_chain!(workflow, node_id, rule_index, rule)
+        start_seconds_chain!(published_trigger, rule_index, rule)
       end
     end
 

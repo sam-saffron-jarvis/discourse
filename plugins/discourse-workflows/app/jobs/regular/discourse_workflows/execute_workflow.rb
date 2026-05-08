@@ -8,6 +8,7 @@ module Jobs
           params:
             args.slice(
               :workflow_id,
+              :workflow_version_id,
               :trigger_node_id,
               :trigger_data,
               :execution_mode,

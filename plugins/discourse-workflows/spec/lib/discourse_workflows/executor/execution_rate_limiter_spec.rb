@@ -7,9 +7,9 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionRateLimiter do
 
   after { RateLimiter.disable }
 
-  fab!(:workflow) { Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true) }
+  fab!(:workflow) { Fabricate(:discourse_workflows_workflow, created_by: user, published: true) }
   fab!(:other_workflow) do
-    Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true)
+    Fabricate(:discourse_workflows_workflow, created_by: user, published: true)
   end
 
   let(:limiter) { described_class.new(workflow) }

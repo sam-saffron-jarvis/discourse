@@ -2,18 +2,21 @@
 
 module DiscourseWorkflows
   class WorkflowDependencyIndexer
-    def self.call(workflow)
-      new(workflow).call
+    def self.call(workflow, version: workflow.draft_version)
+      new(workflow, version:).call
     end
 
-    def initialize(workflow)
+    def initialize(workflow, version:)
       @workflow = workflow
+      @version = version
     end
 
     def call
+      return unless @version
+
       rows = []
 
-      @workflow.nodes.each do |node|
+      @version.nodes.each do |node|
         node_id = node["id"]
         node_type = node["type"]
         config = node["configuration"] || {}
@@ -38,7 +41,8 @@ module DiscourseWorkflows
       end
 
       @workflow.with_lock do
-        WorkflowDependency.where(workflow_id: @workflow.id).delete_all
+        WorkflowDependency.where(workflow_version_id: @version.id).delete_all
+
         WorkflowDependency.insert_all(rows) if rows.present?
       end
 
@@ -53,6 +57,7 @@ module DiscourseWorkflows
         dependency_type: type,
         dependency_key: key.to_s,
         node_id: node_id,
+        workflow_version_id: @version.id,
         created_at: Time.current,
       }
     end

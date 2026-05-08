@@ -37,7 +37,7 @@ module("Unit | Utility | workflows property engine", function () {
     assert.strictEqual(propertyLabel(ifNodeType, "combinator"), "Match mode");
     assert.strictEqual(
       propertyDescription("action:create_topic", "raw"),
-      "Raw content for the first post."
+      "Raw content for the first post"
     );
     assert.strictEqual(
       propertyDescription("action:code", "code"),

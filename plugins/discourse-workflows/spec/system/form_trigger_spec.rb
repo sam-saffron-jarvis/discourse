@@ -8,7 +8,7 @@ RSpec.describe "Discourse Workflows - Form Trigger" do
   fab!(:workflow) do
     Fabricate(
       :discourse_workflows_workflow,
-      enabled: true,
+      published: true,
       nodes: [
         {
           "id" => "trigger-1",

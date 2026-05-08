@@ -24,7 +24,16 @@ module DiscourseWorkflows
       end
 
       def start!
-        @workflow_snapshot = WorkflowSnapshot.from_workflow(workflow)
+        @workflow_snapshot =
+          if @options.workflow_version
+            WorkflowSnapshot.from_version(workflow, @options.workflow_version)
+          else
+            WorkflowSnapshot.from_workflow(workflow, published: !@options.draft_execution)
+          end
+        @execution_context.use_workflow_nodes(
+          @workflow_snapshot.to_h["nodes"],
+          workflow_name: @workflow_snapshot.workflow_name,
+        )
         @execution = create_execution!
         reset_collaborators!
         @execution
@@ -124,8 +133,12 @@ module DiscourseWorkflows
           if execution_data&.workflow_data.present?
             WorkflowSnapshot.new(execution_data.workflow_data)
           else
-            WorkflowSnapshot.from_workflow(workflow)
+            WorkflowSnapshot.from_workflow(workflow, published: true)
           end
+        @execution_context.use_workflow_nodes(
+          @workflow_snapshot.to_h["nodes"],
+          workflow_name: @workflow_snapshot.workflow_name,
+        )
         @execution_context.restore!(
           context: execution_data&.context_data || {},
           node_contexts: execution_data&.node_contexts || {},

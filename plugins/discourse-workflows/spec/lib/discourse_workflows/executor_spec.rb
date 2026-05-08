@@ -21,7 +21,7 @@ RSpec.describe DiscourseWorkflows::Executor do
                }
         g.chain "trigger-1", "action-1"
       end
-    Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+    Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
   end
 
   describe "#run" do
@@ -59,21 +59,44 @@ RSpec.describe DiscourseWorkflows::Executor do
         expect(execution).to have_attributes(status: "error", error: be_present)
       end
 
-      it "skips disabled workflows" do
-        workflow.update!(enabled: false)
+      it "skips unpublished workflows" do
+        unpublish_workflow!(workflow)
 
         execution = described_class.new(workflow, "trigger-1", trigger_data).run
 
         expect(execution.status).to eq("skipped")
       end
+
+      it "preloads dependencies from the active workflow snapshot" do
+        executor = described_class.new(workflow, "trigger-1", trigger_data)
+        snapshot =
+          DiscourseWorkflows::WorkflowSnapshot.new(
+            "nodes" => [
+              {
+                "id" => "http-1",
+                "type" => "action:http_request",
+                "configuration" => {
+                  "credential_id" => 123,
+                },
+              },
+            ],
+            "connections" => [],
+          )
+        executor.instance_variable_set(:@snapshot, snapshot)
+
+        expect(executor.send(:preloaded_workflow_dependencies)["http-1"]).to include(
+          "credential_id:123",
+        )
+      end
     end
 
     it "fails when trigger node is not in the snapshot" do
       graph = build_workflow_graph { |g| g.node "trigger-1", "trigger:topic_closed" }
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       executor = described_class.new(workflow, "trigger-1", {})
-      workflow.update!(nodes: [])
+      workflow.published_version.update!(nodes: [])
 
       execution = executor.run
 
@@ -119,7 +142,8 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.connect "condition-1", "action-true", output: "true"
           g.connect "condition-1", "action-false", output: "false"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       trigger_data = { topic_id: topic.id, tags: %w[bug help] }
       execution = described_class.new(workflow, "trigger-1", trigger_data).run
@@ -167,7 +191,7 @@ RSpec.describe DiscourseWorkflows::Executor do
             g.chain "trigger-1", "filter-1"
             g.connect "filter-1", "action-1", output: "true"
           end
-        Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
       end
 
       it "continues execution when filter passes" do
@@ -209,7 +233,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "filter-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       trigger_data = { topic_id: topic.id, tags: %w[feature help] }
       execution = described_class.new(workflow, "trigger-1", trigger_data).run
@@ -249,7 +274,8 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.chain "trigger-1", "filter-1"
           g.connect "filter-1", "action-false", output: "false"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       trigger_data = { topic_id: topic.id, tags: %w[feature help] }
       execution = described_class.new(workflow, "trigger-1", trigger_data).run
@@ -268,7 +294,8 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "unknown-1", "action:nonexistent_type"
           g.chain "trigger-1", "unknown-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       trigger_data = { topic_id: topic.id, tags: [] }
       execution = described_class.new(workflow, "trigger-1", trigger_data).run
@@ -291,7 +318,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "log-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       trigger_data = { topic_id: topic.id, tags: [] }
       execution = described_class.new(workflow, "trigger-1", trigger_data).run
@@ -314,7 +342,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "code-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       trigger_data = { topic_id: topic.id, tags: [] }
       execution = described_class.new(workflow, "trigger-1", trigger_data).run
@@ -335,7 +364,8 @@ RSpec.describe DiscourseWorkflows::Executor do
                  }
           g.chain "trigger-1", "code-1"
         end
-      workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       trigger_data = { topic_id: topic.id, tags: [] }
       execution = described_class.new(workflow, "trigger-1", trigger_data).run
@@ -353,7 +383,7 @@ RSpec.describe DiscourseWorkflows::Executor do
 
         graph = build_workflow_graph { |g| g.node "trigger-1", "trigger:topic_closed" }
         workflow =
-          Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+          Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
         trigger_data = { topic_id: topic.id, tags: [] }
 
@@ -424,7 +454,7 @@ RSpec.describe DiscourseWorkflows::Executor do
             g.chain "trigger-1", "unavailable-1", "action-1"
           end
         workflow =
-          Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+          Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
         trigger_data = { topic_id: topic.id, tags: topic.tags.pluck(:name) }
         execution = described_class.new(workflow, "trigger-1", trigger_data).run
@@ -444,7 +474,7 @@ RSpec.describe DiscourseWorkflows::Executor do
             g.chain "trigger-1", "unavailable-1"
           end
         workflow =
-          Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+          Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
         trigger_data = { topic_id: topic.id, tags: [] }
         execution = described_class.new(workflow, "trigger-1", trigger_data).run

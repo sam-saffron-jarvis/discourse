@@ -15,11 +15,11 @@ module PageObjects
         end
 
         def has_data_table?(name)
-          page.has_css?(".workflows-data-tables-manager__name-link", text: name)
+          page.has_css?(".d-table__overview-name", text: name)
         end
 
         def has_no_data_table?(name)
-          page.has_no_css?(".workflows-data-tables-manager__name-link", text: name)
+          page.has_no_css?(".d-table__overview-name", text: name)
         end
 
         def click_add_data_table

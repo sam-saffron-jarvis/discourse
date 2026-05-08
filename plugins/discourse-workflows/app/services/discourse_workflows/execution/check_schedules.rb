@@ -12,22 +12,24 @@ module DiscourseWorkflows
     private
 
     def fetch_schedule_triggers
-      DiscourseWorkflows::WorkflowDependency.enabled_workflows_with_node_type("trigger:schedule")
+      DiscourseWorkflows::Workflow::Action::FindPublishedTriggers.call(
+        trigger_type: "trigger:schedule",
+      )
     end
 
     def fire_due_triggers(schedule_triggers:)
       now = Time.current.utc
 
-      schedule_triggers.each do |workflow, node|
-        ScheduleRule.fire_matching_trigger!(workflow, node, now)
+      schedule_triggers.each do |published_trigger|
+        ScheduleRule.fire_matching_trigger!(published_trigger, now)
       end
     end
 
     def restart_stalled_seconds_chains(schedule_triggers:)
       now = Time.current.utc
 
-      schedule_triggers.each do |workflow, node|
-        ScheduleRule.restart_stalled_chains!(workflow, node, now)
+      schedule_triggers.each do |published_trigger|
+        ScheduleRule.restart_stalled_chains!(published_trigger, now)
       end
     end
   end

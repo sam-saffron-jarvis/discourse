@@ -93,7 +93,7 @@ module DiscourseWorkflows
         return nil
       end
 
-      waiting_node = execution.workflow.find_node(execution.waiting_node_id)
+      waiting_node = execution.find_waiting_node
       return nil unless waiting_node
 
       suffix = params.webhook_suffix.to_s
@@ -116,7 +116,7 @@ module DiscourseWorkflows
     end
 
     def fetch_waiting_node(waiting_execution:)
-      waiting_execution.workflow.find_node(waiting_execution.waiting_node_id)
+      waiting_execution.find_waiting_node
     end
 
     def valid_http_method(waiting_node:, params:)
@@ -153,50 +153,47 @@ module DiscourseWorkflows
     end
 
     def find_webhook_nodes(params:)
-      dependency_workflow_ids =
-        DiscourseWorkflows::WorkflowDependency.where(
-          dependency_type: "webhook_path",
-          dependency_key: params.path,
-        ).select(:workflow_id)
-
-      DiscourseWorkflows::Workflow
-        .enabled
-        .where(id: dependency_workflow_ids)
-        .flat_map do |workflow|
-          workflow
-            .nodes_of_type("trigger:webhook")
-            .select do |node|
-              config = node["configuration"] || {}
-              config["path"] == params.path && config["http_method"] == params.http_method
-            end
-            .map { |node| [workflow, node] }
-        end
+      Workflow::Action::FindPublishedTriggers.call(
+        trigger_type: "trigger:webhook",
+        dependency_type: "webhook_path",
+        dependency_key: params.path,
+        filter:
+          lambda do |published_trigger|
+            node = published_trigger.trigger_node
+            config = node["configuration"] || {}
+            config["path"] == params.path && config["http_method"] == params.http_method
+          end,
+      )
     end
 
     def filter_authenticated_nodes(webhook_nodes:, params:)
       credential_ids =
-        webhook_nodes.filter_map do |_, node|
+        webhook_nodes.filter_map do |published_trigger|
+          node = published_trigger.trigger_node
           config = node["configuration"] || {}
           config["credential_id"].to_i if (config["authentication"] || "none") == "basic_auth"
         end
 
       credentials = DiscourseWorkflows::Credential.where(id: credential_ids).index_by(&:id)
 
-      webhook_nodes.select do |_workflow, node|
-        Webhook::Action::AuthenticateNode.call(node:, params:, credentials:)
+      webhook_nodes.select do |published_trigger|
+        Webhook::Action::AuthenticateNode.call(
+          node: published_trigger.trigger_node,
+          params: params,
+          credentials: credentials,
+        )
       end
     end
 
     def enqueue_async_workflows(authenticated_nodes:, params:)
-      authenticated_nodes.each do |workflow, node|
+      authenticated_nodes.each do |published_trigger|
+        node = published_trigger.trigger_node
         response_mode =
           node.dig("configuration", "response_mode") || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
         next unless response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
 
-        Jobs.enqueue(
-          Jobs::DiscourseWorkflows::ExecuteWorkflow,
-          workflow_id: workflow.id,
-          trigger_node_id: node["id"],
+        DiscourseWorkflows::TriggerDispatcher.enqueue(
+          published_trigger,
           trigger_data: params.trigger_data,
         )
       end
@@ -204,12 +201,17 @@ module DiscourseWorkflows
 
     def execute_sync_workflows(authenticated_nodes:, params:)
       first = nil
-      authenticated_nodes.each do |workflow, node|
+      authenticated_nodes.each do |published_trigger|
+        node = published_trigger.trigger_node
         response_mode =
           node.dig("configuration", "response_mode") || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
         next if response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
 
-        execution = DiscourseWorkflows::Executor.new(workflow, node["id"], params.trigger_data).run
+        execution =
+          DiscourseWorkflows::TriggerDispatcher.execute(
+            published_trigger,
+            trigger_data: params.trigger_data,
+          )
         first ||= {
           execution: execution,
           response_mode: response_mode,

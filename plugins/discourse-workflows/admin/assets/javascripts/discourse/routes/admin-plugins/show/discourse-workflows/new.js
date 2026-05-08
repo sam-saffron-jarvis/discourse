@@ -7,7 +7,6 @@ export default class DiscourseWorkflowsNewRoute extends DiscourseRoute {
   model() {
     return this.store.createRecord("discourse-workflows-workflow", {
       name: "",
-      enabled: false,
       nodes: [],
       connections: [],
     });

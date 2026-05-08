@@ -40,7 +40,7 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
                  }
           g.chain "trigger-1", "form-action-1"
         end
-      Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+      Fabricate(:discourse_workflows_workflow, published: true, **graph)
     end
 
     let(:resume_token) { SecureRandom.uuid }
@@ -93,7 +93,7 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
                    }
             g.chain "trigger-1", "wait-1"
           end
-        Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+        Fabricate(:discourse_workflows_workflow, published: true, **graph)
       end
 
       it { is_expected.to fail_a_policy(:action_form) }
@@ -121,7 +121,7 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
                    }
             g.chain "trigger-1", "form-action-1"
           end
-        Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+        Fabricate(:discourse_workflows_workflow, published: true, **graph)
       end
 
       let(:form_data) { {} }
@@ -151,7 +151,7 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
                    }
             g.chain "trigger-1", "form-action-1"
           end
-        Fabricate(:discourse_workflows_workflow, enabled: true, **graph)
+        Fabricate(:discourse_workflows_workflow, published: true, **graph)
       end
 
       let(:form_data) { { "age" => "abc" } }
