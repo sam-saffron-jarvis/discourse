@@ -8,11 +8,17 @@ RSpec.describe "Discourse Workflows - Variables" do
   before { sign_in(admin) }
 
   it "shows existing variables" do
-    Fabricate(:discourse_workflows_variable, key: "API_BASE_URL", value: "https://example.com")
+    Fabricate(
+      :discourse_workflows_variable,
+      key: "API_BASE_URL",
+      value: "https://example.com",
+      created_by: admin,
+    )
 
     variables_page.visit_index
 
     expect(variables_page).to have_variable("API_BASE_URL")
+    expect(variables_page).to have_variable_creator(admin.username)
   end
 
   it "creates a new variable" do

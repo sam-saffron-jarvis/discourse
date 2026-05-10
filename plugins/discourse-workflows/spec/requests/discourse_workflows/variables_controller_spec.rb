@@ -31,6 +31,7 @@ RSpec.describe DiscourseWorkflows::VariablesController do
       json = response.parsed_body
       expect(json["variables"].length).to eq(1)
       expect(json["variables"][0]["key"]).to eq(variable.key)
+      expect(json["variables"][0]["created_by"]["username"]).to eq(variable.created_by.username)
     end
 
     it "returns meta with total rows" do
@@ -69,7 +70,11 @@ RSpec.describe DiscourseWorkflows::VariablesController do
 
       expect(response).to have_http_status(:created)
       json = response.parsed_body
-      expect(json["variable"]).to include("key" => "API_URL", "value" => "https://example.com")
+      expect(json["variable"]).to include(
+        "key" => "API_URL",
+        "value" => "https://example.com",
+        "created_by" => include("username" => admin.username),
+      )
     end
 
     it "returns 400 when key is missing" do

@@ -48,6 +48,7 @@ RSpec.describe DiscourseWorkflows::Variable::Create do
           key: "API_BASE_URL",
           value: "https://example.com",
           description: "Base URL",
+          created_by: admin,
         )
       end
 

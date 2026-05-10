@@ -661,6 +661,7 @@ en:
         key_invalid: "Must start with a letter or underscore and contain only letters, numbers, and underscores"
         value: "Value"
         value_placeholder: "Variable value"
+        creator: "Creator"
         no_variables: "No variables defined yet"
         delete_confirm: "Are you sure you want to delete the variable \"%{key}\"?"
         empty_title: "%{username}, let's set up a variable"

@@ -105,6 +105,7 @@ end
 Fabricator(:discourse_workflows_variable, class_name: "DiscourseWorkflows::Variable") do
   key { sequence(:key) { |n| "variable_#{n}" } }
   value "test_value"
+  created_by { Fabricate(:user) }
 end
 
 Fabricator(:discourse_workflows_credential, class_name: "DiscourseWorkflows::Credential") do

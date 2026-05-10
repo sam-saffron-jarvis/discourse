@@ -4,6 +4,8 @@ module DiscourseWorkflows
   class Variable < ActiveRecord::Base
     self.table_name = "discourse_workflows_variables"
 
+    belongs_to :created_by, class_name: "User", foreign_key: "created_by_id"
+
     validates :key,
               presence: true,
               uniqueness: true,
@@ -22,14 +24,16 @@ end
 #
 # Table name: discourse_workflows_variables
 #
-#  id          :bigint           not null, primary key
-#  description :text
-#  key         :string(100)      not null
-#  value       :string(1000)     default(""), not null
-#  created_at  :datetime         not null
-#  updated_at  :datetime         not null
+#  id            :bigint           not null, primary key
+#  created_by_id :integer          not null
+#  description   :text
+#  key           :string(100)      not null
+#  value         :string(1000)     default(""), not null
+#  created_at    :datetime         not null
+#  updated_at    :datetime         not null
 #
 # Indexes
 #
+#  index_discourse_workflows_variables_on_created_by_id  (created_by_id)
 #  index_discourse_workflows_variables_on_key  (key) UNIQUE
 #

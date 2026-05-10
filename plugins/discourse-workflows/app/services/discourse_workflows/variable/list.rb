@@ -28,7 +28,7 @@ module DiscourseWorkflows
     private
 
     def fetch_variables(params:)
-      scope = DiscourseWorkflows::Variable.order(id: :desc)
+      scope = DiscourseWorkflows::Variable.includes(:created_by).order(id: :desc)
       scope = scope.where("id < ?", params.cursor) if params.cursor
       scope.limit(params.limit + 1).to_a
     end

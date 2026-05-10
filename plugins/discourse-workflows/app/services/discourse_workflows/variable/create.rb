@@ -28,8 +28,8 @@ module DiscourseWorkflows
 
     private
 
-    def create_variable(params:)
-      DiscourseWorkflows::Variable.create(**params)
+    def create_variable(params:, guardian:)
+      DiscourseWorkflows::Variable.create(**params, created_by: guardian.user)
     end
 
     def log_variable_creation(variable:, guardian:)

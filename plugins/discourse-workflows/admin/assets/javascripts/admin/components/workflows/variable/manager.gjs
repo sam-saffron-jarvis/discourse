@@ -2,8 +2,10 @@ import { concat, fn } from "@ember/helper";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
 import DButton from "discourse/components/d-button";
+import avatar from "discourse/helpers/avatar";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
+import { userPath } from "discourse/lib/url";
 import { clipboardCopy } from "discourse/lib/utilities";
 import { i18n } from "discourse-i18n";
 import AdminTable from "../admin-table";
@@ -120,6 +122,9 @@ export default class VariablesManager extends CrudManager {
             "discourse_workflows.variables.value"
           }}</th>
         <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.variables.creator"
+          }}</th>
+        <th class="d-table__header-cell">{{i18n
             "discourse_workflows.variables.usage_syntax"
           }}</th>
         <th class="d-table__header-cell"></th>
@@ -133,6 +138,18 @@ export default class VariablesManager extends CrudManager {
             {{i18n "discourse_workflows.variables.value"}}
           </div>
           {{variable.value}}
+        </td>
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.variables.creator"}}
+          </div>
+          <a
+            href={{userPath variable.created_by.username}}
+            class="workflows-variables__creator"
+          >
+            {{avatar variable.created_by imageSize="tiny"}}
+            <span>{{variable.created_by.username}}</span>
+          </a>
         </td>
         <td class="d-table__cell --detail">
           <div class="d-table__mobile-label">

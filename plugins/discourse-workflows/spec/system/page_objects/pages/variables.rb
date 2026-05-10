@@ -13,6 +13,10 @@ module PageObjects
           page.has_css?("td", text: key)
         end
 
+        def has_variable_creator?(username)
+          page.has_css?(".workflows-variables__creator[href$='/u/#{username}']", text: username)
+        end
+
         def has_no_variables?
           page.has_css?(".workflows-empty-state")
         end
