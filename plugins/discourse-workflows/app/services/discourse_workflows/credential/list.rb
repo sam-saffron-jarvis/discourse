@@ -46,9 +46,9 @@ module DiscourseWorkflows
       return if credentials.size <= limit
 
       last_id = credentials[limit - 1].id
-      url = "/admin/plugins/discourse-workflows/credentials.json?cursor=#{last_id}&limit=#{limit}"
-      url += "&type=#{params.type}" if params.type.present?
-      url
+      "/admin/plugins/discourse-workflows/credentials.json?#{
+  { cursor: last_id, limit: limit, type: params.type }.compact_blank.to_query
+}"
     end
 
     def truncate_credentials(params:, credentials:)
