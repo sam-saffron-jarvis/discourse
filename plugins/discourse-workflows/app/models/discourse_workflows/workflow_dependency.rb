@@ -31,7 +31,7 @@ module DiscourseWorkflows
     end
 
     def self.cached_topic_admin_buttons
-      cache.defer_get_set(CACHE_KEY) do
+      cache.defer_get_set(TOPIC_ADMIN_BUTTON_CACHE_KEY) do
         Workflow::Action::FindPublishedTriggers
           .call(trigger_type: "trigger:topic_admin_button")
           .map do |published_trigger|
