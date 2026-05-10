@@ -6,7 +6,7 @@ module DiscourseWorkflows
 
     def index
       DiscourseWorkflows::Template::List.call(service_params) do
-        on_success { |templates:| render json: { templates: templates } }
+        on_success { |templates:| render json: { templates: } }
         on_failed_policy(:can_manage_workflows) { raise Discourse::InvalidAccess }
         on_failure { render(json: failed_json, status: :unprocessable_entity) }
       end
