@@ -1,4 +1,23 @@
 en:
+  admin_js:
+    admin:
+      logs:
+        staff_actions:
+          actions:
+            discourse_workflows_credential_created: "Create workflow credential"
+            discourse_workflows_credential_destroyed: "Delete workflow credential"
+            discourse_workflows_credential_updated: "Update workflow credential"
+            discourse_workflows_data_table_column_created: "Create workflow data table column"
+            discourse_workflows_data_table_column_destroyed: "Delete workflow data table column"
+            discourse_workflows_data_table_column_renamed: "Rename workflow data table column"
+            discourse_workflows_data_table_created: "Create workflow data table"
+            discourse_workflows_data_table_destroyed: "Delete workflow data table"
+            discourse_workflows_data_table_updated: "Update workflow data table"
+            discourse_workflows_variable_created: "Create workflow variable"
+            discourse_workflows_variable_destroyed: "Delete workflow variable"
+            discourse_workflows_variable_updated: "Update workflow variable"
+            discourse_workflows_workflow_created: "Create workflow"
+            discourse_workflows_workflow_destroyed: "Delete workflow"
   js:
     discourse_workflows:
       node_unavailable:
