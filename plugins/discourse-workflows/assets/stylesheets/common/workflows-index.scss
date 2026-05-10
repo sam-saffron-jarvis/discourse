@@ -89,5 +89,16 @@
     &.is-unpublished::before {
       background: var(--highlight);
     }
+
+    &.is-unpublished-changes {
+      border-color: var(--tertiary-medium);
+      background: var(--tertiary-low);
+      color: var(--primary);
+      font-weight: 600;
+
+      &::before {
+        background: var(--tertiary);
+      }
+    }
   }
 }

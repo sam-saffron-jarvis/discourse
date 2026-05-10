@@ -4,6 +4,7 @@ import { action } from "@ember/object";
 import { service } from "@ember/service";
 import Form from "discourse/components/form";
 import { popupAjaxError } from "discourse/lib/ajax-error";
+import { bind } from "discourse/lib/decorators";
 import { i18n } from "discourse-i18n";
 import { normalizeSourceOutputIndex } from "../../../lib/workflows/graph-constants";
 import {
@@ -29,6 +30,7 @@ const MAX_NODES = 50;
 
 export default class WorkflowsEditor extends Component {
   @service router;
+  @service dialog;
   @service modal;
   @service toasts;
   @service workflowsNodeTypes;
@@ -43,6 +45,7 @@ export default class WorkflowsEditor extends Component {
   formApi = null;
   ignoreDirty = () => false;
   undoManager = new UndoManager();
+  allowUnpublishedDraftTransition = false;
 
   formData = {
     name:
@@ -59,12 +62,64 @@ export default class WorkflowsEditor extends Component {
     this.workflowsNodeTypes.lastExecutionNodeOutputs =
       this.args.workflow?.last_execution_node_outputs || null;
     this.#subscribeToExecutions();
+    this.router.on("routeWillChange", this.confirmUnpublishedDraftTransition);
+    window.addEventListener("beforeunload", this.handleBeforeUnload);
   }
 
   willDestroy() {
     super.willDestroy(...arguments);
     this.undoManager.destroy();
     this.#unsubscribeFromExecutions();
+    this.router.off("routeWillChange", this.confirmUnpublishedDraftTransition);
+    window.removeEventListener("beforeunload", this.handleBeforeUnload);
+  }
+
+  get hasUnpublishedDraft() {
+    return Boolean(
+      this.args.workflow?.has_unpublished_changes ||
+      this.saving ||
+      this.pendingSave
+    );
+  }
+
+  @bind
+  handleBeforeUnload(event) {
+    if (!this.hasUnpublishedDraft) {
+      return;
+    }
+
+    const message = i18n(
+      "discourse_workflows.unpublished_changes_confirmation"
+    );
+    event.preventDefault();
+    event.returnValue = message;
+    return message;
+  }
+
+  @bind
+  confirmUnpublishedDraftTransition(transition) {
+    const routeChanging = transition.to?.name !== transition.from?.name;
+    const shouldCheck =
+      this.hasUnpublishedDraft &&
+      !this.allowUnpublishedDraftTransition &&
+      !transition.isAborted &&
+      (!transition.queryParamsOnly || routeChanging);
+
+    if (!shouldCheck) {
+      return;
+    }
+
+    transition.abort();
+
+    this.dialog.confirm({
+      message: i18n("discourse_workflows.unpublished_changes_confirmation"),
+      confirmButtonLabel: "discourse_workflows.leave_without_publishing",
+      cancelButtonLabel: "discourse_workflows.keep_editing",
+      didConfirm: () => {
+        this.allowUnpublishedDraftTransition = true;
+        transition.retry();
+      },
+    });
   }
 
   #subscribeToExecutions() {
@@ -1024,6 +1079,7 @@ export default class WorkflowsEditor extends Component {
       this.#refreshUndoState();
 
       if (this.args.isNew) {
+        this.allowUnpublishedDraftTransition = true;
         this.router.transitionTo(
           "adminPlugins.show.discourse-workflows.show",
           this.args.workflow.id

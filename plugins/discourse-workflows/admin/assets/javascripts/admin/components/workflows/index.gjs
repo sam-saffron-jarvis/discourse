@@ -5,6 +5,7 @@ import { LinkTo } from "@ember/routing";
 import { service } from "@ember/service";
 import DButton from "discourse/components/d-button";
 import avatar from "discourse/helpers/avatar";
+import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
 import formatDate from "discourse/helpers/format-date";
 import { ajax } from "discourse/lib/ajax";
@@ -64,6 +65,26 @@ export default class WorkflowsIndex extends Component {
       "adminPlugins.show.discourse-workflows.show",
       workflow.id
     );
+  }
+
+  @action
+  workflowStatusLabel(workflow) {
+    if (workflow.published_version_id && workflow.has_unpublished_changes) {
+      return "discourse_workflows.unpublished_changes";
+    }
+
+    return workflow.published_version_id
+      ? "discourse_workflows.published"
+      : "discourse_workflows.unpublished";
+  }
+
+  @action
+  workflowStatusClass(workflow) {
+    if (workflow.published_version_id && workflow.has_unpublished_changes) {
+      return "is-unpublished-changes";
+    }
+
+    return workflow.published_version_id ? "is-published" : "is-unpublished";
   }
 
   <template>
@@ -164,15 +185,14 @@ export default class WorkflowsIndex extends Component {
           {{/if}}
         </td>
         <td class="d-table__cell --detail workflows-index__status">
-          {{#if workflow.published_version_id}}
-            <span class="workflows-index__badge is-published">
-              {{i18n "discourse_workflows.published"}}
-            </span>
-          {{else}}
-            <span class="workflows-index__badge is-unpublished">
-              {{i18n "discourse_workflows.unpublished"}}
-            </span>
-          {{/if}}
+          <span
+            class={{concatClass
+              "workflows-index__badge"
+              (this.workflowStatusClass workflow)
+            }}
+          >
+            {{i18n (this.workflowStatusLabel workflow)}}
+          </span>
         </td>
       </:row>
     </AdminTable>

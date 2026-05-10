@@ -133,6 +133,7 @@ export default class WorkflowCanvas extends Component {
       );
       if (this.args.workflow) {
         this.args.workflow.published_version_id = null;
+        this.args.workflow.has_unpublished_changes = true;
       }
       this.workflowPublishedOverride = null;
     } catch {
