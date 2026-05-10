@@ -30,7 +30,7 @@ module DiscourseWorkflows
           "credential_id",
           credential.id,
         ).pluck(:workflow_id)
-      DiscourseWorkflows::Workflow.where(id: workflow_ids).to_a
+      DiscourseWorkflows::Workflow.select(:id, :name).where(id: workflow_ids).to_a.map { |id, name| { id:, name: } }
     end
 
     def credential_not_in_use(referencing_workflows:)
