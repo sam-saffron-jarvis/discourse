@@ -4,7 +4,7 @@ module DiscourseWorkflows
   class WorkflowDependency < ActiveRecord::Base
     self.table_name = "discourse_workflows_workflow_dependencies"
 
-    CACHE_KEY = "topic_admin_buttons"
+    TOPIC_ADMIN_BUTTON_CACHE_KEY = "topic_admin_buttons"
 
     belongs_to :workflow, class_name: "DiscourseWorkflows::Workflow"
     belongs_to :workflow_version, class_name: "DiscourseWorkflows::WorkflowVersion", optional: true
