@@ -645,7 +645,7 @@ en:
         add_first: "Add first variable"
         usage_syntax: "Usage syntax"
         copy_syntax: "Copy to clipboard"
-        edit: "Edit"
+        edit: "Edit variable"
       credentials:
         title: "Credentials"
         description: "Encrypted credentials for authenticating workflow integrations"
