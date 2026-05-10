@@ -88,7 +88,7 @@ module DiscourseWorkflows
               tags: tag_names.presence,
               skip_workflows: true,
             },
-            guardian: Guardian.new(author),
+            guardian: author.guardian,
           ) do
             on_success do |post:|
               topic = post.topic
