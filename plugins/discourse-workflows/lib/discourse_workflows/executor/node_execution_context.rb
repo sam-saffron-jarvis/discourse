@@ -3,8 +3,7 @@
 module DiscourseWorkflows
   class Executor
     class NodeExecutionContext
-      attr_reader :input_items,
-                  :user,
+      attr_reader :user,
                   :vars,
                   :expression_errors,
                   :condition_details,
@@ -16,6 +15,7 @@ module DiscourseWorkflows
 
       def initialize(
         input_items:,
+        input_groups: nil,
         configuration: {},
         property_schema: {},
         node_context: {},
@@ -30,7 +30,8 @@ module DiscourseWorkflows
         resolver_context: nil,
         workflow_dependencies: nil
       )
-        @input_items = input_items
+        @input_groups = normalize_input_groups(input_groups, input_items)
+        @input_items = @input_groups[0] || []
         @configuration = configuration
         @property_schema = property_schema
         @node_context = node_context
@@ -60,6 +61,17 @@ module DiscourseWorkflows
         else
           raise ArgumentError, "Unknown context scope: #{scope}. Use :flow or :node"
         end
+      end
+
+      def input_items(input_key = nil)
+        return @input_items if input_key.nil?
+
+        @input_groups.fetch(input_index(input_key)) { [] }
+      end
+
+      def inputs
+        max_index = @input_groups.keys.max || 0
+        Array.new(max_index + 1) { |index| @input_groups[index] || [] }
       end
 
       def with_sandbox(capture_logs: false)
@@ -186,8 +198,31 @@ module DiscourseWorkflows
 
       def item_index_for(item)
         @item_indexes_by_object_id ||=
-          @input_items.each_with_index.to_h { |entry, index| [entry.object_id, index] }
+          input_items.each_with_index.to_h { |entry, index| [entry.object_id, index] }
         @item_indexes_by_object_id.fetch(item.object_id, 0)
+      end
+
+      def normalize_input_groups(input_groups, input_items)
+        groups = input_groups || { 0 => input_items }
+        has_indexed_inputs =
+          groups.keys.any? { |key| key.to_s.match?(/\Ainput_\d+\z/) || key.is_a?(Integer) }
+        groups.each_with_object({}) do |(key, items), result|
+          next if has_indexed_inputs && key.to_s == "main"
+
+          result[input_index(key)] = items || []
+        end
+      end
+
+      def input_index(input_key)
+        return input_key if input_key.is_a?(Integer)
+
+        value = input_key.to_s
+        return 0 if value == "main"
+
+        match = value.match(/\Ainput_(\d+)\z/)
+        return match[1].to_i - 1 if match
+
+        value.to_i
       end
 
       def resolve_parameter(name, schema)

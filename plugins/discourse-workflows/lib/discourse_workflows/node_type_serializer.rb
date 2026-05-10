@@ -23,6 +23,7 @@ module DiscourseWorkflows
         output_schema: output_schema,
         ui: ui,
         capabilities: capabilities,
+        inputs: @latest_class.input_ports,
         ports: @latest_class.ports,
         operations: @latest_class.operations,
         icon: ui[:icon],

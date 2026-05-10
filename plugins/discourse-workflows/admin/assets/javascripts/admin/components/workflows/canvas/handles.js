@@ -1,4 +1,7 @@
-import { buildConnectedOutputsIndex } from "../../../lib/workflows/graph-constants";
+import {
+  buildConnectedOutputsIndex,
+  normalizeTargetInput,
+} from "../../../lib/workflows/graph-constants";
 
 const HANDLE_LENGTH = 30;
 const HANDLE_TOTAL = HANDLE_LENGTH + 14;
@@ -10,6 +13,7 @@ function buildHandleEntry(
   startPos,
   toRight,
   outputKey,
+  inputKey,
   areaElement
 ) {
   // SVG positioned at button's canvas location so foreignObject x is always positive (outside viewport = no pointer events).
@@ -19,6 +23,7 @@ function buildHandleEntry(
       areaElement,
       nodeClientId: nodeId,
       outputKey,
+      inputKey,
       svgLeft: startPos.x,
       svgTop: startPos.y - 7,
       pathD: `M ${SOCKET_RADIUS} 7 L ${HANDLE_LENGTH} 7`,
@@ -30,6 +35,7 @@ function buildHandleEntry(
       areaElement,
       nodeClientId: nodeId,
       outputKey,
+      inputKey,
       svgLeft: startPos.x - HANDLE_TOTAL,
       svgTop: startPos.y - 7,
       pathD: `M ${HANDLE_TOTAL - SOCKET_RADIUS} 7 L 14 7`,
@@ -84,6 +90,7 @@ function updateHandles(
                 pos,
                 spec.toRight,
                 spec.outputKey,
+                spec.inputKey,
                 spec.areaElement ?? nodeEntry.element.parentElement
               )
             );
@@ -119,14 +126,16 @@ export function updateOutputHandles(
       buildIndex: buildConnectedOutputsIndex,
       getHandles(nodeId, node, connectedOutputs) {
         return Object.keys(node.outputs)
-          .filter((key) => key !== "loop")
-          .map((outputKey) => ({
+          .map((outputKey, outputIndex) => ({ outputKey, outputIndex }))
+          .filter(({ outputKey }) => outputKey !== "loop")
+          .map(({ outputKey, outputIndex }) => ({
             handleKey: `${nodeId}:${outputKey}`,
-            connected: connectedOutputs.get(nodeId)?.has(outputKey) ?? false,
+            connected: connectedOutputs.get(nodeId)?.has(outputIndex) ?? false,
             side: "output",
             socketKey: outputKey,
             toRight: true,
             outputKey,
+            inputKey: null,
           }));
       },
     }
@@ -156,7 +165,9 @@ export function updateInputHandles(
             conn.source !== conn.target &&
             graphIndex.loopOwnerByNodeId.get(conn.source) !== conn.target
           ) {
-            connected.add(conn.target);
+            connected.add(
+              `${conn.target}:${normalizeTargetInput(conn.targetInput)}`
+            );
           }
         }
         return connected;
@@ -165,17 +176,16 @@ export function updateInputHandles(
         if (!Object.keys(node.inputs).length) {
           return [];
         }
-        return [
-          {
-            handleKey: nodeId,
-            connected: connectedInputs.has(nodeId),
-            side: "input",
-            socketKey: "input",
-            toRight: false,
-            outputKey: null,
-            areaElement: areaContentElement,
-          },
-        ];
+        return Object.keys(node.inputs).map((inputKey) => ({
+          handleKey: `${nodeId}:${inputKey}`,
+          connected: connectedInputs.has(`${nodeId}:${inputKey}`),
+          side: "input",
+          socketKey: inputKey,
+          toRight: false,
+          outputKey: null,
+          inputKey,
+          areaElement: areaContentElement,
+        }));
       },
     }
   );

@@ -84,8 +84,12 @@ module DiscourseWorkflows
       options.map { |value| { value: value, label_key: operation_label_key(value) } }
     end
 
-    def ports
-      normalize_ports(output_port_definitions)
+    def ports(configuration = {})
+      normalize_ports(output_port_definitions(configuration))
+    end
+
+    def input_ports(configuration = {})
+      normalize_ports(input_port_definitions(configuration), primary: false, required: true)
     end
 
     def branching?
@@ -130,16 +134,29 @@ module DiscourseWorkflows
       end
     end
 
-    def output_port_definitions
-      return Array(outputs) if respond_to?(:outputs)
+    def output_port_definitions(configuration = {})
+      return call_port_definition(:outputs, configuration) if respond_to?(:outputs)
       []
     end
 
-    def normalize_ports(definitions)
+    def input_port_definitions(configuration = {})
+      return call_port_definition(:inputs, configuration) if respond_to?(:inputs)
+      [:main]
+    end
+
+    def call_port_definition(method_name, configuration)
+      method = public_method(method_name)
+      Array(method.arity.zero? ? method.call : method.call(configuration))
+    end
+
+    def normalize_ports(definitions, primary: true, required: nil)
       definitions.map.with_index do |definition, index|
         port = definition.is_a?(Hash) ? definition.deep_symbolize_keys : { key: definition.to_s }
-        port[:key] = port.fetch(:key).to_s
-        port[:primary] = index.zero? if !port.key?(:primary)
+        port[:key] = port[:key].presence&.to_s || index.to_s
+        port[:type] = port.fetch(:type, "main").to_s
+        port[:index] = index
+        port[:primary] = index.zero? if primary && !port.key?(:primary)
+        port[:required] = required if !required.nil? && !port.key?(:required)
         port.compact
       end
     end

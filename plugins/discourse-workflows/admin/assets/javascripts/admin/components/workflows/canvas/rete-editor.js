@@ -6,8 +6,14 @@ import {
   graphConnectionKey,
   LOOP_OUTPUT,
   normalizeSourceOutput,
+  normalizeSourceOutputIndex,
+  normalizeTargetInput,
+  normalizeTargetInputIndex,
 } from "../../../lib/workflows/graph-constants";
-import { nodeTypeOutputKeys } from "../../../lib/workflows/node-types";
+import {
+  nodeTypeInputs,
+  nodeTypeOutputKeys,
+} from "../../../lib/workflows/node-types";
 import {
   NODE_WIDTH,
   nodeHeight,
@@ -42,6 +48,13 @@ export class ReteEditorBridge {
         nodeType: nodeTypesByIdentifier.get(data.type),
       });
     const getNodeHeight = (data) => nodeHeight(data);
+    const inputKeysFor = (data) =>
+      data.type?.startsWith("trigger:")
+        ? []
+        : nodeTypeInputs(
+            nodeTypesByIdentifier.get(data.type) || data.type,
+            data
+          ).map((input) => input.key || "main");
 
     class WorkflowNode extends ClassicPreset.Node {
       constructor(data) {
@@ -52,14 +65,22 @@ export class ReteEditorBridge {
         this.height = getNodeHeight(data);
 
         if (!data.type?.startsWith("trigger:")) {
-          this.addInput(
-            "input",
-            new ClassicPreset.Input(
-              socket,
-              "",
-              data.type === "flow:loop_over_items"
-            )
-          );
+          for (const input of nodeTypeInputs(
+            nodeTypesByIdentifier.get(data.type) || data.type,
+            data
+          )) {
+            const key = input.key || "main";
+            this.addInput(
+              key,
+              new ClassicPreset.Input(
+                socket,
+                key === "main" ? "" : key,
+                data.type === "flow:loop_over_items" ||
+                  (data.type === "flow:merge" &&
+                    (data.configuration?.mode || "append") === "append")
+              )
+            );
+          }
         }
 
         for (const key of nodeTypeOutputKeys(
@@ -167,6 +188,7 @@ export class ReteEditorBridge {
       shiftAbort,
       getNodeWidth,
       getNodeHeight,
+      inputKeysFor,
     });
 
     renderer.onNodeDelete = (clientId) => {
@@ -196,6 +218,7 @@ export class ReteEditorBridge {
     shiftAbort,
     getNodeWidth,
     getNodeHeight,
+    inputKeysFor,
   }) {
     this.editor = editor;
     this.area = area;
@@ -213,6 +236,7 @@ export class ReteEditorBridge {
     this.AreaExtensions = AreaExtensions;
     this.getNodeWidth = getNodeWidth;
     this.getNodeHeight = getNodeHeight;
+    this.inputKeysFor = inputKeysFor;
     this.isSyncing = false;
     this.isAutoArranging = false;
     this.wasDragging = false;
@@ -298,7 +322,8 @@ export class ReteEditorBridge {
           this.callbacks.onConnectionCreated?.(
             conn.source,
             conn.sourceOutput,
-            conn.target
+            conn.target,
+            conn.targetInput
           );
         }
       }
@@ -361,9 +386,26 @@ export class ReteEditorBridge {
   connectionKeyFromClientIds(connection) {
     return graphConnectionKey({
       source: connection.sourceClientId,
-      sourceOutput: connection.sourceOutput,
+      sourceOutputIndex: normalizeSourceOutputIndex(connection),
       target: connection.targetClientId,
+      targetInputIndex: normalizeTargetInputIndex(connection),
     });
+  }
+
+  outputKeyFor(sourceNode, connection) {
+    return (
+      Object.keys(sourceNode.outputs || {})[
+        normalizeSourceOutputIndex(connection)
+      ] || normalizeSourceOutput(connection.sourceOutput)
+    );
+  }
+
+  inputKeyFor(targetNode, connection) {
+    return (
+      Object.keys(targetNode.inputs || {})[
+        normalizeTargetInputIndex(connection)
+      ] || normalizeTargetInput(connection.targetInput)
+    );
   }
 
   buildDesiredGraphConnections(connections) {
@@ -371,9 +413,11 @@ export class ReteEditorBridge {
     const seen = new Set();
 
     for (const connection of connections) {
+      const sourceNode = this.editor.getNode(connection.sourceClientId);
+      const targetNode = this.editor.getNode(connection.targetClientId);
       if (
-        !this.editor.getNode(connection.sourceClientId) ||
-        !this.editor.getNode(connection.targetClientId)
+        !sourceNode ||
+        !targetNode
       ) {
         continue;
       }
@@ -386,8 +430,11 @@ export class ReteEditorBridge {
       seen.add(key);
       graphConnections.push({
         source: connection.sourceClientId,
-        sourceOutput: normalizeSourceOutput(connection.sourceOutput),
+        sourceOutput: this.outputKeyFor(sourceNode, connection),
+        sourceOutputIndex: normalizeSourceOutputIndex(connection),
         target: connection.targetClientId,
+        targetInput: this.inputKeyFor(targetNode, connection),
+        targetInputIndex: normalizeTargetInputIndex(connection),
       });
     }
 
@@ -427,7 +474,14 @@ export class ReteEditorBridge {
     await this.editor.removeNode(clientId);
   }
 
-  async addConnection(sourceClientId, sourceOutput, targetClientId) {
+  async addConnection(
+    sourceClientId,
+    sourceOutput,
+    targetClientId,
+    targetInput = "main",
+    sourceOutputIndex = null,
+    targetInputIndex = null
+  ) {
     const sourceNode = this.editor.getNode(sourceClientId);
     const targetNode = this.editor.getNode(targetClientId);
     if (!sourceNode || !targetNode) {
@@ -437,9 +491,9 @@ export class ReteEditorBridge {
     await this.editor.addConnection(
       new this.ClassicPreset.Connection(
         sourceNode,
-        normalizeSourceOutput(sourceOutput),
+        this.outputKeyFor(sourceNode, { sourceOutput, sourceOutputIndex }),
         targetNode,
-        "input"
+        this.inputKeyFor(targetNode, { targetInput, targetInputIndex })
       )
     );
   }
@@ -463,7 +517,13 @@ export class ReteEditorBridge {
           continue;
         }
 
-        if (reteNode.workflowData.type !== nodeData.type) {
+        const currentInputKeys = Object.keys(reteNode.inputs || {});
+        const nextInputKeys = this.inputKeysFor(nodeData);
+        const inputsChanged =
+          currentInputKeys.length !== nextInputKeys.length ||
+          currentInputKeys.some((key, index) => key !== nextInputKeys[index]);
+
+        if (reteNode.workflowData.type !== nodeData.type || inputsChanged) {
           await this.removeNode(nodeData.clientId);
           await this.addNode(nodeData);
           continue;
@@ -533,7 +593,10 @@ export class ReteEditorBridge {
         await this.addConnection(
           connection.sourceClientId,
           normalizeSourceOutput(connection.sourceOutput),
-          connection.targetClientId
+          connection.targetClientId,
+          normalizeTargetInput(connection.targetInput),
+          normalizeSourceOutputIndex(connection),
+          normalizeTargetInputIndex(connection)
         );
         existingConnectionKeys.set(key, true);
       }
@@ -559,9 +622,9 @@ export class ReteEditorBridge {
     for (const node of nodes) {
       const nodeConns = connectedOutputs.get(node.id);
       if (
-        !Object.keys(node.outputs).some(
-          (key) => key !== "loop" && !nodeConns?.has(key)
-        )
+        !Object.keys(node.outputs).some((key, outputIndex) => {
+          return key !== "loop" && !nodeConns?.has(outputIndex);
+        })
       ) {
         continue;
       }

@@ -1,5 +1,7 @@
 import { module, test } from "qunit";
 import {
+  nodeTypeInputLabel,
+  nodeTypeInputs,
   nodeTypeOperationLabel,
   nodeTypePaletteGroup,
   nodeTypePortLabel,
@@ -88,5 +90,41 @@ module("Unit | Utility | workflows node types", function () {
     assert.strictEqual(nodeTypePortLabel(filterNodeType, "true"), "Kept");
     assert.strictEqual(nodeTypePortLabel(filterNodeType, "false"), "Rejected");
     assert.strictEqual(nodeTypePrimaryOutputKey(loopNodeType), "done");
+  });
+
+  test("uses merge mode configuration for input sockets", function (assert) {
+    const mergeNodeType = {
+      identifier: "flow:merge",
+      inputs: [
+        { key: "main" },
+        { key: "input_1", required: true },
+        { key: "input_2", required: true },
+      ],
+    };
+
+    assert.deepEqual(
+      nodeTypeInputs(mergeNodeType, {
+        configuration: { mode: "append" },
+      }).map((input) => input.key),
+      ["input_1", "input_2"]
+    );
+    assert.deepEqual(
+      nodeTypeInputs(mergeNodeType, {
+        configuration: { mode: "append", number_inputs: 3 },
+      }).map((input) => input.key),
+      ["input_1", "input_2", "input_3"]
+    );
+    assert.deepEqual(
+      nodeTypeInputs(mergeNodeType, {
+        configuration: { mode: "combine" },
+      }).map((input) => input.key),
+      ["input_1", "input_2"]
+    );
+    assert.strictEqual(
+      nodeTypeInputLabel(mergeNodeType, "input_1", {
+        configuration: { mode: "combine" },
+      }),
+      "Input 1"
+    );
   });
 });

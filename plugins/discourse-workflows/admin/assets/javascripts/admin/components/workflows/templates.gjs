@@ -9,6 +9,10 @@ import { trustHTML } from "@ember/template";
 import icon from "discourse/helpers/d-icon";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
+import {
+  normalizeSourceOutputIndex,
+  normalizeTargetInputIndex,
+} from "../../lib/workflows/graph-constants";
 import { nodeTypeColor, nodeTypeIcon } from "../../lib/workflows/node-types";
 import { STICKY_NOTE_TYPE } from "../../models/sticky-note";
 
@@ -77,7 +81,9 @@ export default class WorkflowsTemplates extends Component {
         (c) => ({
           source_client_id: `template-${c.source_index}`,
           target_client_id: `template-${c.target_index}`,
-          source_output: c.source_output || "main",
+          connection_type: c.connection_type || "main",
+          source_output_index: normalizeSourceOutputIndex(c),
+          target_input_index: normalizeTargetInputIndex(c),
         })
       );
 

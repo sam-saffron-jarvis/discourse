@@ -130,12 +130,16 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
         expect(connections[0]).to include(
           "source_node_id" => nodes[0]["id"],
           "target_node_id" => nodes[1]["id"],
-          "source_output" => "yes",
+          "connection_type" => "main",
+          "source_output_index" => 0,
+          "target_input_index" => 0,
         )
         expect(connections[1]).to include(
           "source_node_id" => nodes[1]["id"],
           "target_node_id" => nodes[2]["id"],
-          "source_output" => "main",
+          "connection_type" => "main",
+          "source_output_index" => 0,
+          "target_input_index" => 0,
         )
       end
     end

@@ -212,6 +212,42 @@ module("Unit | Canvas Bridge", function (hooks) {
     bridge.destroy();
   });
 
+  test("syncState resolves index-only connections to Rete socket keys", async function (assert) {
+    const bridge = await createReteEditor(container, {
+      callbacks: noopCallbacks(),
+      nodeTypes: NODE_TYPES,
+    });
+
+    await bridge.syncState(
+      [
+        {
+          clientId: "loop",
+          type: "flow:loop_over_items",
+          position: { x: 0, y: 0 },
+        },
+        {
+          clientId: "body",
+          type: "action:http_request",
+          position: { x: 200, y: 0 },
+        },
+      ],
+      [
+        {
+          sourceClientId: "loop",
+          sourceOutputIndex: 1,
+          targetClientId: "body",
+          targetInputIndex: 0,
+        },
+      ]
+    );
+
+    const connection = bridge.editor.getConnections()[0];
+    assert.strictEqual(connection.sourceOutput, "loop");
+    assert.strictEqual(connection.targetInput, "main");
+
+    bridge.destroy();
+  });
+
   test("autoArrange returns position map keyed by client IDs", async function (assert) {
     const bridge = await createReteEditor(container, {
       callbacks: noopCallbacks(),

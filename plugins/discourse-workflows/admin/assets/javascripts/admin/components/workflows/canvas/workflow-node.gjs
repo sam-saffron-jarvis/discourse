@@ -14,6 +14,7 @@ import formatNodeIssue from "../../../lib/workflows/format-node-issue";
 import getNodeIssues from "../../../lib/workflows/node-issues";
 import {
   nodeTypeIcon,
+  nodeTypeInputLabel,
   nodeTypeIsManuallyTriggerable,
   nodeTypePortLabel,
   nodeTypeStyle,
@@ -84,6 +85,18 @@ export default class WorkflowNode extends Component {
     return Object.keys(this.args.node.outputs);
   }
 
+  get hasMultipleInputs() {
+    return Object.keys(this.args.node.inputs).length > 1;
+  }
+
+  get inputEntries() {
+    return Object.keys(this.args.node.inputs).map((key) => ({
+      key,
+      input: this.args.node.inputs[key],
+      label: nodeTypeInputLabel(this.resolvedNodeType, key, this.data),
+    }));
+  }
+
   get isUnavailable() {
     const nodeType = this.resolvedNodeType;
     if (!nodeType || typeof nodeType === "string") {
@@ -145,20 +158,35 @@ export default class WorkflowNode extends Component {
       data-client-id={{this.data.clientId}}
     >
       <div class="workflow-rete-node__icon-row">
-        {{#if @node.inputs.input}}
-          <div
-            class="workflow-rete-node__socket --input"
-            {{didInsert
-              (fn
-                @onSocketRendered
-                @node.id
-                "input"
-                "input"
-                @node.inputs.input.socket
-              )
-            }}
-          />
-        {{/if}}
+        <div
+          class={{concatClass
+            "workflow-rete-node__inputs"
+            (if this.hasMultipleInputs "has-multiple-inputs")
+          }}
+        >
+          {{#each this.inputEntries as |entry|}}
+            <div class="workflow-rete-node__input-row">
+              {{#if this.hasMultipleInputs}}
+                <span class="workflow-rete-node__input-label">
+                  {{entry.label}}
+                </span>
+              {{/if}}
+              <div
+                class="workflow-rete-node__socket --input"
+                data-socket-key={{entry.key}}
+                {{didInsert
+                  (fn
+                    @onSocketRendered
+                    @node.id
+                    "input"
+                    entry.key
+                    entry.input.socket
+                  )
+                }}
+              />
+            </div>
+          {{/each}}
+        </div>
 
         <div
           class="workflow-rete-node__icon-block"

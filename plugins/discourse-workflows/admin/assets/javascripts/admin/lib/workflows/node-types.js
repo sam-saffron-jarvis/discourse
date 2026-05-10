@@ -13,6 +13,13 @@ export function translatedOrNull(key) {
   return missingTranslation(value) ? null : value;
 }
 
+function humanizeKey(key) {
+  return key
+    .toString()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function nodeTypeIdentifier(nodeTypeOrIdentifier) {
   if (typeof nodeTypeOrIdentifier === "string") {
     return nodeTypeOrIdentifier;
@@ -111,6 +118,76 @@ export function nodeTypePorts(nodeTypeOrIdentifier) {
   }
 
   return [{ key: "main", primary: true }];
+}
+
+function indexedPort(port, index) {
+  return {
+    ...port,
+    index: port.index ?? index,
+    key: port.key ?? `${index}`,
+  };
+}
+
+function mergeInputs(node) {
+  const mode = node?.configuration?.mode || "append";
+
+  if (mode === "append") {
+    const count = Math.max(
+      parseInt(node?.configuration?.number_inputs, 10) || 2,
+      2
+    );
+    return Array.from({ length: count }, (_, index) =>
+      indexedPort(
+        {
+          key: `input_${index + 1}`,
+          display_name: `Input ${index + 1}`,
+          label: `Input ${index + 1}`,
+        },
+        index
+      )
+    );
+  }
+
+  return ["input_1", "input_2"].map((key, index) =>
+    indexedPort({ key, label: `Input ${index + 1}` }, index)
+  );
+}
+
+export function nodeTypeInputs(nodeTypeOrIdentifier, node = null) {
+  const nodeType = resolveNodeType(nodeTypeOrIdentifier);
+
+  if (nodeTypeIdentifier(nodeType) === "flow:merge") {
+    return mergeInputs(node);
+  }
+
+  const inputs = nodeType?.inputs;
+
+  if (Array.isArray(inputs)) {
+    return inputs.map(indexedPort);
+  }
+
+  return [{ key: "main", index: 0, required: true }];
+}
+
+export function nodeTypeInputLabel(
+  nodeTypeOrIdentifier,
+  keyOrIndex,
+  node = null
+) {
+  const input = nodeTypeInputs(nodeTypeOrIdentifier, node).find(
+    (item) => item.key === keyOrIndex || item.index === keyOrIndex
+  );
+
+  if (input?.label_key) {
+    return (
+      translatedOrNull(input.label_key) ||
+      input.label ||
+      input.display_name ||
+      humanizeKey(keyOrIndex)
+    );
+  }
+
+  return input?.label || input?.display_name || humanizeKey(keyOrIndex);
 }
 
 export function nodeTypePort(nodeTypeOrIdentifier, key) {

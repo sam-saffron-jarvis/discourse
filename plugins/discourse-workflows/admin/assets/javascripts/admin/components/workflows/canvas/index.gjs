@@ -362,6 +362,7 @@ export default class WorkflowCanvas extends Component {
       connectionSource: connectionInfo.sourceClientId,
       connectionSourceOutput: connectionInfo.sourceOutput,
       connectionTarget: connectionInfo.targetClientId,
+      connectionTargetInput: connectionInfo.targetInput,
     });
   }
 
@@ -370,7 +371,8 @@ export default class WorkflowCanvas extends Component {
     this.args.onConnectionDelete?.(
       connectionInfo.sourceClientId,
       connectionInfo.sourceOutput,
-      connectionInfo.targetClientId
+      connectionInfo.targetClientId,
+      connectionInfo.targetInput
     );
   }
 
@@ -380,12 +382,12 @@ export default class WorkflowCanvas extends Component {
   }
 
   @action
-  handleHandleAdd(nodeClientId, outputKey, e) {
+  handleHandleAdd(nodeClientId, outputKey, inputKey, e) {
     e.stopPropagation();
     this.args.onOpenNodePanel?.(
       outputKey !== null
         ? { sourceClientId: nodeClientId, sourceOutput: outputKey }
-        : { targetClientId: nodeClientId }
+        : { targetClientId: nodeClientId, targetInput: inputKey || "main" }
     );
   }
 
@@ -671,7 +673,12 @@ export default class WorkflowCanvas extends Component {
                   class="workflow-handle__add-btn"
                   {{on
                     "click"
-                    (fn this.handleHandleAdd entry.nodeClientId entry.outputKey)
+                    (fn
+                      this.handleHandleAdd
+                      entry.nodeClientId
+                      entry.outputKey
+                      entry.inputKey
+                    )
                   }}
                 >
                   {{icon "plus"}}

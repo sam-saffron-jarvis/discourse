@@ -49,6 +49,8 @@ module DiscourseWorkflows
         )
       @steps = []
       @queue = []
+      @waiting_inputs = {}
+      @input_wait_requirements = {}
       @sandbox = nil
       @waiting_node = nil
       @waiting_step = nil
@@ -96,7 +98,8 @@ module DiscourseWorkflows
         ItemContract.validate_items!(trigger_items, source: "trigger:#{trigger_node.type}")
         record_step(trigger_node, [], output: trigger_items, status: Step::SUCCESS)
         @context.store_node_output(trigger_node, trigger_items)
-        enqueue_downstream(trigger_node, "main", trigger_items)
+        @context.store_node_run(trigger_node, inputs: [], outputs: [trigger_items])
+        enqueue_downstream(trigger_node, 0, trigger_items)
       end
     end
 
@@ -108,10 +111,11 @@ module DiscourseWorkflows
 
         update_waiting_step(waiting_node, response_items)
         @context.store_node_output(waiting_node, response_items)
+        @context.store_node_run(waiting_node, inputs: [], outputs: [response_items])
         clear_waiting!
 
         ItemContract.validate_items!(response_items, source: "resume:#{waiting_node.type}")
-        enqueue_downstream(waiting_node, "main", response_items)
+        enqueue_downstream(waiting_node, 0, response_items)
       end
     end
 
@@ -134,19 +138,22 @@ module DiscourseWorkflows
 
     def process_queue
       iterations = 0
+      queue_index = 0
 
-      while @queue.any?
+      while queue_index < @queue.length
         iterations += 1
         raise "Max iterations (#{MAX_ITERATIONS}) exceeded" if iterations > MAX_ITERATIONS
 
-        node, input_items = @queue.shift
-        execute_node(node, input_items)
+        node, input_groups = @queue[queue_index]
+        queue_index += 1
+        execute_node(node, input_groups)
       end
     end
 
     # --- Node execution ---
 
-    def execute_node(node, input_items)
+    def execute_node(node, input_groups)
+      input_items = primary_input_items(input_groups)
       node_type_class =
         DiscourseWorkflows::Registry.find_node_type(node.type, version: node.type_version)
       return handle_unknown_node(node, input_items) unless node_type_class
@@ -169,7 +176,7 @@ module DiscourseWorkflows
         exec_ctx =
           build_node_execution_context(
             node,
-            input_items,
+            input_groups,
             node_context,
             node_type_class,
             resolver,
@@ -191,9 +198,10 @@ module DiscourseWorkflows
           raise StandardError, step.error
         end
 
-        normalized = normalize_result(result, node, node_type_class.ports)
-        all_items = normalized.all_items(ports: node_type_class.ports)
-        primary_empty = normalized.primary_items(ports: node_type_class.ports).empty?
+        ports = node_type_class.ports(node.configuration)
+        normalized = normalize_result(result, node, ports)
+        all_items = normalized.all_items(ports: ports)
+        primary_empty = normalized.primary_items(ports: ports).empty?
 
         if node_type_class.branching? && primary_empty
           step.filter!(output: all_items)
@@ -202,7 +210,12 @@ module DiscourseWorkflows
         end
 
         @context.store_node_output(node, all_items)
-        route_downstream(node, node_type_class.ports, normalized)
+        @context.store_node_run(
+          node,
+          inputs: input_groups_for_storage(input_groups),
+          outputs: normalized.output_arrays(ports: ports),
+        )
+        route_downstream(node, ports, normalized)
       rescue WaitRequested
         raise
       rescue => e
@@ -252,7 +265,8 @@ module DiscourseWorkflows
       step = record_step(node, input_items)
       step.skip!(output: input_items, reason: reason)
       @context.store_node_output(node, input_items)
-      enqueue_downstream(node, "main", input_items)
+      @context.store_node_run(node, inputs: [input_items], outputs: [input_items])
+      enqueue_downstream(node, 0, input_items)
     end
 
     def handle_node_issues(node, input_items, issues)
@@ -260,19 +274,21 @@ module DiscourseWorkflows
       step = record_step(node, input_items)
       step.skip!(output: input_items, reason: reason)
       @context.store_node_output(node, input_items)
-      enqueue_downstream(node, "main", input_items)
+      @context.store_node_run(node, inputs: [input_items], outputs: [input_items])
+      enqueue_downstream(node, 0, input_items)
     end
 
     def build_node_execution_context(
       node,
-      input_items,
+      input_groups,
       node_context,
       node_type_class,
       resolver,
       resolver_ctx
     )
       NodeExecutionContext.new(
-        input_items: input_items,
+        input_items: primary_input_items(input_groups),
+        input_groups: input_groups,
         configuration: node.configuration,
         property_schema: node_type_class.property_schema,
         node_context: node_context,
@@ -308,22 +324,60 @@ module DiscourseWorkflows
     def route_downstream(node, ports, result)
       result
         .output_arrays(ports: ports)
-        .each_with_index do |items, index|
-          next if items.empty?
-          enqueue_downstream(node, ports.dig(index, :key) || "main", items)
+        .each_with_index { |items, index| enqueue_downstream(node, index, items) }
+    end
+
+    def enqueue_downstream(node, output_index, items)
+      @snapshot
+        .connections_from_output_index(node, output_index)
+        .each do |conn|
+          target = @snapshot.target_node(conn)
+          enqueue_target(target, conn.target_input_index, items) if target
         end
     end
 
-    def enqueue_downstream(node, output_name, items)
-      @snapshot
-        .connections_from(node)
-        .each do |conn|
-          next if conn.source_output.present? && conn.source_output != output_name
-          next if conn.source_output.blank? && output_name != "main"
+    def enqueue_target(target, target_input_index, items)
+      target_input_index = target_input_index.to_i
+      requirements = input_wait_requirements(target)
+      inputs_to_wait_for = requirements[:inputs_to_wait_for]
 
-          target = @snapshot.target_node(conn)
-          @queue << [target, items] if target
-        end
+      if inputs_to_wait_for.length <= 1
+        return if items.empty?
+
+        @queue << [target, { 0 => items }]
+        return
+      end
+
+      inputs = (@waiting_inputs[target.id] ||= {})
+      inputs[target_input_index] = items
+
+      return unless inputs_to_wait_for.all? { |index| inputs.key?(index) }
+
+      @waiting_inputs.delete(target.id)
+      @queue << [target, inputs]
+    end
+
+    def input_wait_requirements(target)
+      @input_wait_requirements[target.id] ||= begin
+        node_type_class =
+          DiscourseWorkflows::Registry.find_node_type(target.type, version: target.type_version)
+        input_ports =
+          node_type_class&.input_ports(target.configuration) ||
+            [{ key: "main", index: 0, required: true }]
+        required_inputs = input_ports.select { |port| port[:required] }.map { |port| port[:index] }
+        connected_inputs = @snapshot.connections_to(target).map(&:target_input_index)
+
+        { inputs_to_wait_for: (required_inputs + connected_inputs).uniq }
+      end
+    end
+
+    def primary_input_items(input_groups)
+      input_groups.fetch(0) { input_groups.values.first || [] }
+    end
+
+    def input_groups_for_storage(input_groups)
+      max_index = input_groups.keys.max || 0
+      Array.new(max_index + 1) { |index| input_groups[index] || [] }
     end
 
     # --- Steps ---
@@ -387,6 +441,8 @@ module DiscourseWorkflows
       @snapshot = @store.workflow_snapshot
       @steps = []
       @queue = []
+      @waiting_inputs = {}
+      @input_wait_requirements = {}
     end
 
     def resume_execution!(execution)
@@ -394,6 +450,8 @@ module DiscourseWorkflows
       @snapshot = @store.workflow_snapshot
       @steps = restore_steps_from(execution)
       @queue = []
+      @waiting_inputs = {}
+      @input_wait_requirements = {}
     end
 
     def clear_waiting!

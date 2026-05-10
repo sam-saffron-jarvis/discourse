@@ -21,11 +21,12 @@ module DiscourseWorkflows
       self
     end
 
-    def connect(source, target, output: "main")
+    def connect(source, target, output: "main", input: "main")
       @connections << {
         "source_node_id" => source,
         "target_node_id" => target,
         "source_output" => output,
+        "target_input" => input,
       }
       self
     end

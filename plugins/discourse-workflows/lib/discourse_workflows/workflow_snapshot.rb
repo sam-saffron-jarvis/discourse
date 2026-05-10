@@ -6,7 +6,14 @@ module DiscourseWorkflows
       Struct.new(:id, :type, :type_version, :name, :position, :configuration, keyword_init: true)
 
     SnapshotConnection =
-      Struct.new(:source_node_id, :source_output, :target_node_id, keyword_init: true)
+      Struct.new(
+        :source_node_id,
+        :source_output_index,
+        :target_node_id,
+        :target_input_index,
+        :connection_type,
+        keyword_init: true,
+      )
 
     attr_reader :nodes, :connections, :workflow_name
 
@@ -31,26 +38,51 @@ module DiscourseWorkflows
             node
           end
 
+      used_target_indexes = Hash.new { |hash, key| hash[key] = Set.new }
+      raw_connections = data.fetch("connections") { [] }
+      raw_connections.each do |connection|
+        next unless connection.key?("target_input_index")
+
+        used_target_indexes[connection["target_node_id"].to_s] << connection[
+          "target_input_index"
+        ].to_i
+      end
+
       @connections =
         data
           .fetch("connections") { [] }
           .map do |c|
+            target_node_id = c["target_node_id"].to_s
+            target_input_index =
+              target_connection_index(c, target_node_id, used_target_indexes[target_node_id])
+            used_target_indexes[target_node_id] << target_input_index
             SnapshotConnection.new(
               source_node_id: c["source_node_id"].to_s,
-              source_output: c["source_output"] || "main",
-              target_node_id: c["target_node_id"].to_s,
+              source_output_index: ConnectionIndex.from(c, "source_output", "source_output_index"),
+              target_node_id: target_node_id,
+              target_input_index: target_input_index,
+              connection_type: c["connection_type"] || "main",
             ).freeze
           end
 
       @connections_by_source = @connections.group_by(&:source_node_id)
+      @connections_by_source_output_index =
+        @connections.group_by do |connection|
+          [connection.source_node_id, connection.source_output_index]
+        end
+      @connections_by_target = @connections.group_by(&:target_node_id)
     end
 
     def find_node(node_id)
       @nodes_by_id[node_id.to_s]
     end
 
-    def connections_from(node)
-      @connections_by_source.fetch(node.id) { [] }
+    def connections_from_output_index(node, output_index)
+      @connections_by_source_output_index.fetch([node.id, output_index.to_i]) { [] }
+    end
+
+    def connections_to(node)
+      @connections_by_target.fetch(node.id) { [] }
     end
 
     def target_node(connection)
@@ -96,8 +128,10 @@ module DiscourseWorkflows
           connections.map do |c|
             {
               "source_node_id" => c.source_node_id,
-              "source_output" => c.source_output,
+              "source_output_index" => c.source_output_index,
               "target_node_id" => c.target_node_id,
+              "target_input_index" => c.target_input_index,
+              "connection_type" => c.connection_type,
             }
           end,
       }
@@ -122,6 +156,21 @@ module DiscourseWorkflows
         "connections" => version.connections,
         "workflow_name" => version.name || workflow.name,
       )
+    end
+
+    def target_connection_index(connection, target_node_id, used_indexes)
+      return connection["target_input_index"].to_i if connection.key?("target_input_index")
+
+      target_node = @nodes_by_id[target_node_id]
+      if target_node&.type == "flow:merge" &&
+           target_node.configuration.fetch("mode") { "append" } == "append" &&
+           connection["target_input"].to_s.in?(["", "main"])
+        next_index = 0
+        next_index += 1 while used_indexes.include?(next_index)
+        return next_index
+      end
+
+      ConnectionIndex.legacy(connection["target_input"])
     end
   end
 end

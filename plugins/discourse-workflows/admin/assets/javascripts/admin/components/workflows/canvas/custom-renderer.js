@@ -186,6 +186,7 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
                 sourceClientId: payload.source,
                 targetClientId: payload.target,
                 sourceOutput: payload.sourceOutput,
+                targetInput: payload.targetInput,
               },
         pathD: "",
         arrowTransform: "",
@@ -234,7 +235,7 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
       this.measurePath.setAttribute("d", pathD);
       const len = this.measurePath.getTotalLength();
 
-      const socketRadius = 6;
+      const socketRadius = 9;
       const arrowLen = 10;
       const tip = this.measurePath.getPointAtLength(len - socketRadius);
       const base = this.measurePath.getPointAtLength(
@@ -273,7 +274,7 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
     async #updateLoopBackEntry(payload) {
       const [startPos, endPos] = await Promise.all([
         this.getSocketCanvasPos(payload.source, "output", "loop"),
-        this.getSocketCanvasPos(payload.source, "input", "input"),
+        this.getSocketCanvasPos(payload.source, "input", "main"),
       ]);
 
       if (!startPos || !endPos) {
@@ -299,7 +300,11 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
               normalizeSourceOutput(payload.sourceOutput)
             ),
           explicitEnd ??
-            this.getSocketCanvasPos(payload.target, "input", "input"),
+            this.getSocketCanvasPos(
+              payload.target,
+              "input",
+              payload.targetInput || "main"
+            ),
         ]);
         return startPos && endPos ? classicPath([startPos, endPos], 0.4) : null;
       }
@@ -318,13 +323,17 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
       const isLoopSrc = kind === "loopChain" || kind === "loopReturn";
       const isLoopTgt = kind === "loopBody" || kind === "loopChain";
       const tgtKey =
-        kind === "loopBody" ? "main" : isLoopTgt ? srcOutput : "input";
+        kind === "loopBody"
+          ? "main"
+          : isLoopTgt
+            ? srcOutput
+            : payload.targetInput || "main";
 
       const [startPos, endPos] = await Promise.all([
         this.getSocketCanvasPos(
           payload.source,
           isLoopSrc ? "input" : "output",
-          isLoopSrc ? "input" : srcOutput
+          isLoopSrc ? "main" : srcOutput
         ),
         this.getSocketCanvasPos(
           payload.target,
@@ -350,7 +359,7 @@ export function createCustomRenderer(Scope, getElementCenter, classicPath) {
 
       const selector =
         side === "input"
-          ? ".workflow-rete-node__socket.--input"
+          ? `.workflow-rete-node__socket.--input[data-socket-key="${CSS.escape(key)}"]`
           : `.workflow-rete-node__socket.--output[data-socket-key="${CSS.escape(key)}"]`;
       const socketEl = nodeEl.querySelector(selector);
       if (!socketEl) {

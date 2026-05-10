@@ -1,0 +1,506 @@
+# frozen_string_literal: true
+
+module DiscourseWorkflows
+  module Nodes
+    module Merge
+      class V1 < NodeType
+        def self.identifier
+          "flow:merge"
+        end
+
+        def self.icon
+          "arrows-turn-to-dots"
+        end
+
+        def self.color
+          "blue"
+        end
+
+        def self.inputs(configuration = {})
+          mode = configuration.fetch("mode") { "append" }
+          if mode == "append"
+            count = [configuration.fetch("number_inputs") { 2 }.to_i, 2].max
+            return count.times.map { |index| input_port(index, required: false) }
+          end
+
+          [input_port(0), input_port(1)]
+        end
+
+        def self.property_schema
+          {
+            mode: {
+              type: :options,
+              required: true,
+              options: %w[append combine choose_branch],
+              default: "append",
+            },
+            number_inputs: {
+              type: :integer,
+              required: false,
+              default: 2,
+              min: 2,
+              visible_if: {
+                mode: "append",
+              },
+            },
+            combine_by: {
+              type: :options,
+              required: false,
+              options: %w[matching_fields position all],
+              default: "matching_fields",
+              visible_if: {
+                mode: "combine",
+              },
+            },
+            fields_to_match: {
+              type: :collection,
+              required: false,
+              visible_if: {
+                mode: "combine",
+                combine_by: "matching_fields",
+              },
+              item_schema: {
+                field_1: {
+                  type: :string,
+                  required: true,
+                  ui: {
+                    expression: false,
+                  },
+                },
+                field_2: {
+                  type: :string,
+                  required: true,
+                  ui: {
+                    expression: false,
+                  },
+                },
+              },
+            },
+            join_mode: {
+              type: :options,
+              required: false,
+              options: %w[
+                keep_matches
+                keep_non_matches
+                keep_everything
+                enrich_input_1
+                enrich_input_2
+              ],
+              default: "keep_matches",
+              visible_if: {
+                mode: "combine",
+                combine_by: "matching_fields",
+              },
+            },
+            output_data_from: {
+              type: :options,
+              required: false,
+              options: %w[both input_1 input_2],
+              default: "both",
+              visible_if: {
+                mode: "combine",
+                combine_by: "matching_fields",
+              },
+            },
+            multiple_matches: {
+              type: :options,
+              required: false,
+              options: %w[all first],
+              default: "all",
+              visible_if: {
+                mode: "combine",
+                combine_by: "matching_fields",
+              },
+            },
+            use_data_of_input: {
+              type: :options,
+              required: false,
+              options: %w[input_1 input_2],
+              default: "input_1",
+              visible_if: {
+                mode: "choose_branch",
+              },
+            },
+            choose_output: {
+              type: :options,
+              required: false,
+              options: %w[specified_input empty],
+              default: "specified_input",
+              visible_if: {
+                mode: "choose_branch",
+              },
+            },
+            include_unpaired: {
+              type: :boolean,
+              required: false,
+              default: false,
+              visible_if: {
+                mode: "combine",
+                combine_by: "position",
+              },
+            },
+            resolve_clash: {
+              type: :options,
+              required: false,
+              options: %w[prefer_last prefer_input_1 prefer_input_2 add_suffix],
+              default: "prefer_last",
+              visible_if: {
+                mode: "combine",
+              },
+            },
+            merge_mode: {
+              type: :options,
+              required: false,
+              options: %w[deep_merge shallow_merge],
+              default: "deep_merge",
+              visible_if: {
+                mode: "combine",
+              },
+            },
+            override_empty: {
+              type: :boolean,
+              required: false,
+              default: false,
+              visible_if: {
+                mode: "combine",
+              },
+            },
+            fuzzy_compare: {
+              type: :boolean,
+              required: false,
+              default: false,
+              visible_if: {
+                mode: "combine",
+              },
+            },
+          }
+        end
+
+        def execute(exec_ctx)
+          config = exec_ctx.get_parameters({ "json" => {} })
+
+          items =
+            case config.fetch("mode") { "append" }
+            when "append"
+              append_inputs(exec_ctx)
+            when "choose_branch"
+              choose_branch(two_inputs(exec_ctx), config)
+            when "combine"
+              combine(two_inputs(exec_ctx), config)
+            else
+              exec_ctx.input_items("main")
+            end
+
+          [items]
+        end
+
+        private
+
+        def self.input_port(index, required: true)
+          input_number = index + 1
+          {
+            key: "input_#{input_number}",
+            type: "main",
+            display_name: "Input #{input_number}",
+            label_key: "discourse_workflows.merge.input_#{input_number}",
+            required: required,
+          }
+        end
+
+        def append_inputs(exec_ctx)
+          indexed_items = exec_ctx.inputs.flatten(1)
+          return indexed_items if indexed_items.present?
+
+          exec_ctx.input_items("main")
+        end
+
+        def two_inputs(exec_ctx)
+          [exec_ctx.input_items(0), exec_ctx.input_items(1)]
+        end
+
+        def choose_branch(inputs, config)
+          return [wrap({})] if config.fetch("choose_output") { "specified_input" } == "empty"
+
+          selected_input_index(config) == 0 ? inputs[0] : inputs[1]
+        end
+
+        def combine(inputs, config)
+          case config.fetch("combine_by") { "matching_fields" }
+          when "position"
+            combine_by_position(inputs, config)
+          when "all"
+            combine_all(inputs, config)
+          else
+            combine_by_fields(inputs, config)
+          end
+        end
+
+        def combine_by_position(inputs, config)
+          preferred_index = preferred_input_index(config, inputs.length)
+          count =
+            if config["include_unpaired"]
+              inputs.map(&:length).max || 0
+            else
+              inputs.map(&:length).min || 0
+            end
+
+          count.times.map do |index|
+            entries = inputs.map { |input| input[index] || { "json" => {} } }
+            merge_entries(entries, config, preferred_index:)
+          end
+        end
+
+        def combine_all(inputs, config)
+          input_1, input_2 = inputs
+          return [] if input_1.blank? || input_2.blank?
+
+          preferred_index = preferred_input_index(config, inputs.length)
+          input_1
+            .product(input_2)
+            .map { |entries| merge_entries(entries, config, preferred_index:) }
+        end
+
+        def combine_by_fields(inputs, config)
+          input_1, input_2 = inputs
+          join_mode = config.fetch("join_mode") { "keep_matches" }
+          output_data_from = config.fetch("output_data_from") { "both" }
+          fields = match_fields(config)
+          validate_match_fields!(input_1, input_2, fields)
+          if input_2.blank? && %w[keep_non_matches enrich_input_1].include?(join_mode)
+            return input_1
+          end
+          if input_1.blank? && %w[keep_non_matches enrich_input_2].include?(join_mode)
+            return input_2
+          end
+          return [] if input_1.blank? || input_2.blank?
+
+          matches = find_matches(input_1, input_2, fields, config)
+
+          case join_mode
+          when "keep_non_matches"
+            non_matches(matches, output_data_from)
+          when "keep_everything"
+            matched_output(matches, output_data_from, config) + matches[:unmatched_1] +
+              matches[:unmatched_2]
+          when "enrich_input_1"
+            merge_matched(matches[:matched], config) + matches[:unmatched_1]
+          when "enrich_input_2"
+            merge_matched(matches[:matched], config, preferred_index: 1) + matches[:unmatched_2]
+          else
+            matched_output(matches, output_data_from, config)
+          end
+        end
+
+        def match_fields(config)
+          Array(config["fields_to_match"]).map.with_index do |field, index|
+            field_1 = field["field_1"].presence || field["field1"].presence
+            field_2 = field["field_2"].presence || field["field2"].presence || field_1
+            if field_1.blank? || field_2.blank?
+              raise DiscourseWorkflows::NodeError,
+                    "Fields to match pair #{index + 1} must define both input fields"
+            end
+
+            [field_1, field_2]
+          end
+        end
+
+        def validate_match_fields!(input_1, input_2, fields)
+          if fields.blank?
+            raise DiscourseWorkflows::NodeError,
+                  'You need to define at least one pair of fields in "Fields to match"'
+          end
+
+          fields.each do |field_1, field_2|
+            validate_field_present!(input_1, field_1, "Input 1")
+            validate_field_present!(input_2, field_2, "Input 2")
+          end
+        end
+
+        def validate_field_present!(input, field, input_label)
+          return if input.blank?
+          return if input.any? { |item| !field_value(item, field).nil? }
+
+          raise DiscourseWorkflows::NodeError, "Field '#{field}' is not present in #{input_label}"
+        end
+
+        def find_matches(input_1, input_2, fields, config)
+          matched_input_2_indexes = Set.new
+          result = { matched: [], matched_2: [], unmatched_1: [], unmatched_2: [] }
+
+          input_1.each do |entry_1|
+            matches =
+              input_2.each_with_index.filter_map do |entry_2, index|
+                next unless fields_match?(entry_1, entry_2, fields, config)
+
+                matched_input_2_indexes << index
+                entry_2
+              end
+            matches = matches.first(1) if config.fetch("multiple_matches") { "all" } == "first"
+
+            if matches.any?
+              result[:matched] << [entry_1, matches]
+            else
+              result[:unmatched_1] << entry_1
+            end
+          end
+
+          input_2.each_with_index do |entry, index|
+            if matched_input_2_indexes.include?(index)
+              result[:matched_2] << entry
+            else
+              result[:unmatched_2] << entry
+            end
+          end
+
+          result
+        end
+
+        def fields_match?(entry_1, entry_2, fields, config)
+          fields.all? do |field_1, field_2|
+            compare_values(
+              field_value(entry_1, field_1),
+              field_value(entry_2, field_2),
+              fuzzy: config["fuzzy_compare"],
+            )
+          end
+        end
+
+        def compare_values(value_1, value_2, fuzzy:)
+          fuzzy ? value_1.to_s == value_2.to_s : value_1 == value_2
+        end
+
+        def matched_output(matches, output_data_from, config)
+          case output_data_from
+          when "input_1"
+            matches[:matched].map(&:first)
+          when "input_2"
+            matches[:matched_2]
+          else
+            merge_matched(matches[:matched], config)
+          end
+        end
+
+        def non_matches(matches, output_data_from)
+          case output_data_from
+          when "input_1"
+            matches[:unmatched_1]
+          when "input_2"
+            matches[:unmatched_2]
+          else
+            matches[:unmatched_1].map { |item| add_source(item, "input_1") } +
+              matches[:unmatched_2].map { |item| add_source(item, "input_2") }
+          end
+        end
+
+        def merge_matched(matched, config, preferred_index: nil)
+          preferred_index ||= preferred_input_index(config, 2)
+          matched.flat_map do |entry_1, matches|
+            matches.map { |entry_2| merge_entries([entry_1, entry_2], config, preferred_index:) }
+          end
+        end
+
+        def merge_entries(entries, config, preferred_index:)
+          entries = suffix_entries(entries) if config["resolve_clash"] == "add_suffix"
+          ordered_entries = entries.dup
+          preferred = ordered_entries.delete_at(preferred_index) || { "json" => {} }
+          ordered_entries << preferred
+
+          wrap(
+            merge_hashes(ordered_entries.map { |entry| entry.fetch("json") { {} } }, config),
+          ).merge("paired_item" => paired_items(entries))
+        end
+
+        def merge_hashes(hashes, config)
+          hashes.each_with_object({}) do |hash, result|
+            if config.fetch("merge_mode") { "deep_merge" } == "shallow_merge"
+              merge_shallow!(result, hash, config)
+            else
+              merge_deep!(result, hash, config)
+            end
+          end
+        end
+
+        def merge_shallow!(target, source, config)
+          source.each { |key, value| target[key] = merged_value(target[key], value, config) }
+          target
+        end
+
+        def merge_deep!(target, source, config)
+          source.each do |key, value|
+            target[key] = if target[key].is_a?(Hash) && value.is_a?(Hash)
+              merge_deep!(target[key].dup, value, config)
+            else
+              merged_value(target[key], value, config)
+            end
+          end
+          target
+        end
+
+        def merged_value(existing, incoming, config)
+          return existing if config["override_empty"] && blank_merge_value?(incoming)
+
+          incoming
+        end
+
+        def blank_merge_value?(value)
+          value.nil? || value == ""
+        end
+
+        def suffix_entries(entries)
+          entries.map.with_index do |entry, index|
+            json =
+              entry
+                .fetch("json") { {} }
+                .each_with_object({}) do |(key, value), result|
+                  result["#{key}_#{index + 1}"] = value
+                end
+            { "json" => json }
+          end
+        end
+
+        def add_source(item, source)
+          wrap(item.fetch("json") { {} }.merge("_source" => source)).merge(
+            "paired_item" => item["paired_item"],
+          ).compact
+        end
+
+        def paired_items(entries)
+          entries.each_with_index.map do |entry, input_index|
+            entry["paired_item"] || { "input" => input_index, "item" => 0 }
+          end
+        end
+
+        def preferred_input_index(config, input_count)
+          case config["resolve_clash"]
+          when "prefer_input_1"
+            0
+          when "prefer_input_2"
+            1
+          else
+            input_count - 1
+          end
+        end
+
+        def input_index(input_name)
+          input_name.to_s == "input_2" ? 1 : 0
+        end
+
+        def selected_input_index(config)
+          config["use_data_of_input_index"] ||
+            input_index(config.fetch("use_data_of_input") { "input_1" })
+        end
+
+        def field_value(item, field)
+          field
+            .to_s
+            .split(".")
+            .reduce(item.fetch("json") { {} }) do |value, key|
+              break nil unless value.is_a?(Hash)
+
+              value[key]
+            end
+        end
+      end
+    end
+  end
+end

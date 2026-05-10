@@ -1,7 +1,14 @@
 # frozen_string_literal: true
 
 module NodeExecutionHelpers
-  def execute_node_result(configuration:, item: nil, input_items: nil, node_context: nil, &block)
+  def execute_node_result(
+    configuration:,
+    item: nil,
+    input_items: nil,
+    input_groups: nil,
+    node_context: nil,
+    &block
+  )
     item = { "json" => {} } if item.nil? && input_items.nil?
     input_items = input_items || [item]
     action = described_class.new(configuration: configuration)
@@ -10,6 +17,7 @@ module NodeExecutionHelpers
     resolver = DiscourseWorkflows::ExpressionResolver.new(resolver_context, sandbox: sandbox)
     kwargs = {
       input_items: input_items,
+      input_groups: input_groups,
       resolver: resolver,
       configuration: configuration,
       property_schema: described_class.property_schema,

@@ -1,5 +1,9 @@
 import { module, test } from "qunit";
-import { removeNodesFromGraph } from "discourse/plugins/discourse-workflows/admin/components/workflows/editor/graph-utils";
+import {
+  normalizeConnectionsForNodes,
+  normalizeMergeConfiguration,
+  removeNodesFromGraph,
+} from "discourse/plugins/discourse-workflows/admin/components/workflows/editor/graph-utils";
 
 function sortByKey(items, keyFn) {
   return [...items].sort((a, b) => keyFn(a).localeCompare(keyFn(b)));
@@ -94,6 +98,59 @@ module("Unit | Utility | workflows graph utils", function () {
           sourceClientId: "loop",
           sourceOutput: "done",
           targetClientId: "done",
+        },
+      ],
+      ["loop"]
+    );
+
+    assert.deepEqual(normalizeGraph(graph), {
+      nodes: [
+        { clientId: "body", type: "action:set_fields" },
+        { clientId: "done", type: "action:topic_tags" },
+        { clientId: "trigger", type: "trigger:manual" },
+      ],
+      connections: [
+        {
+          sourceClientId: "trigger",
+          sourceOutput: "main",
+          targetClientId: "done",
+        },
+      ],
+    });
+  });
+
+  test("removing a loop node handles index-only loop connections", function (assert) {
+    const graph = removeNodesFromGraph(
+      [
+        { clientId: "trigger", type: "trigger:manual" },
+        { clientId: "loop", type: "flow:loop_over_items" },
+        { clientId: "body", type: "action:set_fields" },
+        { clientId: "done", type: "action:topic_tags" },
+      ],
+      [
+        {
+          sourceClientId: "trigger",
+          sourceOutputIndex: 0,
+          targetClientId: "loop",
+          targetInputIndex: 0,
+        },
+        {
+          sourceClientId: "loop",
+          sourceOutputIndex: 1,
+          targetClientId: "body",
+          targetInputIndex: 0,
+        },
+        {
+          sourceClientId: "body",
+          sourceOutputIndex: 0,
+          targetClientId: "loop",
+          targetInputIndex: 0,
+        },
+        {
+          sourceClientId: "loop",
+          sourceOutputIndex: 0,
+          targetClientId: "done",
+          targetInputIndex: 0,
         },
       ],
       ["loop"]
@@ -310,5 +367,117 @@ module("Unit | Utility | workflows graph utils", function () {
         },
       ],
     });
+  });
+
+  test("normalizes merge target inputs for the selected mode", function (assert) {
+    const connections = [
+      {
+        sourceClientId: "a",
+        sourceOutput: "main",
+        targetClientId: "merge",
+        targetInput: "main",
+      },
+      {
+        sourceClientId: "b",
+        sourceOutput: "main",
+        targetClientId: "merge",
+        targetInput: "main",
+      },
+      {
+        sourceClientId: "c",
+        sourceOutput: "main",
+        targetClientId: "merge",
+        targetInput: "main",
+      },
+    ];
+
+    assert.deepEqual(
+      normalizeConnectionsForNodes(connections, [
+        {
+          clientId: "merge",
+          type: "flow:merge",
+          configuration: { mode: "combine" },
+        },
+      ]).map((connection) => connection.targetInput),
+      ["input_1", "input_2"]
+    );
+
+    assert.deepEqual(
+      normalizeConnectionsForNodes(
+        [
+          {
+            sourceClientId: "a",
+            sourceOutput: "main",
+            targetClientId: "merge",
+            targetInput: "main",
+          },
+          {
+            sourceClientId: "b",
+            sourceOutput: "main",
+            targetClientId: "merge",
+            targetInput: "main",
+          },
+        ],
+        [
+          {
+            clientId: "merge",
+            type: "flow:merge",
+            configuration: { mode: "append" },
+          },
+        ]
+      ).map((connection) => connection.targetInput),
+      ["input_1", "input_2"]
+    );
+    assert.deepEqual(
+      normalizeConnectionsForNodes(
+        [
+          {
+            sourceClientId: "a",
+            sourceOutput: "main",
+            targetClientId: "merge",
+            targetInputIndex: 1,
+          },
+          {
+            sourceClientId: "b",
+            sourceOutput: "main",
+            targetClientId: "merge",
+            targetInput: "main",
+          },
+        ],
+        [
+          {
+            clientId: "merge",
+            type: "flow:merge",
+            configuration: { mode: "append" },
+          },
+        ]
+      ).map((connection) => connection.targetInputIndex),
+      [1, 0]
+    );
+  });
+
+  test("normalizes merge configuration to the selected mode", function (assert) {
+    assert.deepEqual(
+      normalizeMergeConfiguration({
+        mode: "choose_branch",
+        use_data_of_input: "input_2",
+        combine_by: "matching_fields",
+        fields_to_match: [{ field_1: "id", field_2: "id" }],
+      }),
+      {
+        mode: "choose_branch",
+        use_data_of_input: "input_2",
+        use_data_of_input_index: 1,
+        choose_output: "specified_input",
+      }
+    );
+
+    assert.deepEqual(
+      normalizeMergeConfiguration({
+        mode: "append",
+        use_data_of_input: "input_2",
+      }),
+      { mode: "append", number_inputs: 2 }
+    );
   });
 });

@@ -9,6 +9,7 @@ module DiscourseWorkflows
         __form_completion
         __sandbox_elapsed_ms
         __node_contexts
+        __node_runs
         __execution
         __input_item
         __input_items
@@ -73,6 +74,12 @@ module DiscourseWorkflows
         return if node.name.blank?
 
         store_context(node.name, value)
+      end
+
+      def store_node_run(node, inputs:, outputs:)
+        @context["__node_runs"] ||= {}
+        @context["__node_runs"][node.id.to_s] ||= []
+        @context["__node_runs"][node.id.to_s] << { "inputs" => inputs, "outputs" => outputs }
       end
 
       def resolver_context(extra_context = {})

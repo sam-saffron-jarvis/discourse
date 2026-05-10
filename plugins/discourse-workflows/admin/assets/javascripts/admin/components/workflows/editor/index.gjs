@@ -5,6 +5,7 @@ import { service } from "@ember/service";
 import Form from "discourse/components/form";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { i18n } from "discourse-i18n";
+import { normalizeSourceOutputIndex } from "../../../lib/workflows/graph-constants";
 import {
   nodeTypeLabel,
   nodeTypePrimaryOutputKey,
@@ -15,7 +16,12 @@ import WorkflowNode from "../../../models/workflow-node";
 import WorkflowCanvas from "../canvas";
 import NodePanel from "../canvas/node-panel";
 import NodeConfigurator from "../node/configurator";
-import { LOOP_NODE_TYPE, removeNodesFromGraph } from "./graph-utils";
+import {
+  LOOP_NODE_TYPE,
+  normalizeConnectionsForNodes,
+  normalizeNodeConfiguration,
+  removeNodesFromGraph,
+} from "./graph-utils";
 import { createNode, generateNodeName } from "./node-factory";
 import UndoManager from "./undo-manager";
 
@@ -83,8 +89,9 @@ export default class WorkflowsEditor extends Component {
   }
 
   #mapServerConnections() {
-    return (this.args.workflow.connections || []).map(
-      WorkflowConnection.create
+    return normalizeConnectionsForNodes(
+      (this.args.workflow.connections || []).map(WorkflowConnection.create),
+      this.#initNodes()
     );
   }
 
@@ -201,7 +208,15 @@ export default class WorkflowsEditor extends Component {
     return (
       connection.sourceClientId === clientId &&
       connection.targetClientId === clientId &&
-      connection.sourceOutput === "loop"
+      this.#isLoopOutputConnection(connection, clientId)
+    );
+  }
+
+  #isLoopOutputConnection(connection, loopNodeClientId) {
+    return (
+      connection.sourceClientId === loopNodeClientId &&
+      (connection.sourceOutput === "loop" ||
+        normalizeSourceOutputIndex(connection) === 1)
     );
   }
 
@@ -229,8 +244,7 @@ export default class WorkflowsEditor extends Component {
   #hasLoopBodyConnection(connections, loopNodeClientId) {
     return connections.some(
       (connection) =>
-        connection.sourceClientId === loopNodeClientId &&
-        connection.sourceOutput === "loop" &&
+        this.#isLoopOutputConnection(connection, loopNodeClientId) &&
         connection.targetClientId !== loopNodeClientId
     );
   }
@@ -343,7 +357,8 @@ export default class WorkflowsEditor extends Component {
     sourceOutput,
     targetClientId,
     nodeType,
-    configOverrides = null
+    configOverrides = null,
+    targetInput = "main"
   ) {
     const existingNodes = this.formApi.get("nodes");
     const sourceNode = existingNodes.find((n) => n.clientId === sourceClientId);
@@ -365,7 +380,8 @@ export default class WorkflowsEditor extends Component {
           (c) =>
             c.sourceClientId === sourceClientId &&
             c.sourceOutput === sourceOutput &&
-            c.targetClientId === targetClientId
+            c.targetClientId === targetClientId &&
+            (c.targetInput || "main") === (targetInput || "main")
         );
         if (existingIdx >= 0) {
           connections.splice(existingIdx, 1);
@@ -375,11 +391,13 @@ export default class WorkflowsEditor extends Component {
           sourceClientId,
           targetClientId: newNode.clientId,
           sourceOutput,
+          targetInput: "main",
         });
         connections.push({
           sourceClientId: newNode.clientId,
           targetClientId,
           sourceOutput: nodeTypePrimaryOutputKey(nodeType),
+          targetInput,
         });
         return true;
       }
@@ -387,7 +405,12 @@ export default class WorkflowsEditor extends Component {
   }
 
   @action
-  addNodeBeforeTarget(targetClientId, nodeType, configOverrides = null) {
+  addNodeBeforeTarget(
+    targetClientId,
+    nodeType,
+    configOverrides = null,
+    targetInput = "main"
+  ) {
     const targetNode = this.formApi
       .get("nodes")
       .find((n) => n.clientId === targetClientId);
@@ -404,6 +427,7 @@ export default class WorkflowsEditor extends Component {
           sourceClientId: newNode.clientId,
           targetClientId,
           sourceOutput: nodeTypePrimaryOutputKey(nt),
+          targetInput,
         });
         return !position;
       }
@@ -449,7 +473,12 @@ export default class WorkflowsEditor extends Component {
   }
 
   @action
-  createConnection(sourceClientId, sourceOutput, targetClientId) {
+  createConnection(
+    sourceClientId,
+    sourceOutput,
+    targetClientId,
+    targetInput = "main"
+  ) {
     this.#captureUndo();
     const nodes = this.formApi.get("nodes");
     const connections = [...this.formApi.get("connections")];
@@ -459,13 +488,19 @@ export default class WorkflowsEditor extends Component {
       (c) =>
         c.sourceClientId === sourceClientId &&
         c.sourceOutput === sourceOutput &&
-        c.targetClientId === targetClientId
+        c.targetClientId === targetClientId &&
+        (c.targetInput || "main") === (targetInput || "main")
     );
     if (exists) {
       return;
     }
 
-    connections.push({ sourceClientId, targetClientId, sourceOutput });
+    connections.push({
+      sourceClientId,
+      targetClientId,
+      sourceOutput,
+      targetInput,
+    });
     this.#ensureLoopSelfConnection(
       connections,
       sourceClientId,
@@ -481,7 +516,12 @@ export default class WorkflowsEditor extends Component {
   }
 
   @action
-  deleteConnection(sourceClientId, sourceOutput, targetClientId) {
+  deleteConnection(
+    sourceClientId,
+    sourceOutput,
+    targetClientId,
+    targetInput = "main"
+  ) {
     this.#captureUndo();
     const nodes = this.formApi.get("nodes");
     const connections = [...this.formApi.get("connections")];
@@ -489,7 +529,8 @@ export default class WorkflowsEditor extends Component {
       (c) =>
         c.sourceClientId === sourceClientId &&
         c.sourceOutput === sourceOutput &&
-        c.targetClientId === targetClientId
+        c.targetClientId === targetClientId &&
+        (c.targetInput || "main") === (targetInput || "main")
     );
 
     if (index < 0) {
@@ -598,8 +639,7 @@ export default class WorkflowsEditor extends Component {
       const loopBodyNodes = new Set();
       let currentConn = connections.find(
         (c) =>
-          c.sourceClientId === loopNodeClientId &&
-          c.sourceOutput === "loop" &&
+          this.#isLoopOutputConnection(c, loopNodeClientId) &&
           c.targetClientId !== loopNodeClientId
       );
       while (
@@ -653,12 +693,21 @@ export default class WorkflowsEditor extends Component {
   updateNodeConfiguration(clientId, configuration, name) {
     this.#captureUndo();
     const nodes = this.formApi.get("nodes");
+    const updatedNodes = nodes.map((n) =>
+      n.clientId === clientId
+        ? normalizeNodeConfiguration({
+            ...n,
+            configuration,
+            name: name || n.name,
+          })
+        : n
+    );
+    this.formApi.set("nodes", updatedNodes);
     this.formApi.set(
-      "nodes",
-      nodes.map((n) =>
-        n.clientId === clientId
-          ? { ...n, configuration, name: name || n.name }
-          : n
+      "connections",
+      normalizeConnectionsForNodes(
+        this.formApi.get("connections"),
+        updatedNodes
       )
     );
     this.handleSubmit();
@@ -907,14 +956,20 @@ export default class WorkflowsEditor extends Component {
         );
       }
     } else if (ctx.targetClientId) {
-      this.addNodeBeforeTarget(ctx.targetClientId, nodeType, configOverrides);
+      this.addNodeBeforeTarget(
+        ctx.targetClientId,
+        nodeType,
+        configOverrides,
+        ctx.targetInput
+      );
     } else if (ctx.connectionSource) {
       this.insertNodeOnConnection(
         ctx.connectionSource,
         ctx.connectionSourceOutput,
         ctx.connectionTarget,
         nodeType,
-        configOverrides
+        configOverrides,
+        ctx.connectionTargetInput
       );
     } else if (ctx.canvasX != null) {
       this.addNodeAtPosition(
@@ -945,8 +1000,12 @@ export default class WorkflowsEditor extends Component {
     try {
       const name = this.formApi.get("name");
       const nodes = this.formApi.get("nodes");
-      const connections = this.formApi.get("connections");
+      const connections = normalizeConnectionsForNodes(
+        this.formApi.get("connections"),
+        nodes
+      );
       const stickyNotes = this.formApi.get("stickyNotes");
+      this.formApi.set("connections", connections);
 
       this.args.workflow.setProperties({
         name,

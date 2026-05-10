@@ -6,8 +6,59 @@ export function normalizeSourceOutput(sourceOutput) {
   return sourceOutput || DEFAULT_OUTPUT;
 }
 
-export function graphConnectionKey({ source, sourceOutput, target }) {
-  return `${source}::${normalizeSourceOutput(sourceOutput)}::${target}`;
+export function normalizeTargetInput(targetInput) {
+  return targetInput || "main";
+}
+
+export function legacyConnectionIndex(value) {
+  value = value?.toString();
+  if (!value || value === "main" || value === "true" || value === "done") {
+    return 0;
+  }
+
+  const inputMatch = value.match(/^input_(\d+)$/);
+  if (inputMatch) {
+    return parseInt(inputMatch[1], 10) - 1;
+  }
+
+  if (value === "false" || value === "loop") {
+    return 1;
+  }
+
+  return parseInt(value, 10) || 0;
+}
+
+export function normalizeSourceOutputIndex(connection) {
+  return (
+    connection.sourceOutputIndex ??
+    connection.source_output_index ??
+    legacyConnectionIndex(connection.sourceOutput ?? connection.source_output)
+  );
+}
+
+export function normalizeTargetInputIndex(connection) {
+  return (
+    connection.targetInputIndex ??
+    connection.target_input_index ??
+    legacyConnectionIndex(connection.targetInput ?? connection.target_input)
+  );
+}
+
+export function graphConnectionKey({
+  source,
+  sourceOutput,
+  sourceOutputIndex,
+  target,
+  targetInput,
+  targetInputIndex,
+}) {
+  const outputIndex =
+    sourceOutputIndex ??
+    legacyConnectionIndex(normalizeSourceOutput(sourceOutput));
+  const inputIndex =
+    targetInputIndex ??
+    legacyConnectionIndex(normalizeTargetInput(targetInput));
+  return `${source}::${outputIndex}::${target}::${inputIndex}`;
 }
 
 export function buildOutgoingIndex(connections, sourceKey = "source") {
@@ -36,7 +87,8 @@ export function collectLoopBodyNodeIds(
 
   for (const connection of outgoingBySource.get(loopNodeId) || []) {
     if (
-      normalizeSourceOutput(connection[outputKey]) === LOOP_OUTPUT &&
+      (normalizeSourceOutput(connection[outputKey]) === LOOP_OUTPUT ||
+        normalizeSourceOutputIndex(connection) === 1) &&
       connection[targetKey] !== loopNodeId
     ) {
       stack.push(connection[targetKey]);
@@ -70,6 +122,7 @@ export function buildWorkflowGraphIndex(nodes, connections) {
     connections.map((c) => ({
       ...c,
       sourceOutput: normalizeSourceOutput(c.sourceOutput),
+      sourceOutputIndex: normalizeSourceOutputIndex(c),
     }))
   );
 
@@ -88,9 +141,13 @@ export function buildWorkflowGraphIndex(nodes, connections) {
 }
 
 export function getConnectionKind(graphIndex, connection) {
-  const sourceOutput = normalizeSourceOutput(connection.sourceOutput);
+  const sourceOutputIndex = normalizeSourceOutputIndex(connection);
 
-  if (sourceOutput === LOOP_OUTPUT && connection.source !== connection.target) {
+  if (
+    sourceOutputIndex === 1 &&
+    graphIndex.loopNodeIds.has(connection.source) &&
+    connection.source !== connection.target
+  ) {
     return "loopBody";
   }
 
@@ -116,7 +173,7 @@ export function getConnectionKind(graphIndex, connection) {
 export function buildConnectedOutputsIndex(connections) {
   const connected = new Map();
   for (const conn of connections) {
-    const output = normalizeSourceOutput(conn.sourceOutput);
+    const output = normalizeSourceOutputIndex(conn);
     if (!connected.has(conn.source)) {
       connected.set(conn.source, new Set());
     }

@@ -116,7 +116,11 @@ module DiscourseWorkflows
         {
           "source_node_id" => source["id"],
           "target_node_id" => target["id"],
-          "source_output" => connection_data[:source_output] || "main",
+          "connection_type" => connection_data[:connection_type] || "main",
+          "source_output_index" =>
+            ConnectionIndex.from(connection_data, :source_output, :source_output_index),
+          "target_input_index" =>
+            ConnectionIndex.from(connection_data, :target_input, :target_input_index),
         }
       end
     end

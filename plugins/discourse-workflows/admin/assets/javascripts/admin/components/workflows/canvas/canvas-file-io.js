@@ -1,3 +1,7 @@
+import {
+  normalizeSourceOutputIndex,
+  normalizeTargetInputIndex,
+} from "../../../lib/workflows/graph-constants";
 import StickyNote, { STICKY_NOTE_TYPE } from "../../../models/sticky-note";
 
 export function exportWorkflowToFile(nodes, connections, stickyNotes) {
@@ -35,7 +39,9 @@ export function exportWorkflowToFile(nodes, connections, stickyNotes) {
     .map((c) => ({
       source_index: clientIdToIndex.get(c.sourceClientId),
       target_index: clientIdToIndex.get(c.targetClientId),
-      source_output: c.sourceOutput || "main",
+      connection_type: c.connectionType || "main",
+      source_output_index: normalizeSourceOutputIndex(c),
+      target_input_index: normalizeTargetInputIndex(c),
     }));
 
   const payload = {
@@ -119,6 +125,10 @@ export function parseWorkflowImport(text) {
       sourceClientId: regularNodes[c.source_index].clientId,
       targetClientId: regularNodes[c.target_index].clientId,
       sourceOutput: c.source_output || "main",
+      targetInput: c.target_input || "main",
+      connectionType: c.connection_type || "main",
+      sourceOutputIndex: normalizeSourceOutputIndex(c),
+      targetInputIndex: normalizeTargetInputIndex(c),
     }));
 
   return {

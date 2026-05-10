@@ -60,6 +60,7 @@ RSpec.describe DiscourseWorkflows::NodeTypesController do
           "primary" => true,
         ),
       )
+      expect(condition["inputs"]).to include(a_hash_including("key" => "main", "required" => true))
     end
   end
 
