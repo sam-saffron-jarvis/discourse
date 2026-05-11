@@ -9,22 +9,17 @@ export default {
     const site = container.lookup("service:site");
     const workflows = site.topic_admin_button_workflows || [];
 
-    withPluginApi((api) => {
-      workflows.forEach((workflowData) => {
-        api.addTopicAdminMenuButton((topic) => {
-          const current =
-            api.container.lookup("service:site").topic_admin_button_workflows;
-          const entry = current?.find(
-            (w) => w.trigger_node_id === workflowData.trigger_node_id
-          );
-          if (!entry) {
-            return;
-          }
+    if (!workflows.length) {
+      return;
+    }
 
+    withPluginApi((api) => {
+      workflows.forEach((workflow) => {
+        api.addTopicAdminMenuButton((topic) => {
           return {
-            icon: entry.icon,
-            translatedLabel: entry.label,
-            className: `workflow-topic-admin-btn-${entry.workflow_id}`,
+            icon: workflow.icon,
+            translatedLabel: workflow.label,
+            className: `workflow-topic-admin-btn-${workflow.workflow_id}`,
             section: {
               id: "discourse-workflows",
               label: "discourse_workflows.title",
@@ -33,7 +28,7 @@ export default {
               ajax("/discourse-workflows/trigger-topic-admin-button", {
                 type: "POST",
                 data: {
-                  trigger_node_id: entry.trigger_node_id,
+                  trigger_node_id: workflow.trigger_node_id,
                   topic_id: topic.id,
                 },
               }).catch(popupAjaxError);
