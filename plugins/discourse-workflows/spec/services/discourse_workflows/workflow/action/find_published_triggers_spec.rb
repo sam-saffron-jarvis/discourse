@@ -7,7 +7,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::FindPublishedTriggers do
         trigger_type: "trigger:form",
         filter:
           lambda do |published_trigger|
-            published_trigger.trigger_node.dig("configuration", "uuid") == "published-uuid"
+            published_trigger.trigger_node["webhook_id"] == "published-uuid"
           end,
       )
     end
@@ -15,20 +15,18 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::FindPublishedTriggers do
     fab!(:workflow) do
       graph =
         build_workflow_graph do |g|
-          g.node "trigger-1", "trigger:form", configuration: { "uuid" => "published-uuid" }
+          g.node "trigger-1", "trigger:form", webhook_id: "published-uuid"
         end
       Fabricate(:discourse_workflows_workflow, published: true, **graph)
     end
 
     context "when the draft changes after publishing" do
       before do
-        update_workflow_node(workflow, "trigger-1") do |node|
-          node["configuration"]["uuid"] = "draft-uuid"
-        end
+        update_workflow_node(workflow, "trigger-1") { |node| node["webhook_id"] = "draft-uuid" }
       end
 
       it "returns the published trigger node" do
-        expect(workflow.reload.nodes.first.dig("configuration", "uuid")).to eq("draft-uuid")
+        expect(workflow.reload.nodes.first["webhook_id"]).to eq("draft-uuid")
 
         expect(result.size).to eq(1)
         published_trigger = result.first
@@ -37,7 +35,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::FindPublishedTriggers do
         expect(published_trigger.trigger_node).to include(
           "id" => "trigger-1",
           "type" => "trigger:form",
-          "configuration" => include("uuid" => "published-uuid"),
+          "webhook_id" => "published-uuid",
         )
       end
     end

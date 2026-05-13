@@ -4,6 +4,7 @@ import {
   createNode,
   generateNodeName,
 } from "discourse/plugins/discourse-workflows/admin/components/workflows/editor/node-factory";
+import WorkflowNode from "discourse/plugins/discourse-workflows/admin/models/workflow-node";
 
 module("Unit | lib | discourse-workflows | node-factory", function (hooks) {
   setupTest(hooks);
@@ -78,5 +79,68 @@ module("Unit | lib | discourse-workflows | node-factory", function (hooks) {
       typeVersion: "2.0",
     });
     assert.strictEqual(node.type_version, "2.0");
+  });
+
+  test("WorkflowNode.serialize splits parameters, credentials, settings, and webhook_id", function (assert) {
+    const node = WorkflowNode.create({
+      type: "trigger:form",
+      type_version: "1.0",
+      name: "Signup",
+      configuration: {
+        uuid: "form-uuid",
+        form_title: "Signup",
+        authentication: "basic_auth",
+        credential_id: 42,
+        description: "Shown on canvas",
+      },
+    });
+
+    const serialized = WorkflowNode.serialize(node);
+
+    assert.deepEqual(serialized.parameters, {
+      form_title: "Signup",
+      authentication: "basic_auth",
+    });
+    assert.deepEqual(serialized.credentials, {
+      auth: {
+        id: "42",
+        field_name: "credential_id",
+        credential_type: "basic_auth",
+      },
+    });
+    assert.deepEqual(serialized.settings, { description: "Shown on canvas" });
+    assert.strictEqual(serialized.webhook_id, "form-uuid");
+  });
+
+  test("WorkflowNode.serialize removes stale auth credentials", function (assert) {
+    const node = WorkflowNode.create({
+      type: "trigger:webhook",
+      type_version: "1.0",
+      name: "Webhook",
+      parameters: {
+        path: "my-hook",
+        http_method: "POST",
+        authentication: "basic_auth",
+      },
+      credentials: {
+        auth: {
+          id: "42",
+          field_name: "credential_id",
+          credential_type: "basic_auth",
+        },
+      },
+    });
+
+    node.configuration.authentication = "none";
+    delete node.configuration.credential_id;
+
+    const serialized = WorkflowNode.serialize(node);
+
+    assert.deepEqual(serialized.parameters, {
+      path: "my-hook",
+      http_method: "POST",
+      authentication: "none",
+    });
+    assert.deepEqual(serialized.credentials, {});
   });
 });

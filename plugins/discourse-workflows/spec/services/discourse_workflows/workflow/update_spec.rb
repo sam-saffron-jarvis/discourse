@@ -135,7 +135,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
             client_id: "node_1",
             type: "trigger:topic_created",
             name: "Topic Created",
-            configuration: {
+            parameters: {
               category_id: 1,
             },
           },
@@ -143,7 +143,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
             client_id: "node_2",
             type: "action:topic_tags",
             name: "Topic Tags",
-            configuration: {
+            parameters: {
               tag_names: "test",
             },
           },
@@ -199,7 +199,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
               client_id: "node_1",
               type: "trigger:schedule",
               name: "Schedule",
-              configuration: {
+              parameters: {
                 rules: [{ interval: "seconds", seconds_between_triggers: 10 }],
               },
             },

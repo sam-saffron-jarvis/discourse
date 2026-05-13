@@ -65,7 +65,7 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
     context "when the form requires a logged-in user" do
       before do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
-        trigger_node["configuration"]["authentication"] = "login_required"
+        trigger_node["parameters"]["authentication"] = "login_required"
         workflow.update!(nodes: workflow.nodes)
         publish_workflow!(workflow)
       end

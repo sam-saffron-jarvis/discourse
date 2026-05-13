@@ -103,7 +103,11 @@ module DiscourseWorkflows
     end
 
     def publish_draft_version!
-      update!(published_version: draft_version)
+      draft_node_ids = draft_version.nodes.map { |node| node["id"].to_s }
+      update!(
+        published_version: draft_version,
+        static_data: (static_data || {}).slice(*draft_node_ids),
+      )
     end
 
     def unpublish!
@@ -155,7 +159,7 @@ module DiscourseWorkflows
         next unless node["type"] == "trigger:schedule"
 
         rules =
-          ScheduleRule.rules_from_configuration(node["configuration"] || {}).first(
+          ScheduleRule.rules_from_configuration(NodeData.parameters(node)).first(
             ScheduleRule::MAX_RULES_PER_NODE,
           )
         rules.each_with_index do |rule, rule_index|

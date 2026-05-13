@@ -3,7 +3,22 @@
 module DiscourseWorkflows
   class WorkflowSnapshot
     SnapshotNode =
-      Struct.new(:id, :type, :type_version, :name, :position, :configuration, keyword_init: true)
+      Struct.new(
+        :id,
+        :type,
+        :type_version,
+        :name,
+        :position,
+        :parameters,
+        :credentials,
+        :settings,
+        :webhook_id,
+        keyword_init: true,
+      ) do
+        def resolved_parameters
+          NodeData.resolved_parameters(self)
+        end
+      end
 
     SnapshotConnection =
       Struct.new(
@@ -32,7 +47,10 @@ module DiscourseWorkflows
                 type_version: n["type_version"] || Registry::DEFAULT_VERSION,
                 name: n["name"],
                 position: n["position"],
-                configuration: n["configuration"] || {},
+                parameters: n["parameters"] || {},
+                credentials: n["credentials"] || {},
+                settings: n["settings"] || {},
+                webhook_id: n["webhook_id"],
               ).freeze
             @nodes_by_id[node.id] = node
             node
@@ -121,7 +139,10 @@ module DiscourseWorkflows
               "type_version" => n.type_version,
               "name" => n.name,
               "position" => n.position,
-              "configuration" => n.configuration,
+              "parameters" => n.parameters,
+              "credentials" => n.credentials,
+              "settings" => n.settings,
+              "webhook_id" => n.webhook_id,
             }
           end,
         "connections" =>
@@ -163,7 +184,7 @@ module DiscourseWorkflows
 
       target_node = @nodes_by_id[target_node_id]
       if target_node&.type == "flow:merge" &&
-           target_node.configuration.fetch("mode") { "append" } == "append" &&
+           target_node.parameters.fetch("mode") { "append" } == "append" &&
            connection["target_input"].to_s.in?(["", "main"])
         next_index = 0
         next_index += 1 while used_indexes.include?(next_index)

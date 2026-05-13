@@ -19,19 +19,20 @@ module DiscourseWorkflows
       @version.nodes.each do |node|
         node_id = node["id"]
         node_type = node["type"]
-        config = node["configuration"] || {}
+        parameters = NodeData.parameters(node)
+        credentials = NodeData.normalize_credentials(NodeData.credentials(node))
 
         rows << build_row("node_type", node_type, node_id) if node_type.present?
 
-        if (cred_id = config["credential_id"]).present?
-          rows << build_row("credential_id", cred_id, node_id)
+        credentials.each_value do |credential|
+          rows << build_row("credential_id", credential["id"], node_id) if credential["id"].present?
         end
 
-        if (dt_id = config["data_table_id"]).present?
+        if (dt_id = parameters["data_table_id"]).present?
           rows << build_row("data_table_id", dt_id, node_id)
         end
 
-        if node_type == "trigger:webhook" && (path = config["path"]).present?
+        if node_type == "trigger:webhook" && (path = parameters["path"]).present?
           rows << build_row("webhook_path", path, node_id)
         end
       end

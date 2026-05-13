@@ -102,7 +102,7 @@ RSpec.describe Jobs::DiscourseWorkflows::ExecuteSecondsSchedule do
     workflow.update!(
       nodes: [
         workflow.nodes.first.merge(
-          "configuration" => {
+          "parameters" => {
             "rules" => [{ "interval" => "minutes", "minutes_between_triggers" => 5 }],
           },
         ),

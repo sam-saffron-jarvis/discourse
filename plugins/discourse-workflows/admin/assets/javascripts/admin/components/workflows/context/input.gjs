@@ -22,8 +22,9 @@ function nodeMatchesCondition(node, condition) {
   if (condition.type && node.type !== condition.type) {
     return false;
   }
-  if (condition.configuration) {
-    for (const [key, value] of Object.entries(condition.configuration)) {
+  const parameters = condition.parameters || condition.configuration;
+  if (parameters) {
+    for (const [key, value] of Object.entries(parameters)) {
       if (node.configuration?.[key] !== value) {
         return false;
       }

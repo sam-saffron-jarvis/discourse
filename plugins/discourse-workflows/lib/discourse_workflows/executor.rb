@@ -182,7 +182,13 @@ module DiscourseWorkflows
             resolver,
             resolver_ctx,
           )
-        result = node_type_class.new(configuration: node.configuration).execute(exec_ctx)
+        result =
+          node_type_class.new(
+            parameters: node.parameters,
+            credentials: node.credentials,
+            settings: node.settings,
+            webhook_id: node.webhook_id,
+          ).execute(exec_ctx)
 
         if exec_ctx.waiting?
           step.mark_waiting!
@@ -198,7 +204,7 @@ module DiscourseWorkflows
           raise StandardError, step.error
         end
 
-        ports = node_type_class.ports(node.configuration)
+        ports = node_type_class.ports(node.parameters)
         normalized = normalize_result(result, node, ports)
         all_items = normalized.all_items(ports: ports)
         primary_empty = normalized.primary_items(ports: ports).empty?
@@ -289,7 +295,10 @@ module DiscourseWorkflows
       NodeExecutionContext.new(
         input_items: primary_input_items(input_groups),
         input_groups: input_groups,
-        configuration: node.configuration,
+        parameters: node.parameters,
+        credentials: node.credentials,
+        settings: node.settings,
+        webhook_id: node.webhook_id,
         property_schema: node_type_class.property_schema,
         node_context: node_context,
         user: @options.user,
@@ -362,7 +371,7 @@ module DiscourseWorkflows
         node_type_class =
           DiscourseWorkflows::Registry.find_node_type(target.type, version: target.type_version)
         input_ports =
-          node_type_class&.input_ports(target.configuration) ||
+          node_type_class&.input_ports(target.parameters) ||
             [{ key: "main", index: 0, required: true }]
         required_inputs = input_ports.select { |port| port[:required] }.map { |port| port[:index] }
         connected_inputs = @snapshot.connections_to(target).map(&:target_input_index)
@@ -473,7 +482,7 @@ module DiscourseWorkflows
         @context.resolver_context(
           "__input_item" => current_item,
           "__input_items" => input_items,
-          "__input_params" => node.configuration,
+          "__input_params" => node.parameters,
           "__input_context" => DiscourseWorkflows::InputContext.from_node_context(node_context),
           "$itemIndex" => 0,
         )
@@ -503,17 +512,23 @@ module DiscourseWorkflows
         @snapshot
           .nodes
           .each_with_object(Hash.new { |h, k| h[k] = Set.new }) do |node, dependencies|
-            config = node.configuration || {}
-            node_dependencies(config).each do |type, key|
+            node_dependencies(node).each do |type, key|
               dependencies[node.id.to_s] << "#{type}:#{key}"
             end
           end
     end
 
-    def node_dependencies(config)
+    def node_dependencies(node)
+      parameters = NodeData.parameters(node)
       dependencies = []
-      dependencies << ["credential_id", config["credential_id"]] if config["credential_id"].present?
-      dependencies << ["data_table_id", config["data_table_id"]] if config["data_table_id"].present?
+      NodeData
+        .credentials(node)
+        .each_value do |credential|
+          dependencies << ["credential_id", credential["id"]] if credential["id"].present?
+        end
+      if parameters["data_table_id"].present?
+        dependencies << ["data_table_id", parameters["data_table_id"]]
+      end
       dependencies
     end
 

@@ -278,8 +278,7 @@ module DiscourseWorkflows
     def fire_matching_trigger!(published_trigger, now)
       workflow = published_trigger.workflow
       node_id = published_trigger.trigger_node_id
-      configuration =
-        (published_trigger.trigger_node["configuration"] || {}).with_indifferent_access
+      configuration = NodeData.parameters(published_trigger.trigger_node).with_indifferent_access
       rules = rules_from_configuration(configuration)
 
       rules.each do |rule|
@@ -307,8 +306,7 @@ module DiscourseWorkflows
     def restart_stalled_chains!(published_trigger, now)
       workflow = published_trigger.workflow
       node_id = published_trigger.trigger_node_id
-      configuration =
-        (published_trigger.trigger_node["configuration"] || {}).with_indifferent_access
+      configuration = NodeData.parameters(published_trigger.trigger_node).with_indifferent_access
       rules = rules_from_configuration(configuration)
 
       rules.each_with_index do |rule, rule_index|

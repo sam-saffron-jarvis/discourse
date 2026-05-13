@@ -379,7 +379,7 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       freeze_time Time.utc(2026, 3, 18, 9, 0)
       seconds_node = {
         "id" => "trigger-2",
-        "configuration" => {
+        "parameters" => {
           "rules" => [{ "interval" => "seconds", "seconds_between_triggers" => 10 }],
         },
       }
@@ -439,7 +439,7 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       freeze_time Time.utc(2026, 3, 18, 9, 0)
       cron_node = {
         "id" => "trigger-2",
-        "configuration" => {
+        "parameters" => {
           "rules" => [{ "interval" => "cron", "cron" => "0 9 * * *" }],
         },
       }

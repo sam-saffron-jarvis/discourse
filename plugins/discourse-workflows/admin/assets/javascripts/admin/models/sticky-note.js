@@ -15,18 +15,21 @@ export default class StickyNote {
       type: STICKY_NOTE_TYPE,
       type_version: "1.0",
       name: "Sticky Note",
-      configuration: {
+      parameters: {
         content: note.text,
         width: note.size.width,
         height: note.size.height,
         color: note.color,
       },
+      credentials: {},
+      settings: {},
+      webhook_id: null,
       position: note.position,
     };
   }
 
   static fromNode(node) {
-    const config = node.configuration || {};
+    const config = node.parameters || node.configuration || {};
     return new StickyNote({
       clientId: node.id?.toString() ?? node.clientId,
       position: node.position ?? { x: 0, y: 0 },

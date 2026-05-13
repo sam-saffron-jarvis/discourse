@@ -77,7 +77,7 @@ RSpec.describe "Data Table workflow integration" do
 
     nodes = workflow.nodes.deep_dup
     action_node = nodes.find { |n| n["id"] == "action-1" }
-    columns = action_node["configuration"]["columns"]
+    columns = action_node["parameters"]["columns"]
     columns["post_author"] = columns.delete("author")
     workflow.update!(nodes: nodes)
     publish_workflow!(workflow)

@@ -224,12 +224,15 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
         before do
           update_workflow_node(workflow, "webhook-1") do |node|
             node.merge(
-              "configuration" => {
-                "path" => "my-hook",
-                "http_method" => "POST",
-                "authentication" => "basic_auth",
-                "credential_id" => credential.id,
-              },
+              DiscourseWorkflows::NodeData.split(
+                parameters: {
+                  "path" => "my-hook",
+                  "http_method" => "POST",
+                  "authentication" => "basic_auth",
+                  "credential_id" => credential.id,
+                },
+                node_type: node["type"],
+              ),
             )
           end
           publish_workflow!(workflow)
@@ -273,7 +276,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
           before do
             update_workflow_node(workflow, "webhook-1") do |node|
               node.merge(
-                "configuration" => node["configuration"].merge("authentication" => "bearer_token"),
+                "parameters" => node["parameters"].merge("authentication" => "bearer_token"),
               )
             end
           end
@@ -311,12 +314,15 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
         before do
           update_workflow_node(workflow, "webhook-1") do |node|
             node.merge(
-              "configuration" => {
-                "path" => "my-hook",
-                "http_method" => "POST",
-                "authentication" => "basic_auth",
-                "credential_id" => credential.id,
-              },
+              DiscourseWorkflows::NodeData.split(
+                parameters: {
+                  "path" => "my-hook",
+                  "http_method" => "POST",
+                  "authentication" => "basic_auth",
+                  "credential_id" => credential.id,
+                },
+                node_type: node["type"],
+              ),
             )
           end
           publish_workflow!(workflow)
@@ -355,8 +361,8 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
         before do
           update_workflow_node(workflow, "webhook-1") do |node|
             node.merge(
-              "configuration" =>
-                node["configuration"].merge(
+              "parameters" =>
+                node["parameters"].merge(
                   "response_mode" => "when_last_node_finishes",
                   "response_code" => "201",
                 ),

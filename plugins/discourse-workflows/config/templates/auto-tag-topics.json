@@ -7,7 +7,10 @@
       "type": "trigger:topic_created",
       "type_version": "1.0",
       "name": "Topic created",
-      "configuration": {},
+      "parameters": {},
+      "credentials": {},
+      "settings": {},
+      "webhook_id": null,
       "position": {
         "x": 12,
         "y": 22
@@ -17,7 +20,7 @@
       "type": "condition:if",
       "type_version": "1.0",
       "name": "Check category",
-      "configuration": {
+      "parameters": {
         "combinator": "and",
         "conditions": [
           {
@@ -32,6 +35,9 @@
           }
         ]
       },
+      "credentials": {},
+      "settings": {},
+      "webhook_id": null,
       "position": {
         "x": 252,
         "y": 17
@@ -41,9 +47,12 @@
       "type": "action:topic_tags",
       "type_version": "1.0",
       "name": "Topic tags",
-      "configuration": {
+      "parameters": {
         "topic_id": "={{ $json.topic.id }} "
       },
+      "credentials": {},
+      "settings": {},
+      "webhook_id": null,
       "position": {
         "x": 492,
         "y": 12
@@ -53,12 +62,15 @@
       "type": "flow:sticky_note",
       "type_version": "1.0",
       "name": "Sticky Note",
-      "configuration": {
+      "parameters": {
         "content": "Double click Check category to set the category id you want to auto tag",
         "width": 248.7421875,
         "height": 172.73046875,
         "color": "green"
       },
+      "credentials": {},
+      "settings": {},
+      "webhook_id": null,
       "position": {
         "x": 193.94921875,
         "y": -49.4921875
@@ -68,12 +80,15 @@
       "type": "flow:sticky_note",
       "type_version": "1.0",
       "name": "Sticky Note",
-      "configuration": {
+      "parameters": {
         "content": "Double click Topic tags to define the tags you want to apply",
         "width": 209.0859375,
         "height": 213.1796875,
         "color": "blue"
       },
+      "credentials": {},
+      "settings": {},
+      "webhook_id": null,
       "position": {
         "x": 484.63671875,
         "y": -104.71875

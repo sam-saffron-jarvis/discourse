@@ -75,8 +75,12 @@ RSpec.describe DiscourseWorkflows::Executor do
               {
                 "id" => "http-1",
                 "type" => "action:http_request",
-                "configuration" => {
-                  "credential_id" => 123,
+                "credentials" => {
+                  "auth" => {
+                    "id" => "123",
+                    "field_name" => "credential_id",
+                    "credential_type" => "basic_auth",
+                  },
                 },
               },
             ],

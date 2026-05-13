@@ -97,7 +97,7 @@ module DiscourseWorkflows
       return nil unless waiting_node
 
       suffix = params.webhook_suffix.to_s
-      stored_suffix = waiting_node.dig("configuration", "webhook_suffix").to_s
+      stored_suffix = NodeData.parameters(waiting_node)["webhook_suffix"].to_s
       return nil unless suffix == stored_suffix
 
       execution
@@ -120,12 +120,12 @@ module DiscourseWorkflows
     end
 
     def valid_http_method(waiting_node:, params:)
-      waiting_node.dig("configuration", "http_method") == params.http_method
+      NodeData.parameters(waiting_node)["http_method"] == params.http_method
     end
 
     def async_resume?(waiting_node:)
       response_mode =
-        waiting_node.dig("configuration", "response_mode") ||
+        NodeData.parameters(waiting_node)["response_mode"] ||
           Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
       response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
     end
@@ -143,12 +143,12 @@ module DiscourseWorkflows
     end
 
     def resume_execution_synchronously(claimed_execution:, waiting_node:, params:)
-      config = waiting_node.dig("configuration") || {}
+      parameters = NodeData.parameters(waiting_node)
       execution = DiscourseWorkflows::Executor.resume(claimed_execution, params.response_items)
       {
         execution: execution,
-        response_mode: config["response_mode"],
-        response_code: config["response_code"],
+        response_mode: parameters["response_mode"],
+        response_code: parameters["response_code"],
       }
     end
 
@@ -160,8 +160,8 @@ module DiscourseWorkflows
         filter:
           lambda do |published_trigger|
             node = published_trigger.trigger_node
-            config = node["configuration"] || {}
-            config["path"] == params.path && config["http_method"] == params.http_method
+            parameters = NodeData.parameters(node)
+            parameters["path"] == params.path && parameters["http_method"] == params.http_method
           end,
       )
     end
@@ -170,8 +170,10 @@ module DiscourseWorkflows
       credential_ids =
         webhook_nodes.filter_map do |published_trigger|
           node = published_trigger.trigger_node
-          config = node["configuration"] || {}
-          config["credential_id"].to_i if (config["authentication"] || "none") == "basic_auth"
+          parameters = NodeData.resolved_parameters(node)
+          if (parameters["authentication"] || "none") == "basic_auth"
+            parameters["credential_id"].to_i
+          end
         end
 
       credentials = DiscourseWorkflows::Credential.where(id: credential_ids).index_by(&:id)
@@ -189,7 +191,7 @@ module DiscourseWorkflows
       authenticated_nodes.each do |published_trigger|
         node = published_trigger.trigger_node
         response_mode =
-          node.dig("configuration", "response_mode") || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
+          NodeData.parameters(node)["response_mode"] || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
         next unless response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
 
         DiscourseWorkflows::TriggerDispatcher.enqueue(
@@ -203,8 +205,8 @@ module DiscourseWorkflows
       first = nil
       authenticated_nodes.each do |published_trigger|
         node = published_trigger.trigger_node
-        response_mode =
-          node.dig("configuration", "response_mode") || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
+        parameters = NodeData.parameters(node)
+        response_mode = parameters["response_mode"] || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
         next if response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
 
         execution =
@@ -215,7 +217,7 @@ module DiscourseWorkflows
         first ||= {
           execution: execution,
           response_mode: response_mode,
-          response_code: node.dig("configuration", "response_code"),
+          response_code: parameters["response_code"],
         }
       end
       first

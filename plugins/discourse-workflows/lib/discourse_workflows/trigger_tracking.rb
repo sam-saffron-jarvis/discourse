@@ -24,7 +24,7 @@ module DiscourseWorkflows
     end
 
     def collect_stale_topics!(workflow, node, max_topics:)
-      hours = (node.dig("configuration", "hours") || 24).to_i.clamp(1..)
+      hours = (NodeData.parameters(node)["hours"] || 24).to_i.clamp(1..)
       threshold = hours.hours.ago
 
       stale_scope =

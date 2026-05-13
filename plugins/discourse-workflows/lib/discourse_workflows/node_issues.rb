@@ -8,8 +8,7 @@ module DiscourseWorkflows
       def for_node(node, node_type_class)
         return [] unless node_type_class.respond_to?(:property_schema)
         schema = node_type_class.property_schema || {}
-        config =
-          (node.respond_to?(:configuration) ? node.configuration : node["configuration"]) || {}
+        config = NodeData.resolved_parameters(node)
         walk(schema, config.deep_stringify_keys, "")
       end
 

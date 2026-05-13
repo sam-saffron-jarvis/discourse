@@ -8,14 +8,35 @@ module DiscourseWorkflows
       @position_counter = 0
     end
 
-    def node(id, type, name: nil, configuration: {})
+    def node(
+      id,
+      type,
+      name: nil,
+      parameters: nil,
+      credentials: {},
+      settings: {},
+      webhook_id: nil,
+      configuration: {}
+    )
+      split =
+        DiscourseWorkflows::NodeData.split(
+          parameters: parameters || configuration,
+          credentials: credentials,
+          settings: settings,
+          webhook_id: webhook_id,
+          node_type: type,
+        )
+
       @nodes << {
         "id" => id,
         "type" => type,
         "type_version" => "1.0",
         "name" => name || type.split(":").last.humanize,
         "position_index" => @position_counter,
-        "configuration" => configuration,
+        "parameters" => split["parameters"],
+        "credentials" => split["credentials"],
+        "settings" => split["settings"],
+        "webhook_id" => split["webhook_id"],
       }
       @position_counter += 1
       self

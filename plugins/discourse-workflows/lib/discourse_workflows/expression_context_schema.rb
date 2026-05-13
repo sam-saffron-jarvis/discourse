@@ -38,7 +38,7 @@ module DiscourseWorkflows
             visible_if: {
               node_present: {
                 type: "flow:wait",
-                configuration: {
+                parameters: {
                   resume: "webhook",
                 },
               },

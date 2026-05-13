@@ -20,7 +20,7 @@ module DiscourseWorkflows
         trigger_workflow = published_trigger.workflow
         next false if workflow && trigger_workflow.id != workflow.id
 
-        node.dig("configuration", "uuid") == uuid
+        node["webhook_id"] == uuid
       end
     end
   end

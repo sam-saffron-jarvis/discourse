@@ -3,28 +3,20 @@ import {
   normalizeTargetInputIndex,
 } from "../../../lib/workflows/graph-constants";
 import StickyNote, { STICKY_NOTE_TYPE } from "../../../models/sticky-note";
+import WorkflowNode from "../../../models/workflow-node";
 
 export function exportWorkflowToFile(nodes, connections, stickyNotes) {
-  const exportedNodes = (nodes || []).map((n) => ({
-    type: n.type,
-    type_version: n.type_version,
-    name: n.name,
-    configuration: n.configuration || {},
-    position: n.position || null,
-  }));
+  const exportedNodes = (nodes || []).map((n) => {
+    const serialized = WorkflowNode.serialize(n);
+    delete serialized.client_id;
+    return serialized;
+  });
 
-  const exportedStickyNotes = (stickyNotes || []).map((n) => ({
-    type: STICKY_NOTE_TYPE,
-    type_version: "1.0",
-    name: "Sticky Note",
-    configuration: {
-      content: n.text,
-      width: n.size.width,
-      height: n.size.height,
-      color: n.color,
-    },
-    position: n.position,
-  }));
+  const exportedStickyNotes = (stickyNotes || []).map((n) => {
+    const serialized = StickyNote.serialize(n);
+    delete serialized.client_id;
+    return serialized;
+  });
 
   const allNodes = [...exportedNodes, ...exportedStickyNotes];
 
@@ -45,7 +37,7 @@ export function exportWorkflowToFile(nodes, connections, stickyNotes) {
     }));
 
   const payload = {
-    version: 1,
+    version: 2,
     nodes: allNodes,
     connections: exportedConnections,
   };
@@ -71,7 +63,7 @@ export function parseWorkflowImport(text) {
     return { error: "invalid" };
   }
 
-  if (data.version !== 1) {
+  if (data.version !== 2) {
     return { error: "version" };
   }
 
@@ -79,14 +71,19 @@ export function parseWorkflowImport(text) {
     return { error: "invalid" };
   }
 
-  const allImportedNodes = data.nodes.map((n) => ({
-    clientId: crypto.randomUUID(),
-    type: n.type,
-    type_version: n.type_version,
-    name: n.name,
-    configuration: n.configuration || {},
-    position: n.position || null,
-  }));
+  const allImportedNodes = data.nodes.map((n) =>
+    WorkflowNode.create({
+      clientId: crypto.randomUUID(),
+      type: n.type,
+      type_version: n.type_version,
+      name: n.name,
+      parameters: n.parameters || {},
+      credentials: n.credentials || {},
+      settings: n.settings || {},
+      webhook_id: n.webhook_id || null,
+      position: n.position || null,
+    })
+  );
 
   const regularNodes = allImportedNodes.filter(
     (n) => n.type !== STICKY_NOTE_TYPE
@@ -98,15 +95,14 @@ export function parseWorkflowImport(text) {
       StickyNote.create({
         position: n.position,
         size: {
-          width: n.configuration?.width,
-          height: n.configuration?.height,
+          width: n.parameters?.width,
+          height: n.parameters?.height,
         },
-        color: n.configuration?.color,
-        text: n.configuration?.content,
+        color: n.parameters?.color,
+        text: n.parameters?.content,
       })
     );
 
-  // Also handle legacy format with separate sticky_notes array
   if (Array.isArray(data.sticky_notes)) {
     data.sticky_notes.forEach((n) => {
       newStickyNotes.push(StickyNote.create(n));

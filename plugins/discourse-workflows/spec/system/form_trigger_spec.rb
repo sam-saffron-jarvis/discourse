@@ -16,8 +16,7 @@ RSpec.describe "Discourse Workflows - Form Trigger" do
           "type_version" => "1.0",
           "name" => "Form Trigger",
           "position_index" => 0,
-          "configuration" => {
-            "uuid" => FORM_UUID,
+          "parameters" => {
             "form_title" => "Contact Us",
             "form_fields" => [
               { "field_label" => "Your name", "field_type" => "text", "required" => true },
@@ -25,6 +24,11 @@ RSpec.describe "Discourse Workflows - Form Trigger" do
             "response_mode" => "on_received",
             "authentication" => "none",
           },
+          "credentials" => {
+          },
+          "settings" => {
+          },
+          "webhook_id" => FORM_UUID,
         },
       ],
       connections: [],

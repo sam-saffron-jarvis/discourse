@@ -29,6 +29,8 @@ module DiscourseWorkflows
           capabilities: {
             manually_triggerable: true,
           },
+          credentials: [{ name: "auth", field_name: "credential_id", required: false }],
+          webhooks: [{ name: "default", path: "path", http_method: "http_method" }],
         )
 
         def initialize(body:, headers:, query:, method:, webhook_url:)

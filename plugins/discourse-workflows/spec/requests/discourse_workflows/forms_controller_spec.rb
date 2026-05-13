@@ -18,9 +18,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
     Fabricate(:discourse_workflows_workflow, published: true, **graph)
   end
 
-  let(:form_uuid) do
-    workflow.nodes.find { |n| n["type"] == "trigger:form" }.dig("configuration", "uuid")
-  end
+  let(:form_uuid) { workflow.nodes.find { |n| n["type"] == "trigger:form" }["webhook_id"] }
   let(:form_path) { "/workflows/form/#{form_uuid}.json" }
 
   let(:origin_headers) { { "Origin" => "http://#{Discourse.current_hostname}" } }
@@ -77,7 +75,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
       before do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
-        trigger_node["configuration"]["authentication"] = "login_required"
+        trigger_node["parameters"]["authentication"] = "login_required"
         workflow.update!(nodes: workflow.nodes)
         publish_workflow!(workflow)
       end
@@ -140,7 +138,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
       before do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
-        trigger_node["configuration"]["authentication"] = "login_required"
+        trigger_node["parameters"]["authentication"] = "login_required"
         workflow.update!(nodes: workflow.nodes)
         publish_workflow!(workflow)
       end

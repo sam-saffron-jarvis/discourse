@@ -40,7 +40,7 @@ module DiscourseWorkflows
     end
 
     def authenticated_if_required(form_node:, guardian:)
-      return true if form_node.dig("configuration", "authentication") != "login_required"
+      return true if NodeData.parameters(form_node)["authentication"] != "login_required"
       guardian.authenticated?
     end
 
@@ -106,23 +106,23 @@ module DiscourseWorkflows
           },
         )
 
-      config = form_node["configuration"] || {}
+      parameters = NodeData.parameters(form_node)
 
       {
         uuid: params.uuid,
         form_title:
           ExpressionResolver.resolve(
-            config["form_title"],
+            parameters["form_title"],
             context: exec_context,
             user: guardian.user,
           ),
         form_description:
           ExpressionResolver.resolve(
-            config["form_description"],
+            parameters["form_description"],
             context: exec_context,
             user: guardian.user,
           ),
-        form_fields: Workflow.resolve_field_keys(config["form_fields"] || []),
+        form_fields: Workflow.resolve_field_keys(parameters["form_fields"] || []),
         response_mode: "on_received",
         has_downstream_form:
           waiting_execution.node_has_reachable_downstream_of_type?(form_node["id"], "action:form"),
@@ -148,7 +148,7 @@ module DiscourseWorkflows
 
       config =
         ExpressionResolver.resolve_hash(
-          (form_node["configuration"] || {}).deep_stringify_keys,
+          NodeData.parameters(form_node).deep_stringify_keys,
           context: exec_context,
           user: guardian.user,
         )

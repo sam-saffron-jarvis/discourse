@@ -2,7 +2,7 @@
 
 RSpec.describe DiscourseWorkflows::FormSchema do
   def node(*fields)
-    { "configuration" => { "form_fields" => fields } }
+    { "parameters" => { "form_fields" => fields } }
   end
 
   describe ".validate" do

@@ -7,7 +7,7 @@ module DiscourseWorkflows
     option :credentials, default: -> { {} }
 
     def call
-      config = node["configuration"] || {}
+      config = NodeData.resolved_parameters(node)
       auth_mode = config["authentication"] || "none"
       return true if auth_mode == "none"
 

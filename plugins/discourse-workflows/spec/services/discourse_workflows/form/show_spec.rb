@@ -54,7 +54,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
     context "when the form requires a logged-in user" do
       before do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
-        trigger_node["configuration"]["authentication"] = "login_required"
+        trigger_node["parameters"]["authentication"] = "login_required"
         workflow.update!(nodes: workflow.nodes)
         publish_workflow!(workflow)
       end
@@ -110,7 +110,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
       context "when the draft workflow name changes after publishing" do
         before do
           trigger_node = workflow.nodes.find { |node| node["id"] == "trigger-1" }
-          trigger_node["configuration"]["form_title"] = "={{ $execution.workflow_name }}"
+          trigger_node["parameters"]["form_title"] = "={{ $execution.workflow_name }}"
           workflow.update!(nodes: workflow.nodes)
           publish_workflow!(workflow)
           workflow.update!(name: "Draft workflow name")
@@ -125,7 +125,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
     context "when form_description references $execution.resume_url" do
       before do
         trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
-        trigger_node["configuration"]["form_description"] = "={{ $execution.resume_url }}"
+        trigger_node["parameters"]["form_description"] = "={{ $execution.resume_url }}"
         workflow.update!(nodes: workflow.nodes)
         publish_workflow!(workflow)
       end

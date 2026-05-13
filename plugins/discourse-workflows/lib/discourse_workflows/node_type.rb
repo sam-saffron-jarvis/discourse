@@ -161,8 +161,25 @@ module DiscourseWorkflows
       description.dig(:capabilities, key) == true
     end
 
-    def initialize(configuration: {})
-      @configuration = configuration
+    def initialize(
+      parameters: nil,
+      credentials: {},
+      settings: {},
+      webhook_id: nil,
+      configuration: nil
+    )
+      split =
+        NodeData.split(
+          parameters: parameters || configuration || {},
+          credentials: credentials,
+          settings: settings,
+          webhook_id: webhook_id,
+        )
+      @parameters = split["parameters"]
+      @credentials = split["credentials"]
+      @settings = split["settings"]
+      @webhook_id = split["webhook_id"]
+      @configuration = @parameters
     end
 
     def execute(exec_ctx)

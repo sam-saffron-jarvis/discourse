@@ -53,6 +53,7 @@ module DiscourseWorkflows
             manually_triggerable: true,
             provides_current_user: true,
           },
+          webhooks: [{ name: "default", path: "webhook_id", http_method: "GET" }],
         )
 
         def initialize(form_data:, submitted_at:)

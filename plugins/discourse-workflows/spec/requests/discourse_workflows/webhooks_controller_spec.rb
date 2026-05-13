@@ -87,7 +87,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
 
     it "handles different HTTP methods" do
       update_workflow_node(workflow, "webhook-1") do |node|
-        node.merge("configuration" => { "path" => "my-hook", "http_method" => "PUT" })
+        node.merge("parameters" => { "path" => "my-hook", "http_method" => "PUT" })
       end
       publish_workflow!(workflow)
 
@@ -221,8 +221,8 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
           (workflow.nodes + extra[:nodes]).map do |n|
             if n["id"] == "wait-1"
               n.merge(
-                "configuration" =>
-                  (n["configuration"] || {}).merge("response_mode" => "respond_to_webhook"),
+                "parameters" =>
+                  (n["parameters"] || {}).merge("response_mode" => "respond_to_webhook"),
               )
             else
               n
@@ -254,7 +254,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
           nodes:
             workflow_nodes_with_update(workflow, "webhook-1") do |node|
               node.merge(
-                "configuration" => {
+                "parameters" => {
                   "path" => "my-hook",
                   "http_method" => "POST",
                   "response_mode" => response_mode,
@@ -503,12 +503,18 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
       before do
         update_workflow_node(workflow, "webhook-1") do |node|
           node.merge(
-            "configuration" => {
+            "parameters" => {
               "path" => "my-hook",
               "http_method" => "POST",
               "response_mode" => "immediately",
               "authentication" => "basic_auth",
-              "credential_id" => credential.id,
+            },
+            "credentials" => {
+              "auth" => {
+                "id" => credential.id.to_s,
+                "field_name" => "credential_id",
+                "credential_type" => "basic_auth",
+              },
             },
           )
         end

@@ -65,7 +65,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
             client_id: "node-2",
             type: "action:topic_tags",
             name: "Topic Tags",
-            configuration: {
+            parameters: {
               "tag_names" => "processed",
             },
           },
@@ -95,22 +95,34 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
           "type" => "trigger:topic_created",
           "name" => "Topic Created",
           "position_index" => 0,
-          "configuration" => {
+          "parameters" => {
+          },
+          "credentials" => {
+          },
+          "settings" => {
           },
         )
         expect(nodes[1]).to include(
           "type" => "action:topic_tags",
           "name" => "Topic Tags",
           "position_index" => 1,
-          "configuration" => {
+          "parameters" => {
             "tag_names" => "processed",
+          },
+          "credentials" => {
+          },
+          "settings" => {
           },
         )
         expect(nodes[2]).to include(
           "type" => "action:send_message",
           "name" => "Send Message",
           "position_index" => 2,
-          "configuration" => {
+          "parameters" => {
+          },
+          "credentials" => {
+          },
+          "settings" => {
           },
         )
       end
@@ -141,6 +153,72 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
           "source_output_index" => 0,
           "target_input_index" => 0,
         )
+      end
+    end
+
+    context "with split node data" do
+      it "stores parameters, credentials, and settings separately" do
+        described_class.call(
+          workflow: workflow,
+          nodes_data: [
+            {
+              client_id: "http-1",
+              type: "action:http_request",
+              name: "HTTP request",
+              parameters: {
+                "url" => "https://example.com",
+                "method" => "GET",
+                "authentication" => "basic_auth",
+                "credential_id" => 12,
+                "description" => "Fetches data",
+              },
+            },
+          ],
+          connections_data: [],
+        )
+
+        node = workflow.reload.nodes.first
+        expect(node["parameters"]).to eq(
+          "url" => "https://example.com",
+          "method" => "GET",
+          "authentication" => "basic_auth",
+        )
+        expect(node["credentials"]).to eq(
+          "auth" => {
+            "id" => "12",
+            "field_name" => "credential_id",
+            "credential_type" => "basic_auth",
+          },
+        )
+        expect(node["settings"]).to eq("description" => "Fetches data")
+      end
+
+      it "removes stale credentials when authentication no longer uses them" do
+        described_class.call(
+          workflow: workflow,
+          nodes_data: [
+            {
+              client_id: "http-1",
+              type: "action:http_request",
+              name: "HTTP request",
+              parameters: {
+                "url" => "https://example.com",
+                "method" => "GET",
+                "authentication" => "none",
+              },
+              credentials: {
+                "auth" => {
+                  "id" => "12",
+                  "field_name" => "credential_id",
+                  "credential_type" => "basic_auth",
+                },
+              },
+            },
+          ],
+          connections_data: [],
+        )
+
+        expect(workflow.reload.nodes.first["credentials"]).to eq({})
       end
     end
 
@@ -175,7 +253,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
               client_id: "existing-1",
               type: "action:topic_tags",
               name: "Updated Name",
-              configuration: {
+              parameters: {
                 "tag_names" => "new",
               },
             },
@@ -189,14 +267,16 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
         expect(node["name"]).to eq("Updated Name")
       end
 
-      it "cleans up static_data for removed nodes" do
+      it "preserves static_data for removed nodes" do
         workflow.update!(
           static_data: {
             "existing-1" => {
               "key" => "value",
             },
             "existing-2" => {
-              "key" => "value",
+              "seconds_tokens" => {
+                "0" => "token",
+              },
             },
           },
         )
@@ -208,7 +288,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
               client_id: "existing-1",
               type: "action:topic_tags",
               name: "Kept Node",
-              configuration: {
+              parameters: {
               },
             },
           ],
@@ -217,7 +297,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
 
         workflow.reload
         expect(workflow.static_data).to have_key("existing-1")
-        expect(workflow.static_data).not_to have_key("existing-2")
+        expect(workflow.static_data).to have_key("existing-2")
       end
     end
 
@@ -250,12 +330,12 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
         )
 
         workflow.reload
-        expect(workflow.nodes.first.dig("configuration", "uuid")).to be_present
+        expect(workflow.nodes.first["webhook_id"]).to be_present
       end
     end
 
-    context "when a form trigger already has a uuid" do
-      it "preserves the existing uuid" do
+    context "when a form trigger already has a webhook_id" do
+      it "preserves the existing webhook_id" do
         described_class.call(
           workflow: workflow,
           nodes_data: [
@@ -263,28 +343,24 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
               client_id: "form-1",
               type: "trigger:form",
               name: "Form",
-              configuration: {
-                "uuid" => "existing-uuid",
-              },
+              webhook_id: "existing-uuid",
             },
           ],
           connections_data: [],
         )
 
-        expect(workflow.reload.nodes.first.dig("configuration", "uuid")).to eq("existing-uuid")
+        expect(workflow.reload.nodes.first["webhook_id"]).to eq("existing-uuid")
       end
     end
 
     context "when an existing form trigger is updated" do
       before do
         extra =
-          build_workflow_graph do |g|
-            g.node "form-1", "trigger:form", configuration: { "uuid" => "original-uuid" }
-          end
+          build_workflow_graph { |g| g.node "form-1", "trigger:form", webhook_id: "original-uuid" }
         workflow.update!(nodes: extra[:nodes])
       end
 
-      it "preserves the original uuid from existing configuration" do
+      it "preserves the original webhook_id" do
         described_class.call(
           workflow: workflow,
           nodes_data: [
@@ -292,7 +368,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
               client_id: "form-1",
               type: "trigger:form",
               name: "Updated Form",
-              configuration: {
+              parameters: {
                 "some_field" => "value",
               },
             },
@@ -301,8 +377,8 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
         )
 
         node = workflow.reload.nodes.first
-        expect(node.dig("configuration", "uuid")).to eq("original-uuid")
-        expect(node.dig("configuration", "some_field")).to eq("value")
+        expect(node["webhook_id"]).to eq("original-uuid")
+        expect(node.dig("parameters", "some_field")).to eq("value")
       end
     end
   end

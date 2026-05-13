@@ -38,8 +38,8 @@ module DiscourseWorkflows
             {
               trigger_node_id: published_trigger.trigger_node_id,
               workflow_id: published_trigger.workflow_id,
-              label: published_trigger.trigger_node.dig("configuration", "label"),
-              icon: published_trigger.trigger_node.dig("configuration", "icon"),
+              label: NodeData.parameters(published_trigger.trigger_node)["label"],
+              icon: NodeData.parameters(published_trigger.trigger_node)["icon"],
             }
           end
       end

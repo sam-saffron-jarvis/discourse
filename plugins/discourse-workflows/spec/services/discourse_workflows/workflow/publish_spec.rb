@@ -47,6 +47,38 @@ RSpec.describe DiscourseWorkflows::Workflow::Publish do
         DiscourseWorkflows::WorkflowDependency.expects(:clear_cache!).once
         result
       end
+
+      it "prunes static_data for nodes removed from the published draft" do
+        last_triggered_at = 1.minute.ago.iso8601
+        graph = build_workflow_graph { |g| g.node "kept-trigger", "trigger:schedule" }
+        workflow.update!(
+          nodes: graph[:nodes],
+          connections: graph[:connections],
+          static_data: {
+            "kept-trigger" => {
+              "seconds_last_triggered" => {
+                "0" => last_triggered_at,
+              },
+            },
+            "removed-trigger" => {
+              "seconds_tokens" => {
+                "0" => "removed-token",
+              },
+            },
+          },
+        )
+        workflow.draft_version.update!(nodes: graph[:nodes], connections: graph[:connections])
+
+        result
+
+        expect(workflow.reload.static_data).to eq(
+          "kept-trigger" => {
+            "seconds_last_triggered" => {
+              "0" => last_triggered_at,
+            },
+          },
+        )
+      end
     end
   end
 end

@@ -37,7 +37,9 @@ module Jobs
           )
 
         rules =
-          ::DiscourseWorkflows::ScheduleRule.rules_from_configuration(node["configuration"] || {})
+          ::DiscourseWorkflows::ScheduleRule.rules_from_configuration(
+            ::DiscourseWorkflows::NodeData.parameters(node),
+          )
         rule = rules[rule_index]
         return if rule.nil? || !::DiscourseWorkflows::ScheduleRule.seconds_rule?(rule)
 

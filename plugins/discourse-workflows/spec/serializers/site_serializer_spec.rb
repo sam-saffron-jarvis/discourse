@@ -51,7 +51,7 @@ RSpec.describe SiteSerializer do
 
     it "keeps the icon empty when none is configured" do
       update_workflow_node(workflow, "trigger-1") do |node|
-        node.merge("configuration" => { "label" => "Run workflow" })
+        node.merge("parameters" => { "label" => "Run workflow" })
       end
       publish_workflow!(workflow)
 

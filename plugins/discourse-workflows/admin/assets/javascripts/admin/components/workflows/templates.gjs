@@ -73,7 +73,10 @@ export default class WorkflowsTemplates extends Component {
         type: n.type,
         type_version: n.type_version,
         name: n.name,
-        configuration: n.configuration || {},
+        parameters: n.parameters || {},
+        credentials: n.credentials || {},
+        settings: n.settings || {},
+        webhook_id: n.webhook_id || null,
         position: n.position || null,
       }));
 
@@ -93,12 +96,15 @@ export default class WorkflowsTemplates extends Component {
           type: STICKY_NOTE_TYPE,
           type_version: "1.0",
           name: "Sticky Note",
-          configuration: {
+          parameters: {
             content: n.text,
             width: n.size?.width,
             height: n.size?.height,
             color: n.color,
           },
+          credentials: {},
+          settings: {},
+          webhook_id: null,
           position: n.position,
         })
       );

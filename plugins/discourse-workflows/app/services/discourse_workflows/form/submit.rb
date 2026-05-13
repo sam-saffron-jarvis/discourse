@@ -30,7 +30,7 @@ module DiscourseWorkflows
     private
 
     def authenticated_if_required(trigger_node:, guardian:)
-      return true if trigger_node.dig("configuration", "authentication") != "login_required"
+      return true if NodeData.parameters(trigger_node)["authentication"] != "login_required"
       guardian.authenticated?
     end
 
@@ -87,7 +87,7 @@ module DiscourseWorkflows
             "action:form",
             published: true,
           ),
-        response_mode: trigger_node.dig("configuration", "response_mode") || "on_received",
+        response_mode: NodeData.parameters(trigger_node)["response_mode"] || "on_received",
       }
     end
   end

@@ -141,6 +141,7 @@ module DiscourseWorkflows
             headers: :object,
             body: :object,
           },
+          credentials: [{ name: "auth", field_name: "credential_id", required: false }],
         )
 
         def execute(exec_ctx)

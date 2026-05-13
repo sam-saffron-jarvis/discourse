@@ -29,8 +29,7 @@ module DiscourseWorkflows
     end
 
     def build_node_hash(node_data, client_id:, existing:, index:)
-      configuration = resolved_configuration(node_data, existing:)
-      configuration = assign_form_uuid(configuration, type: node_data[:type])
+      node_data = split_node_data(node_data, existing:)
 
       {
         "id" => existing ? existing["id"] : (client_id.presence || SecureRandom.uuid),
@@ -39,7 +38,10 @@ module DiscourseWorkflows
         "name" => node_data[:name],
         "position" => node_data[:position],
         "position_index" => index,
-        "configuration" => configuration,
+        "parameters" => node_data[:parameters],
+        "credentials" => node_data[:credentials],
+        "settings" => node_data[:settings],
+        "webhook_id" => node_data[:webhook_id],
       }
     end
 
@@ -52,17 +54,7 @@ module DiscourseWorkflows
     def persist_graph(node_map)
       new_nodes = node_map.values
       new_connections = build_connections(node_map)
-      attributes = { nodes: new_nodes, connections: new_connections }
-
-      existing_node_ids = workflow.nodes.map { |n| n["id"] }.to_set
-      received_ids = new_nodes.map { |n| n["id"] }.to_set
-      removed_ids = existing_node_ids - received_ids
-
-      if removed_ids.any? && workflow.static_data.present?
-        attributes[:static_data] = workflow.static_data.except(*removed_ids.to_a)
-      end
-
-      workflow.update(**attributes)
+      workflow.update(nodes: new_nodes, connections: new_connections)
     end
 
     def validate_nodes
@@ -93,10 +85,10 @@ module DiscourseWorkflows
     def validate_node_type(node_data, type_version)
       node_type_class =
         DiscourseWorkflows::Registry.find_node_type(node_data[:type], version: type_version)
-      configuration = resolved_configuration(node_data, existing: nil)
+      parameters = split_node_data(node_data, existing: nil)[:parameters]
 
       if node_type_class.respond_to?(:validate_configuration)
-        node_type_class.validate_configuration(configuration, workflow.errors)
+        node_type_class.validate_configuration(parameters, workflow.errors)
       end
     end
 
@@ -129,21 +121,28 @@ module DiscourseWorkflows
       @normalized_nodes_data ||= nodes_data.map(&:symbolize_keys)
     end
 
-    def resolved_configuration(node_data, existing:)
-      configuration = (node_data[:configuration] || {}).deep_stringify_keys
+    def split_node_data(node_data, existing:)
+      split =
+        NodeData.split(
+          parameters: node_data[:parameters],
+          credentials: node_data[:credentials],
+          settings: node_data[:settings],
+          webhook_id: resolved_webhook_id(node_data, existing: existing),
+          node_type: node_data[:type],
+        )
 
-      if existing&.dig("configuration", "uuid").present?
-        configuration.merge("uuid" => existing.dig("configuration", "uuid"))
-      else
-        configuration
-      end
+      node_data.merge(
+        parameters: split["parameters"],
+        credentials: split["credentials"],
+        settings: split["settings"],
+        webhook_id: split["webhook_id"],
+      )
     end
 
-    def assign_form_uuid(configuration, type:)
-      return configuration unless type == "trigger:form"
-      return configuration if configuration["uuid"].present?
-
-      configuration.merge("uuid" => SecureRandom.uuid)
+    def resolved_webhook_id(node_data, existing:)
+      return node_data[:webhook_id].presence if node_data[:webhook_id].present?
+      return existing["webhook_id"] if existing&.dig("webhook_id").present?
+      SecureRandom.uuid if node_data[:type] == "trigger:form"
     end
   end
 end

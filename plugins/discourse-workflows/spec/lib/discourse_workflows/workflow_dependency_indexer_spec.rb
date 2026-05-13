@@ -34,6 +34,7 @@ RSpec.describe DiscourseWorkflows::WorkflowDependencyIndexer do
                  "trigger:webhook",
                  configuration: {
                    "path" => "hook1",
+                   "authentication" => "basic_auth",
                    "credential_id" => credential.id,
                  }
         end

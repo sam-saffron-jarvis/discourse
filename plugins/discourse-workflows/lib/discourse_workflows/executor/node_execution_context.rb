@@ -16,7 +16,11 @@ module DiscourseWorkflows
       def initialize(
         input_items:,
         input_groups: nil,
-        configuration: {},
+        parameters: nil,
+        credentials: {},
+        settings: {},
+        webhook_id: nil,
+        configuration: nil,
         property_schema: {},
         node_context: {},
         user: nil,
@@ -32,7 +36,18 @@ module DiscourseWorkflows
       )
         @input_groups = normalize_input_groups(input_groups, input_items)
         @input_items = @input_groups[0] || []
-        @configuration = configuration
+        split =
+          NodeData.split(
+            parameters: parameters || configuration || {},
+            credentials: credentials,
+            settings: settings,
+            webhook_id: webhook_id,
+          )
+        @parameters = split["parameters"]
+        @credentials = NodeData.normalize_credentials(split["credentials"])
+        @settings = split["settings"]
+        @webhook_id = split["webhook_id"]
+        @configuration = @parameters
         @property_schema = property_schema
         @node_context = node_context
         @user = user
@@ -108,10 +123,10 @@ module DiscourseWorkflows
         )
       end
 
-      def get_credential(credential_id)
-        raise ArgumentError, "credential_id is required" if credential_id.blank?
+      def get_credential(credential_id_or_slot)
+        raise ArgumentError, "credential_id is required" if credential_id_or_slot.blank?
 
-        credential_id = credential_id.to_s
+        credential_id = credential_id_for(credential_id_or_slot) || credential_id_or_slot.to_s
         ensure_credential_access!(credential_id)
         credential = DiscourseWorkflows::Credential.find_by(id: credential_id)
         raise Discourse::InvalidAccess if credential.nil?
@@ -161,7 +176,7 @@ module DiscourseWorkflows
       def ensure_data_table_access!(data_table_id)
         if @workflow && @node_id
           return if workflow_references_dependency?("data_table_id", data_table_id)
-        elsif @configuration["data_table_id"].to_s == data_table_id
+        elsif @parameters["data_table_id"].to_s == data_table_id
           return
         end
 
@@ -169,7 +184,7 @@ module DiscourseWorkflows
       end
 
       def ensure_credential_access!(credential_id)
-        expected_credential_id = @configuration["credential_id"].to_s
+        expected_credential_id = credential_id_for("auth")
         if @workflow && @node_id
           return if workflow_references_dependency?("credential_id", credential_id)
         elsif expected_credential_id == credential_id
@@ -227,20 +242,28 @@ module DiscourseWorkflows
 
       def resolve_parameter(name, schema)
         if schema.is_a?(Hash) && schema.dig(:ui, :control) == :condition_builder
-          conditions = @configuration.fetch("conditions") { [] }
-          combinator = @configuration.fetch("combinator") { "and" }
-          options = @configuration.fetch("options") { {} }
+          conditions = @parameters.fetch("conditions") { [] }
+          combinator = @parameters.fetch("combinator") { "and" }
+          options = @parameters.fetch("options") { {} }
           result =
             Executor::FilterParameter.execute_filter(conditions, combinator, options, @resolver)
           @condition_details.concat(result["details"])
           result["passed"]
         else
-          @resolver.resolve(@configuration[name])
+          credential_parameters = NodeData.credential_parameters(@credentials)
+          return credential_parameters[name] if credential_parameters.key?(name)
+
+          @resolver.resolve(@parameters[name])
         end
       end
 
       def resolve_all_parameters
-        @resolver.resolve_hash(@configuration)
+        @resolver.resolve_hash(@parameters).merge(NodeData.credential_parameters(@credentials))
+      end
+
+      def credential_id_for(slot)
+        credential = @credentials[slot.to_s]
+        credential["id"].to_s if credential
       end
     end
   end

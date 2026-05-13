@@ -51,8 +51,12 @@ RSpec.describe DiscourseWorkflows::DataTable::Destroy do
                 "y" => 0,
               },
               "position_index" => 0,
-              "configuration" => {
+              "parameters" => {
                 "data_table_id" => data_table.id,
+              },
+              "credentials" => {
+              },
+              "settings" => {
               },
             },
           ],
