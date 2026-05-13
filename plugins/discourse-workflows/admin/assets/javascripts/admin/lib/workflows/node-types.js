@@ -25,7 +25,12 @@ function nodeTypeIdentifier(nodeTypeOrIdentifier) {
     return nodeTypeOrIdentifier;
   }
 
-  return nodeTypeOrIdentifier?.identifier || nodeTypeOrIdentifier?.type || "";
+  return (
+    nodeTypeOrIdentifier?.name ||
+    nodeTypeOrIdentifier?.identifier ||
+    nodeTypeOrIdentifier?.type ||
+    ""
+  );
 }
 
 function resolveNodeType(nodeTypeOrIdentifier) {
@@ -37,11 +42,17 @@ function resolveNodeType(nodeTypeOrIdentifier) {
     return nodeTypeOrIdentifier;
   }
 
-  return { identifier: nodeTypeOrIdentifier };
+  return { name: nodeTypeOrIdentifier, identifier: nodeTypeOrIdentifier };
 }
 
 export function nodeTypeUi(nodeTypeOrIdentifier) {
-  return resolveNodeType(nodeTypeOrIdentifier)?.ui || {};
+  const nodeType = resolveNodeType(nodeTypeOrIdentifier);
+
+  return {
+    ...(nodeType?.defaults || {}),
+    ...(nodeType?.description?.defaults || {}),
+    ...(nodeType?.ui || {}),
+  };
 }
 
 export function nodeTypeIcon(nodeTypeOrIdentifier) {
@@ -100,7 +111,12 @@ export function nodeTypeDescription(nodeTypeOrIdentifier) {
 }
 
 export function nodeTypeCapabilities(nodeTypeOrIdentifier) {
-  return resolveNodeType(nodeTypeOrIdentifier)?.capabilities || {};
+  const nodeType = resolveNodeType(nodeTypeOrIdentifier);
+
+  return {
+    ...(nodeType?.description?.capabilities || {}),
+    ...(nodeType?.capabilities || {}),
+  };
 }
 
 export function nodeTypeIsManuallyTriggerable(nodeTypeOrIdentifier) {
@@ -111,7 +127,8 @@ export function nodeTypeIsManuallyTriggerable(nodeTypeOrIdentifier) {
 }
 
 export function nodeTypePorts(nodeTypeOrIdentifier) {
-  const ports = resolveNodeType(nodeTypeOrIdentifier)?.ports;
+  const nodeType = resolveNodeType(nodeTypeOrIdentifier);
+  const ports = nodeType?.outputs || nodeType?.ports;
 
   if (Array.isArray(ports) && ports.length > 0) {
     return ports;
@@ -228,7 +245,8 @@ export function nodeTypeOperations(nodeTypeOrIdentifier) {
     return nodeType.operations;
   }
 
-  const operationField = nodeType?.property_schema?.operation;
+  const operationField = (nodeType?.properties || nodeType?.property_schema)
+    ?.operation;
   if (
     operationField?.type === "options" &&
     Array.isArray(operationField.options) &&

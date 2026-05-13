@@ -4,6 +4,25 @@ module DiscourseWorkflows
   class NodeType
     extend NodeTypeDescriptor
 
+    DESCRIPTION_DEFAULTS = {
+      version: "1.0",
+      defaults: {
+      },
+      inputs: [:main],
+      outputs: [:main],
+      properties: {
+      },
+      output_schema: {
+      },
+      credentials: [],
+      webhooks: [],
+      events: [],
+      capabilities: {
+      },
+      palette_visible: true,
+      available: true,
+    }.freeze
+
     TYPE_EXEMPLARS = {
       string: "",
       integer: 0,
@@ -27,60 +46,76 @@ module DiscourseWorkflows
       registered_nodes.select(&:waits_for_resume?).map(&:identifier)
     end
 
-    def self.waits_for_resume?
-      false
+    def self.description(value = nil)
+      if value
+        @description = DESCRIPTION_DEFAULTS.deep_merge(value.deep_symbolize_keys).freeze
+      else
+        @description || DESCRIPTION_DEFAULTS
+      end
     end
 
     def self.identifier
-      raise NotImplementedError
+      description.fetch(:name) { raise NotImplementedError }
+    end
+
+    def self.version
+      description.fetch(:version)
     end
 
     def self.icon
-      nil
+      description.dig(:defaults, :icon)
     end
 
     def self.color
-      nil
+      description.dig(:defaults, :color)
     end
 
     def self.palette_visible?
-      true
+      description_value(:palette_visible)
     end
 
     def self.available?
-      true
+      description_value(:available)
     end
 
     def self.unavailable_reason_key
-      nil
+      description[:unavailable_reason_key]
     end
 
-    def self.inputs
-      [:main]
+    def self.inputs(configuration = {})
+      description_value(:inputs, configuration: configuration)
     end
 
-    def self.outputs
-      [:main]
+    def self.outputs(configuration = {})
+      description_value(:outputs, configuration: configuration)
+    end
+
+    def self.properties
+      description_value(:properties)
     end
 
     def self.property_schema
-      {}
+      properties
     end
 
     def self.event_name
-      nil
+      Array(description[:events]).first
     end
 
     def self.manually_triggerable?
-      false
+      capability_enabled?(:manually_triggerable)
     end
 
     def self.provides_current_user?
-      false
+      capability_enabled?(:provides_current_user)
+    end
+
+    def self.waits_for_resume?
+      capability_enabled?(:waits_for_resume)
     end
 
     def self.output_schema
-      {}
+      description_value(:output_schema)
     end
 
     def self.output_exemplar
@@ -113,6 +148,17 @@ module DiscourseWorkflows
     def self.extend_schema(name, fields:, serializer:)
       @schema_extensions ||= []
       @schema_extensions << { name: name, fields: fields, serializer: serializer }
+    end
+
+    def self.description_value(key, configuration: nil)
+      value = description.fetch(key)
+      return value unless value.respond_to?(:call)
+
+      configuration.nil? ? value.call : value.call(configuration)
+    end
+
+    def self.capability_enabled?(key)
+      description.dig(:capabilities, key) == true
     end
 
     def initialize(configuration: {})

@@ -4,35 +4,23 @@ module DiscourseWorkflows
   module Nodes
     module TopicTagChanged
       class V1 < NodeType
-        def self.identifier
-          "trigger:topic_tag_changed"
-        end
-
-        def self.icon
-          "tag"
-        end
-
-        def self.color
-          "deep-orange"
-        end
-
-        def self.group
-          "discourse_triggers"
-        end
-
-        def self.event_name
-          :topic_tags_changed
-        end
-
-        def self.output_schema
-          {
+        description(
+          name: "trigger:topic_tag_changed",
+          version: "1.0",
+          defaults: {
+            icon: "tag",
+            color: "deep-orange",
+          },
+          group: "discourse_triggers",
+          output_schema: {
             topic: Schemas::Topic.fields,
             old_tags: :array,
             new_tags: :array,
             added_tags: :array,
             removed_tags: :array,
-          }
-        end
+          },
+          events: [:topic_tags_changed],
+        )
 
         def initialize(topic, payload = {})
           super(configuration: {})

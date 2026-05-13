@@ -6,20 +6,14 @@ module DiscourseWorkflows
       class V1 < NodeType
         include HttpHelpers
 
-        def self.identifier
-          "action:http_request"
-        end
-
-        def self.icon
-          "globe"
-        end
-
-        def self.color
-          "indigo"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:http_request",
+          version: "1.0",
+          defaults: {
+            icon: "globe",
+            color: "indigo",
+          },
+          properties: {
             method: {
               type: :options,
               required: true,
@@ -141,12 +135,13 @@ module DiscourseWorkflows
               required: false,
               default: 1024,
             },
-          }
-        end
-
-        def self.output_schema
-          { status: :integer, headers: :object, body: :object }
-        end
+          },
+          output_schema: {
+            status: :integer,
+            headers: :object,
+            body: :object,
+          },
+        )
 
         def execute(exec_ctx)
           items =

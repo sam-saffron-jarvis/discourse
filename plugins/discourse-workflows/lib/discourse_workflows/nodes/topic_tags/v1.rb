@@ -6,24 +6,15 @@ module DiscourseWorkflows
       class V1 < NodeType
         OPERATIONS = %w[add remove].freeze
 
-        def self.identifier
-          "action:topic_tags"
-        end
-
-        def self.icon
-          "tags"
-        end
-
-        def self.color
-          "orange"
-        end
-
-        def self.group
-          "discourse_actions"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:topic_tags",
+          version: "1.0",
+          defaults: {
+            icon: "tags",
+            color: "orange",
+          },
+          group: "discourse_actions",
+          properties: {
             operation: {
               type: :options,
               required: true,
@@ -52,8 +43,8 @@ module DiscourseWorkflows
                 control: :user,
               },
             },
-          }
-        end
+          },
+        )
 
         def execute(exec_ctx)
           items =

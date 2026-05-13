@@ -41,7 +41,10 @@ export class ReteEditorBridge {
 
     const socket = new ClassicPreset.Socket("workflow");
     const nodeTypesByIdentifier = new Map(
-      (nodeTypes || []).map((nodeType) => [nodeType.identifier, nodeType])
+      (nodeTypes || []).flatMap((nodeType) => [
+        [nodeType.name, nodeType],
+        [nodeType.identifier, nodeType],
+      ])
     );
     const getNodeWidth = (data) =>
       nodeWidth(data, {
@@ -415,10 +418,7 @@ export class ReteEditorBridge {
     for (const connection of connections) {
       const sourceNode = this.editor.getNode(connection.sourceClientId);
       const targetNode = this.editor.getNode(connection.targetClientId);
-      if (
-        !sourceNode ||
-        !targetNode
-      ) {
+      if (!sourceNode || !targetNode) {
         continue;
       }
 

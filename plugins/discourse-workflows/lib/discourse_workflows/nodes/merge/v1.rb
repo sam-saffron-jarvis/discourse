@@ -4,30 +4,24 @@ module DiscourseWorkflows
   module Nodes
     module Merge
       class V1 < NodeType
-        def self.identifier
-          "flow:merge"
-        end
-
-        def self.icon
-          "arrows-turn-to-dots"
-        end
-
-        def self.color
-          "blue"
-        end
-
-        def self.inputs(configuration = {})
-          mode = configuration.fetch("mode") { "append" }
-          if mode == "append"
-            count = [configuration.fetch("number_inputs") { 2 }.to_i, 2].max
-            return count.times.map { |index| input_port(index, required: false) }
-          end
-
-          [input_port(0), input_port(1)]
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "flow:merge",
+          version: "1.0",
+          defaults: {
+            icon: "arrows-turn-to-dots",
+            color: "blue",
+          },
+          inputs:
+            lambda do |configuration = {}|
+              mode = configuration.fetch("mode") { "append" }
+              if mode == "append"
+                count = [configuration.fetch("number_inputs") { 2 }.to_i, 2].max
+                count.times.map { |index| input_port(index, required: false) }
+              else
+                [input_port(0), input_port(1)]
+              end
+            end,
+          properties: {
             mode: {
               type: :options,
               required: true,
@@ -173,8 +167,8 @@ module DiscourseWorkflows
                 mode: "combine",
               },
             },
-          }
-        end
+          },
+        )
 
         def execute(exec_ctx)
           config = exec_ctx.get_parameters({ "json" => {} })

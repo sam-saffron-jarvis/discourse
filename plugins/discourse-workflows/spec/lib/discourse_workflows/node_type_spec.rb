@@ -27,9 +27,7 @@ RSpec.describe DiscourseWorkflows::NodeType do
     it "returns true when multiple outputs" do
       klass =
         Class.new(described_class) do
-          def self.outputs
-            [{ key: "true", label_key: "t" }, { key: "false", label_key: "f" }]
-          end
+          description(outputs: [{ key: "true", label_key: "t" }, { key: "false", label_key: "f" }])
         end
       expect(klass.branching?).to eq(true)
     end
@@ -42,11 +40,7 @@ RSpec.describe DiscourseWorkflows::NodeType do
 
     it "can be overridden by subclass" do
       klass =
-        Class.new(described_class) do
-          def self.available?
-            false
-          end
-        end
+        Class.new(described_class) { description(name: "action:unavailable", available: false) }
       expect(klass.available?).to eq(false)
     end
   end
@@ -65,9 +59,7 @@ RSpec.describe DiscourseWorkflows::NodeType do
     it "builds an exemplar from the output schema" do
       klass =
         Class.new(described_class) do
-          def self.output_schema
-            { title: :string, count: :integer }
-          end
+          description(output_schema: { title: :string, count: :integer })
         end
 
       expect(klass.output_exemplar).to eq({ "title" => "", "count" => 0 })

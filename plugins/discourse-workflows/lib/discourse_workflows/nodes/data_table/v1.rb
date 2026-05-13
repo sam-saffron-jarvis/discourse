@@ -7,32 +7,15 @@ module DiscourseWorkflows
         OPERATIONS = %w[insert get update delete upsert].freeze
         MAPPING_MODES = %w[manual auto].freeze
 
-        def self.identifier
-          "action:data_table"
-        end
-
-        def self.icon
-          "table"
-        end
-
-        def self.color
-          "violet"
-        end
-
-        def self.group
-          "data"
-        end
-
-        def self.property_i18n_scope
-          "data_table_node"
-        end
-
-        def self.operation_label_key(operation)
-          "#{property_i18n_prefix}.#{property_i18n_scope}.operations.#{operation}"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:data_table",
+          version: "1.0",
+          defaults: {
+            icon: "table",
+            color: "violet",
+          },
+          group: "data",
+          properties: {
             operation: {
               type: :options,
               required: true,
@@ -147,7 +130,15 @@ module DiscourseWorkflows
                 hidden: true,
               },
             },
-          }
+          },
+        )
+
+        def self.property_i18n_scope
+          "data_table_node"
+        end
+
+        def self.operation_label_key(operation)
+          "#{property_i18n_prefix}.#{property_i18n_scope}.operations.#{operation}"
         end
 
         def self.load_options(source_key)
@@ -170,10 +161,6 @@ module DiscourseWorkflows
                 }
               end
           end
-        end
-
-        def self.output_schema
-          {}
         end
 
         def execute(exec_ctx)

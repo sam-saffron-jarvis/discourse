@@ -4,27 +4,18 @@ module DiscourseWorkflows
   module Nodes
     module Filter
       class V1 < NodeType
-        def self.identifier
-          "condition:filter"
-        end
-
-        def self.icon
-          "filter"
-        end
-
-        def self.color
-          "violet"
-        end
-
-        def self.outputs
-          [
+        description(
+          name: "condition:filter",
+          version: "1.0",
+          defaults: {
+            icon: "filter",
+            color: "violet",
+          },
+          outputs: [
             { key: "true", label_key: "discourse_workflows.executions.statuses.kept" },
             { key: "false", label_key: "discourse_workflows.executions.statuses.rejected" },
-          ]
-        end
-
-        def self.property_schema
-          {
+          ],
+          properties: {
             combinator: {
               type: :options,
               options: %w[and or],
@@ -45,8 +36,8 @@ module DiscourseWorkflows
                 hidden: true,
               },
             },
-          }
-        end
+          },
+        )
 
         def execute(exec_ctx)
           exec_ctx.input_items.partition { |item| exec_ctx.get_parameter(:conditions, item) }

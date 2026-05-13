@@ -31,7 +31,8 @@ export default class GroupSelect extends Component {
   constructor(owner, args) {
     super(owner, args);
     const source = args.schema?.options_source;
-    const identifier = args.nodeDefinition?.identifier;
+    const identifier =
+      args.nodeDefinition?.name || args.nodeDefinition?.identifier;
     const localOptions =
       args.metadata?.[source] || args.nodeDefinition?.metadata?.[source];
     if (source && identifier && !localOptions) {

@@ -317,10 +317,15 @@ export default class WorkflowsEditor extends Component {
       return;
     }
     this.#captureUndo();
-    const newNode = createNode(nodeType.identifier, existingNodes, position, {
-      typeVersion: nodeType.latest_version,
-      configOverrides,
-    });
+    const newNode = createNode(
+      nodeType.name || nodeType.identifier,
+      existingNodes,
+      position,
+      {
+        typeVersion: nodeType.latest_version,
+        configOverrides,
+      }
+    );
 
     this.formApi.set("nodes", [...existingNodes, newNode]);
 
@@ -330,7 +335,7 @@ export default class WorkflowsEditor extends Component {
     this.#ensureLoopSelfConnection(
       connections,
       newNode.clientId,
-      nodeType.identifier
+      nodeType.name || nodeType.identifier
     );
     this.formApi.set("connections", connections);
 
@@ -671,10 +676,15 @@ export default class WorkflowsEditor extends Component {
       ? { x: loopNode.position.x, y: loopNode.position.y + 120 }
       : null;
 
-    const newNode = createNode(nodeType.identifier, existingNodes, position, {
-      typeVersion: nodeType.latest_version,
-      configOverrides,
-    });
+    const newNode = createNode(
+      nodeType.name || nodeType.identifier,
+      existingNodes,
+      position,
+      {
+        typeVersion: nodeType.latest_version,
+        configOverrides,
+      }
+    );
     const newNodeOutput = nodeTypePrimaryOutputKey(nodeType);
 
     const connections = [...this.formApi.get("connections")];
@@ -772,9 +782,14 @@ export default class WorkflowsEditor extends Component {
   replaceTrigger(clientId, nodeType) {
     this.#captureUndo();
     const existingNodes = this.formApi.get("nodes");
-    const replacement = createNode(nodeType.identifier, existingNodes, null, {
-      typeVersion: nodeType.latest_version,
-    });
+    const replacement = createNode(
+      nodeType.name || nodeType.identifier,
+      existingNodes,
+      null,
+      {
+        typeVersion: nodeType.latest_version,
+      }
+    );
 
     const nodes = existingNodes.map((n) =>
       n.clientId === clientId

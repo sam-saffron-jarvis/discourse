@@ -44,7 +44,10 @@ function nodeMetadata(nodeDefinitionOrType) {
 
 export function findNodeType(nodeTypes, nodeType) {
   return (
-    nodeTypes?.find((definition) => definition.identifier === nodeType) || null
+    nodeTypes?.find(
+      (definition) =>
+        definition.name === nodeType || definition.identifier === nodeType
+    ) || null
   );
 }
 
@@ -55,11 +58,14 @@ export function getPropertySchema(nodeTypes, nodeType, typeVersion = null) {
     return {};
   }
 
-  if (typeVersion && definition.property_schema_versions?.[typeVersion]) {
-    return definition.property_schema_versions[typeVersion];
+  const versions =
+    definition.property_versions || definition.property_schema_versions;
+
+  if (typeVersion && versions?.[typeVersion]) {
+    return versions[typeVersion];
   }
 
-  return definition.property_schema || {};
+  return definition.properties || definition.property_schema || {};
 }
 
 export function normalizeSchema(schema = {}) {

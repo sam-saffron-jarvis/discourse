@@ -4,24 +4,15 @@ module DiscourseWorkflows
   module Nodes
     module FetchTopic
       class V1 < NodeType
-        def self.identifier
-          "action:fetch_topic"
-        end
-
-        def self.icon
-          "download"
-        end
-
-        def self.color
-          "light-blue"
-        end
-
-        def self.group
-          "discourse_actions"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:fetch_topic",
+          version: "1.0",
+          defaults: {
+            icon: "download",
+            color: "light-blue",
+          },
+          group: "discourse_actions",
+          properties: {
             topic_id: {
               type: :string,
               required: true,
@@ -34,12 +25,11 @@ module DiscourseWorkflows
                 control: :user,
               },
             },
-          }
-        end
-
-        def self.output_schema
-          { topic: Schemas::Topic.fields }
-        end
+          },
+          output_schema: {
+            topic: Schemas::Topic.fields,
+          },
+        )
 
         def execute(exec_ctx)
           items =

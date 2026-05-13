@@ -4,29 +4,26 @@ module DiscourseWorkflows
   module Nodes
     module StaleTopic
       class V1 < NodeType
-        def self.identifier
-          "trigger:stale_topic"
-        end
-
-        def self.icon
-          "clock"
-        end
-
-        def self.color
-          "deep-orange"
-        end
-
-        def self.group
-          "discourse_triggers"
-        end
-
-        def self.output_schema
-          { topic: Schemas::Topic.fields }
-        end
-
-        def self.property_schema
-          { hours: { type: :integer, required: true, default: 24, min: 1 } }
-        end
+        description(
+          name: "trigger:stale_topic",
+          version: "1.0",
+          defaults: {
+            icon: "clock",
+            color: "deep-orange",
+          },
+          group: "discourse_triggers",
+          properties: {
+            hours: {
+              type: :integer,
+              required: true,
+              default: 24,
+              min: 1,
+            },
+          },
+          output_schema: {
+            topic: Schemas::Topic.fields,
+          },
+        )
 
         def initialize(topic)
           super(configuration: {})

@@ -4,29 +4,19 @@ module DiscourseWorkflows
   module Nodes
     module TopicClosed
       class V1 < NodeType
-        def self.identifier
-          "trigger:topic_closed"
-        end
-
-        def self.icon
-          "lock"
-        end
-
-        def self.color
-          "grey"
-        end
-
-        def self.group
-          "discourse_triggers"
-        end
-
-        def self.event_name
-          :topic_status_updated
-        end
-
-        def self.output_schema
-          { topic: Schemas::Topic.fields }
-        end
+        description(
+          name: "trigger:topic_closed",
+          version: "1.0",
+          defaults: {
+            icon: "lock",
+            color: "grey",
+          },
+          group: "discourse_triggers",
+          output_schema: {
+            topic: Schemas::Topic.fields,
+          },
+          events: [:topic_status_updated],
+        )
 
         def initialize(topic, status, enabled)
           super(configuration: {})

@@ -4,21 +4,18 @@ module DiscourseWorkflows
   module Nodes
     module Error
       class V1 < NodeType
-        def self.identifier
-          "trigger:error"
-        end
-
-        def self.icon
-          "triangle-exclamation"
-        end
-
-        def self.color
-          "red"
-        end
-
-        def self.output_schema
-          { error_message: :string, failed_node_name: :string }
-        end
+        description(
+          name: "trigger:error",
+          version: "1.0",
+          defaults: {
+            icon: "triangle-exclamation",
+            color: "red",
+          },
+          output_schema: {
+            error_message: :string,
+            failed_node_name: :string,
+          },
+        )
 
         def initialize(error_data = {}, *)
           super(configuration: {})

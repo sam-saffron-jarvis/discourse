@@ -10,10 +10,23 @@ module DiscourseWorkflows
     end
 
     def to_h
+      description = serializable_description
       ui = @latest_class.ui_metadata
       capabilities = @latest_class.capabilities
 
       {
+        displayName: description[:displayName],
+        name: @identifier,
+        version: @latest_version,
+        defaults: description[:defaults],
+        inputs: description[:inputs],
+        outputs: description[:outputs],
+        properties: description[:properties],
+        property_versions: property_schema_versions,
+        outputSchema: output_schema,
+        credentials: description[:credentials],
+        webhooks: description[:webhooks],
+        description: description,
         identifier: @identifier,
         kind: @latest_class.kind,
         latest_version: @latest_version,
@@ -23,7 +36,6 @@ module DiscourseWorkflows
         output_schema: output_schema,
         ui: ui,
         capabilities: capabilities,
-        inputs: @latest_class.input_ports,
         ports: @latest_class.ports,
         operations: @latest_class.operations,
         icon: ui[:icon],
@@ -44,6 +56,19 @@ module DiscourseWorkflows
       @available_versions.to_h do |version|
         [version, Registry.find_node_type(@identifier, version: version).property_schema]
       end
+    end
+
+    def serializable_description
+      @latest_class.description.merge(
+        displayName: @latest_class.label_key,
+        descriptionKey: @latest_class.description_key,
+        name: @identifier,
+        version: @latest_version,
+        inputs: @latest_class.input_ports,
+        outputs: @latest_class.ports,
+        properties: @latest_class.properties,
+        output_schema: output_schema,
+      )
     end
 
     def output_schema

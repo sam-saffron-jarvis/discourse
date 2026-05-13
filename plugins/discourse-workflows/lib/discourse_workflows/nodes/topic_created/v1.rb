@@ -4,29 +4,19 @@ module DiscourseWorkflows
   module Nodes
     module TopicCreated
       class V1 < NodeType
-        def self.identifier
-          "trigger:topic_created"
-        end
-
-        def self.icon
-          "plus"
-        end
-
-        def self.color
-          "teal"
-        end
-
-        def self.group
-          "discourse_triggers"
-        end
-
-        def self.event_name
-          :topic_created
-        end
-
-        def self.output_schema
-          { topic: Schemas::Topic.fields }
-        end
+        description(
+          name: "trigger:topic_created",
+          version: "1.0",
+          defaults: {
+            icon: "plus",
+            color: "teal",
+          },
+          group: "discourse_triggers",
+          output_schema: {
+            topic: Schemas::Topic.fields,
+          },
+          events: [:topic_created],
+        )
 
         def initialize(topic, opts = nil, *)
           super(configuration: {})

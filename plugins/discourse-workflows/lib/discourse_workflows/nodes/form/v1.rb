@@ -4,32 +4,15 @@ module DiscourseWorkflows
   module Nodes
     module Form
       class V1 < NodeType
-        def self.identifier
-          "action:form"
-        end
-
-        def self.icon
-          "rectangle-list"
-        end
-
-        def self.color
-          "blue"
-        end
-
-        def self.group
-          "human_review"
-        end
-
-        def self.waits_for_resume?
-          true
-        end
-
-        def self.output_schema
-          Schemas::FormFields::OUTPUT_SCHEMA
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:form",
+          version: "1.0",
+          defaults: {
+            icon: "rectangle-list",
+            color: "blue",
+          },
+          group: "human_review",
+          properties: {
             page_type: {
               type: :options,
               default: "page",
@@ -99,8 +82,12 @@ module DiscourseWorkflows
                 control: :textarea,
               },
             },
-          }
-        end
+          },
+          output_schema: Schemas::FormFields::OUTPUT_SCHEMA,
+          capabilities: {
+            waits_for_resume: true,
+          },
+        )
 
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }

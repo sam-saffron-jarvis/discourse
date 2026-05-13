@@ -6,24 +6,15 @@ module DiscourseWorkflows
       class V1 < NodeType
         OPERATIONS = %w[add remove get].freeze
 
-        def self.identifier
-          "action:group"
-        end
-
-        def self.icon
-          "user-plus"
-        end
-
-        def self.color
-          "indigo"
-        end
-
-        def self.group
-          "discourse_actions"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:group",
+          version: "1.0",
+          defaults: {
+            icon: "user-plus",
+            color: "indigo",
+          },
+          group: "discourse_actions",
+          properties: {
             operation: {
               type: :options,
               required: true,
@@ -65,8 +56,18 @@ module DiscourseWorkflows
                 control: :user,
               },
             },
-          }
-        end
+          },
+          output_schema: {
+            group: Schemas::Group.fields,
+            user: {
+              type: :object,
+              fields: Schemas::User.fields,
+              visible_if: {
+                operation: %w[add remove],
+              },
+            },
+          },
+        )
 
         def self.load_options(source_key)
           case source_key
@@ -77,19 +78,6 @@ module DiscourseWorkflows
               .pluck(:id, :name)
               .map { |id, name| { id:, name: } }
           end
-        end
-
-        def self.output_schema
-          {
-            group: Schemas::Group.fields,
-            user: {
-              type: :object,
-              fields: Schemas::User.fields,
-              visible_if: {
-                operation: %w[add remove],
-              },
-            },
-          }
         end
 
         def execute(exec_ctx)

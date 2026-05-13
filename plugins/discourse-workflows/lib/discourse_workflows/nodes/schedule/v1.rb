@@ -7,28 +7,14 @@ module DiscourseWorkflows
         HOUR_OPTIONS = (0..23).to_a.freeze
         WEEKDAY_OPTIONS = [1, 2, 3, 4, 5, 6, 0].freeze
 
-        def self.identifier
-          "trigger:schedule"
-        end
-
-        def self.icon
-          "calendar-days"
-        end
-
-        def self.color
-          "orange"
-        end
-
-        def self.manually_triggerable?
-          true
-        end
-
-        def self.output_schema
-          { timestamp: :string }
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "trigger:schedule",
+          version: "1.0",
+          defaults: {
+            icon: "calendar-days",
+            color: "orange",
+          },
+          properties: {
             rules: {
               type: :collection,
               required: true,
@@ -177,8 +163,14 @@ module DiscourseWorkflows
                 },
               },
             },
-          }
-        end
+          },
+          output_schema: {
+            timestamp: :string,
+          },
+          capabilities: {
+            manually_triggerable: true,
+          },
+        )
 
         def initialize(*)
           super(configuration: {})

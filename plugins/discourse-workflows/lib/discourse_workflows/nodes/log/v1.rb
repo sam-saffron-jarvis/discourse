@@ -4,20 +4,14 @@ module DiscourseWorkflows
   module Nodes
     module Log
       class V1 < NodeType
-        def self.identifier
-          "action:log"
-        end
-
-        def self.icon
-          "scroll"
-        end
-
-        def self.color
-          "purple"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:log",
+          version: "1.0",
+          defaults: {
+            icon: "scroll",
+            color: "purple",
+          },
+          properties: {
             entries: {
               type: :collection,
               required: false,
@@ -35,12 +29,8 @@ module DiscourseWorkflows
                 },
               },
             },
-          }
-        end
-
-        def self.output_schema
-          {}
-        end
+          },
+        )
 
         def execute(exec_ctx)
           raw_entries = @configuration.fetch("entries") { [] }

@@ -22,20 +22,14 @@ module DiscourseWorkflows
           return $input.item;
         JS
 
-        def self.identifier
-          "action:code"
-        end
-
-        def self.icon
-          "code"
-        end
-
-        def self.color
-          "red"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:code",
+          version: "1.0",
+          defaults: {
+            icon: "code",
+            color: "red",
+          },
+          properties: {
             mode: {
               type: :options,
               default: "run_once_for_each_item",
@@ -64,8 +58,8 @@ module DiscourseWorkflows
                 hidden: true,
               },
             },
-          }
-        end
+          },
+        )
 
         def execute(exec_ctx)
           code = @configuration["code"].to_s

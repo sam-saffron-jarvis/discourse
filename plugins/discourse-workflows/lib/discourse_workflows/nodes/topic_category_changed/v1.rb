@@ -4,29 +4,20 @@ module DiscourseWorkflows
   module Nodes
     module TopicCategoryChanged
       class V1 < NodeType
-        def self.identifier
-          "trigger:topic_category_changed"
-        end
-
-        def self.icon
-          "folder-open"
-        end
-
-        def self.color
-          "deep-orange"
-        end
-
-        def self.group
-          "discourse_triggers"
-        end
-
-        def self.event_name
-          :topic_category_changed
-        end
-
-        def self.output_schema
-          { topic: Schemas::Topic.fields, old_category_id: :integer }
-        end
+        description(
+          name: "trigger:topic_category_changed",
+          version: "1.0",
+          defaults: {
+            icon: "folder-open",
+            color: "deep-orange",
+          },
+          group: "discourse_triggers",
+          output_schema: {
+            topic: Schemas::Topic.fields,
+            old_category_id: :integer,
+          },
+          events: [:topic_category_changed],
+        )
 
         def initialize(topic, old_category)
           super(configuration: {})

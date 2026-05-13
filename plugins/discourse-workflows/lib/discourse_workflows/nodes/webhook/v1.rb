@@ -4,28 +4,14 @@ module DiscourseWorkflows
   module Nodes
     module Webhook
       class V1 < NodeType
-        def self.identifier
-          "trigger:webhook"
-        end
-
-        def self.icon
-          "globe"
-        end
-
-        def self.color
-          "purple"
-        end
-
-        def self.manually_triggerable?
-          true
-        end
-
-        def self.output_schema
-          Schemas::Webhook::OUTPUT_FIELDS
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "trigger:webhook",
+          version: "1.0",
+          defaults: {
+            icon: "globe",
+            color: "purple",
+          },
+          properties: {
             url_preview: {
               type: :custom,
               required: false,
@@ -38,8 +24,12 @@ module DiscourseWorkflows
               type: :string,
               required: true,
             },
-          }
-        end
+          },
+          output_schema: Schemas::Webhook::OUTPUT_FIELDS,
+          capabilities: {
+            manually_triggerable: true,
+          },
+        )
 
         def initialize(body:, headers:, query:, method:, webhook_url:)
           super(configuration: {})

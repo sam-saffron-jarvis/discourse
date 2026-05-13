@@ -33,9 +33,13 @@ export function resolveFieldsForNode(node, graph) {
 
   if (node.type?.startsWith("trigger:")) {
     const triggerType = graph.nodeTypes.find(
-      (nt) => nt.identifier === node.type
+      (nt) => nt.name === node.type || nt.identifier === node.type
     );
-    return fieldsFromSchema(triggerType?.output_schema) || null;
+    return (
+      fieldsFromSchema(
+        triggerType?.outputSchema || triggerType?.output_schema
+      ) || null
+    );
   }
 
   return null;

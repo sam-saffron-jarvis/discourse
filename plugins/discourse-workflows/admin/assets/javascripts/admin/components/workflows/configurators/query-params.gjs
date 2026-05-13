@@ -13,7 +13,8 @@ export default class QueryParams extends Component {
 
   constructor(owner, args) {
     super(owner, args);
-    const identifier = args.nodeDefinition?.identifier;
+    const identifier =
+      args.nodeDefinition?.name || args.nodeDefinition?.identifier;
     if (identifier) {
       this.workflowsNodeTypes
         .loadSourceOptions(identifier, "queries")

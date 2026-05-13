@@ -4,24 +4,15 @@ module DiscourseWorkflows
   module Nodes
     module SetFields
       class V1 < NodeType
-        def self.identifier
-          "action:set_fields"
-        end
-
-        def self.icon
-          "list"
-        end
-
-        def self.color
-          "green"
-        end
-
-        def self.group
-          "data"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:set_fields",
+          version: "1.0",
+          defaults: {
+            icon: "list",
+            color: "green",
+          },
+          group: "data",
+          properties: {
             include_input: {
               type: :boolean,
               required: false,
@@ -73,12 +64,8 @@ module DiscourseWorkflows
                 lang: :json,
               },
             },
-          }
-        end
-
-        def self.output_schema
-          {}
-        end
+          },
+        )
 
         def execute(exec_ctx)
           items =

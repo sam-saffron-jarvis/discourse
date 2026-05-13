@@ -4,37 +4,32 @@ module DiscourseWorkflows
   module Nodes
     module TopicAdminButton
       class V1 < NodeType
-        def self.identifier
-          "trigger:topic_admin_button"
-        end
-
-        def self.icon
-          "gear"
-        end
-
-        def self.color
-          "cyan"
-        end
-
-        def self.group
-          "discourse_triggers"
-        end
-
-        def self.manually_triggerable?
-          true
-        end
-
-        def self.provides_current_user?
-          true
-        end
-
-        def self.output_schema
-          { topic: Schemas::Topic.fields }
-        end
-
-        def self.property_schema
-          { label: { type: :string, required: true }, icon: { type: :icon, required: false } }
-        end
+        description(
+          name: "trigger:topic_admin_button",
+          version: "1.0",
+          defaults: {
+            icon: "gear",
+            color: "cyan",
+          },
+          group: "discourse_triggers",
+          properties: {
+            label: {
+              type: :string,
+              required: true,
+            },
+            icon: {
+              type: :icon,
+              required: false,
+            },
+          },
+          output_schema: {
+            topic: Schemas::Topic.fields,
+          },
+          capabilities: {
+            manually_triggerable: true,
+            provides_current_user: true,
+          },
+        )
 
         def initialize(topic)
           super(configuration: {})

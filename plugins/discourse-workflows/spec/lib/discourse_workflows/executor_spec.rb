@@ -399,21 +399,11 @@ RSpec.describe DiscourseWorkflows::Executor do
     context "with an unavailable node" do
       let(:unavailable_node_class) do
         Class.new(DiscourseWorkflows::NodeType) do
-          def self.identifier
-            "action:unavailable_test"
-          end
-
-          def self.name
-            "DiscourseWorkflows::NodeTypes::UnavailableTest"
-          end
-
-          def self.available?
-            false
-          end
-
-          def self.unavailable_reason_key
-            "discourse_workflows.unavailable_reasons.test_plugin_disabled"
-          end
+          description(
+            name: "action:unavailable_test",
+            available: false,
+            unavailable_reason_key: "discourse_workflows.unavailable_reasons.test_plugin_disabled",
+          )
 
           def execute(_ctx)
             raise "should never be called"

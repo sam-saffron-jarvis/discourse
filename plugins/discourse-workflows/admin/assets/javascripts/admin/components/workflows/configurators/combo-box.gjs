@@ -29,7 +29,8 @@ export default class ComboBoxField extends Component {
   constructor(owner, args) {
     super(owner, args);
     const source = args.schema?.options_source;
-    const identifier = args.nodeDefinition?.identifier;
+    const identifier =
+      args.nodeDefinition?.name || args.nodeDefinition?.identifier;
     const localOptions =
       args.metadata?.[source] || args.nodeDefinition?.metadata?.[source];
     if (source && identifier && !localOptions) {
@@ -132,7 +133,10 @@ export default class ComboBoxField extends Component {
       );
     }
 
-    const schema = this.args.nodeDefinition?.property_schema || {};
+    const schema =
+      this.args.nodeDefinition?.properties ||
+      this.args.nodeDefinition?.property_schema ||
+      {};
     for (const fieldName of this.resets) {
       const type = fieldType(schema[fieldName]);
       let resetValue = null;

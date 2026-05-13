@@ -5,24 +5,15 @@ module DiscourseWorkflows
     module SplitOut
       class V1 < NodeType
         MAX_SPLIT_ITEMS = 1_000
-        def self.identifier
-          "action:split_out"
-        end
-
-        def self.icon
-          "arrows-turn-to-dots"
-        end
-
-        def self.color
-          "yellow"
-        end
-
-        def self.group
-          "flow"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:split_out",
+          version: "1.0",
+          defaults: {
+            icon: "arrows-turn-to-dots",
+            color: "yellow",
+          },
+          group: "flow",
+          properties: {
             field: {
               type: :string,
               required: true,
@@ -47,12 +38,8 @@ module DiscourseWorkflows
               type: :string,
               required: false,
             },
-          }
-        end
-
-        def self.output_schema
-          {}
-        end
+          },
+        )
 
         def execute(exec_ctx)
           field_names = parse_field_names(@configuration.fetch("field"))

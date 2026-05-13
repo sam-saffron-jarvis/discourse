@@ -4,28 +4,26 @@ module DiscourseWorkflows
   module Nodes
     module LoopOverItems
       class V1 < NodeType
-        def self.identifier
-          "flow:loop_over_items"
-        end
-
-        def self.icon
-          "arrow-rotate-right"
-        end
-
-        def self.color
-          "brown"
-        end
-
-        def self.property_schema
-          { batch_size: { type: :integer, required: true, default: 1, min: 1 } }
-        end
-
-        def self.outputs
-          [
+        description(
+          name: "flow:loop_over_items",
+          version: "1.0",
+          defaults: {
+            icon: "arrow-rotate-right",
+            color: "brown",
+          },
+          outputs: [
             { key: "done", label_key: "discourse_workflows.branch.done" },
             { key: "loop", label_key: "discourse_workflows.branch.loop" },
-          ]
-        end
+          ],
+          properties: {
+            batch_size: {
+              type: :integer,
+              required: true,
+              default: 1,
+              min: 1,
+            },
+          },
+        )
 
         def execute(exec_ctx)
           batch_size = @configuration.fetch("batch_size") { 1 }.to_i

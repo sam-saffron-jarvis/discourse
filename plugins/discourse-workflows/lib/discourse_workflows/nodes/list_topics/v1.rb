@@ -7,24 +7,15 @@ module DiscourseWorkflows
         MAX_LIMIT = 100
         DEFAULT_LIMIT = 30
 
-        def self.identifier
-          "action:list_topics"
-        end
-
-        def self.icon
-          "list"
-        end
-
-        def self.color
-          "light-blue"
-        end
-
-        def self.group
-          "discourse_actions"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:list_topics",
+          version: "1.0",
+          defaults: {
+            icon: "list",
+            color: "light-blue",
+          },
+          group: "discourse_actions",
+          properties: {
             query: {
               type: :string,
               required: true,
@@ -45,12 +36,11 @@ module DiscourseWorkflows
                 control: :user,
               },
             },
-          }
-        end
-
-        def self.output_schema
-          { topic: Schemas::Topic.fields }
-        end
+          },
+          output_schema: {
+            topic: Schemas::Topic.fields,
+          },
+        )
 
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }

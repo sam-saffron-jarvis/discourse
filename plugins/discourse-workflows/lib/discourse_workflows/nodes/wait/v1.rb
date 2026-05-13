@@ -6,99 +6,92 @@ module DiscourseWorkflows
       class V1 < NodeType
         WAIT_UNITS = %w[seconds minutes hours days].freeze
 
-        def self.identifier
-          "flow:wait"
-        end
+        description(
+          name: "flow:wait",
+          version: "1.0",
+          defaults: {
+            icon: "pause",
+            color: "salmon",
+          },
+          outputs: %w[main],
+          properties:
+            lambda do
+              webhook_fields =
+                Schemas::Webhook::CONFIGURATION_FIELDS.transform_values do |field|
+                  visible_if = (field[:visible_if] || {}).merge(resume: "webhook")
+                  field.merge(visible_if: visible_if)
+                end
 
-        def self.icon
-          "pause"
-        end
-
-        def self.color
-          "salmon"
-        end
-
-        def self.waits_for_resume?
-          true
-        end
-
-        def self.output_schema
-          Schemas::Webhook::OUTPUT_FIELDS.transform_values do |type|
-            { type: type, visible_if: { resume: "webhook" } }
-          end
-        end
-
-        def self.outputs
-          %w[main]
-        end
-
-        def self.property_schema
-          webhook_fields =
-            Schemas::Webhook::CONFIGURATION_FIELDS.transform_values do |field|
-              visible_if = (field[:visible_if] || {}).merge(resume: "webhook")
-              field.merge(visible_if: visible_if)
-            end
-
-          {
-            resume: {
-              type: :options,
-              required: true,
-              default: "time_interval",
-              options: %w[time_interval webhook],
-            },
-            wait_amount: {
-              type: :integer,
-              required: true,
-              default: 1,
-              visible_if: {
-                resume: "time_interval",
-              },
-            },
-            wait_unit: {
-              type: :options,
-              required: true,
-              default: "hours",
-              options: WAIT_UNITS,
-              visible_if: {
-                resume: "time_interval",
-              },
-            },
-            webhook_info: {
-              type: :notice,
-              visible_if: {
-                resume: "webhook",
-              },
-            },
-            **webhook_fields,
-            webhook_suffix:
-              Schemas::Webhook::WEBHOOK_SUFFIX_FIELD.merge(visible_if: { resume: "webhook" }),
-            limit_wait_time: {
-              type: :boolean,
-              default: false,
-              visible_if: {
-                resume: "webhook",
-              },
-            },
-            timeout_amount: {
-              type: :integer,
-              required: false,
-              visible_if: {
-                resume: "webhook",
-                limit_wait_time: true,
-              },
-            },
-            timeout_unit: {
-              type: :options,
-              required: false,
-              default: "hours",
-              options: WAIT_UNITS,
-              visible_if: {
-                resume: "webhook",
-                limit_wait_time: true,
-              },
-            },
-          }
-        end
+              {
+                resume: {
+                  type: :options,
+                  required: true,
+                  default: "time_interval",
+                  options: %w[time_interval webhook],
+                },
+                wait_amount: {
+                  type: :integer,
+                  required: true,
+                  default: 1,
+                  visible_if: {
+                    resume: "time_interval",
+                  },
+                },
+                wait_unit: {
+                  type: :options,
+                  required: true,
+                  default: "hours",
+                  options: WAIT_UNITS,
+                  visible_if: {
+                    resume: "time_interval",
+                  },
+                },
+                webhook_info: {
+                  type: :notice,
+                  visible_if: {
+                    resume: "webhook",
+                  },
+                },
+                **webhook_fields,
+                webhook_suffix:
+                  Schemas::Webhook::WEBHOOK_SUFFIX_FIELD.merge(visible_if: { resume: "webhook" }),
+                limit_wait_time: {
+                  type: :boolean,
+                  default: false,
+                  visible_if: {
+                    resume: "webhook",
+                  },
+                },
+                timeout_amount: {
+                  type: :integer,
+                  required: false,
+                  visible_if: {
+                    resume: "webhook",
+                    limit_wait_time: true,
+                  },
+                },
+                timeout_unit: {
+                  type: :options,
+                  required: false,
+                  default: "hours",
+                  options: WAIT_UNITS,
+                  visible_if: {
+                    resume: "webhook",
+                    limit_wait_time: true,
+                  },
+                },
+              }
+            end,
+          output_schema:
+            lambda do
+              Schemas::Webhook::OUTPUT_FIELDS.transform_values do |type|
+                { type: type, visible_if: { resume: "webhook" } }
+              end
+            end,
+          capabilities: {
+            waits_for_resume: true,
+          },
+        )
 
         def execute(exec_ctx)
           resume_mode = @configuration.fetch("resume")

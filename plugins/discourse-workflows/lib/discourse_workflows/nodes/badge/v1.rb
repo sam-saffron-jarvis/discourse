@@ -6,24 +6,15 @@ module DiscourseWorkflows
       class V1 < NodeType
         OPERATIONS = %w[grant revoke].freeze
 
-        def self.identifier
-          "action:badge"
-        end
-
-        def self.icon
-          "certificate"
-        end
-
-        def self.color
-          "yellow"
-        end
-
-        def self.group
-          "discourse_actions"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:badge",
+          version: "1.0",
+          defaults: {
+            icon: "certificate",
+            color: "yellow",
+          },
+          group: "discourse_actions",
+          properties: {
             operation: {
               type: :options,
               required: true,
@@ -62,8 +53,14 @@ module DiscourseWorkflows
                 control: :user,
               },
             },
-          }
-        end
+          },
+          output_schema: {
+            user_id: :integer,
+            username: :string,
+            badge_id: :integer,
+            badge_name: :string,
+          },
+        )
 
         def self.load_options(source_key)
           case source_key
@@ -74,10 +71,6 @@ module DiscourseWorkflows
               .pluck(:id, :name)
               .map { |id, name| { id:, name: } }
           end
-        end
-
-        def self.output_schema
-          { user_id: :integer, username: :string, badge_id: :integer, badge_name: :string }
         end
 
         def execute(exec_ctx)

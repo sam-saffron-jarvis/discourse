@@ -36,9 +36,12 @@ export default class OutputContext extends Component {
 
   get needsExecutionDiscovery() {
     const nodeType = this.graph.nodeTypes.find(
-      (nt) => nt.identifier === this.args.node?.type
+      (nt) =>
+        nt.name === this.args.node?.type ||
+        nt.identifier === this.args.node?.type
     );
-    return !!nodeType?.property_schema?.output_fields?.ui?.hidden;
+    return !!(nodeType?.properties || nodeType?.property_schema)?.output_fields
+      ?.ui?.hidden;
   }
 
   <template>

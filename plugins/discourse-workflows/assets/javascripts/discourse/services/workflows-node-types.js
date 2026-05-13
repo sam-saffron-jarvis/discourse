@@ -34,7 +34,10 @@ export default class WorkflowsNodeTypes extends Service {
       this.credentialTypes = result.credential_types || [];
       this.expressionContext = result.expression_context || {};
       this.nodeTypeMap = new Map(
-        this.nodeTypes.map((nt) => [nt.identifier, nt])
+        this.nodeTypes.flatMap((nt) => [
+          [nt.name, nt],
+          [nt.identifier, nt],
+        ])
       );
       return this.nodeTypes;
     } catch (e) {

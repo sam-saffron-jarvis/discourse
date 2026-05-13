@@ -91,8 +91,10 @@ export default function resolveNodeFields(
     return formFields;
   }
 
-  const nodeType = nodeTypes.find((nt) => nt.identifier === node.type);
-  const schema = nodeType?.output_schema;
+  const nodeType = nodeTypes.find(
+    (nt) => nt.name === node.type || nt.identifier === node.type
+  );
+  const schema = nodeType?.outputSchema || nodeType?.output_schema;
   if (!schema || !Object.keys(schema).length) {
     return null;
   }

@@ -4,32 +4,14 @@ module DiscourseWorkflows
   module Nodes
     module FormTrigger
       class V1 < NodeType
-        def self.identifier
-          "trigger:form"
-        end
-
-        def self.icon
-          "rectangle-list"
-        end
-
-        def self.color
-          "teal"
-        end
-
-        def self.manually_triggerable?
-          true
-        end
-
-        def self.provides_current_user?
-          true
-        end
-
-        def self.output_schema
-          Schemas::FormFields::OUTPUT_SCHEMA
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "trigger:form",
+          version: "1.0",
+          defaults: {
+            icon: "rectangle-list",
+            color: "teal",
+          },
+          properties: {
             url_preview: {
               type: :custom,
               required: false,
@@ -65,8 +47,13 @@ module DiscourseWorkflows
                 expression: false,
               },
             },
-          }
-        end
+          },
+          output_schema: Schemas::FormFields::OUTPUT_SCHEMA,
+          capabilities: {
+            manually_triggerable: true,
+            provides_current_user: true,
+          },
+        )
 
         def initialize(form_data:, submitted_at:)
           super(configuration: {})

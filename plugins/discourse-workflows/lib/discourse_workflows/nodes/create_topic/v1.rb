@@ -4,24 +4,15 @@ module DiscourseWorkflows
   module Nodes
     module CreateTopic
       class V1 < NodeType
-        def self.identifier
-          "action:create_topic"
-        end
-
-        def self.icon
-          "plus"
-        end
-
-        def self.color
-          "light-green"
-        end
-
-        def self.group
-          "discourse_actions"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:create_topic",
+          version: "1.0",
+          defaults: {
+            icon: "plus",
+            color: "light-green",
+          },
+          group: "discourse_actions",
+          properties: {
             title: {
               type: :string,
               required: true,
@@ -55,12 +46,13 @@ module DiscourseWorkflows
                 control: :user,
               },
             },
-          }
-        end
-
-        def self.output_schema
-          { topic: Schemas::Topic.fields, post_id: :integer, post_number: :integer }
-        end
+          },
+          output_schema: {
+            topic: Schemas::Topic.fields,
+            post_id: :integer,
+            post_number: :integer,
+          },
+        )
 
         def execute(exec_ctx)
           items =

@@ -4,24 +4,15 @@ module DiscourseWorkflows
   module Nodes
     module CreatePost
       class V1 < NodeType
-        def self.identifier
-          "action:create_post"
-        end
-
-        def self.icon
-          "reply"
-        end
-
-        def self.color
-          "teal"
-        end
-
-        def self.group
-          "discourse_actions"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:create_post",
+          version: "1.0",
+          defaults: {
+            icon: "reply",
+            color: "teal",
+          },
+          group: "discourse_actions",
+          properties: {
             topic_id: {
               type: :string,
               required: true,
@@ -45,12 +36,11 @@ module DiscourseWorkflows
                 control: :user,
               },
             },
-          }
-        end
-
-        def self.output_schema
-          { post: Schemas::Post.fields }
-        end
+          },
+          output_schema: {
+            post: Schemas::Post.fields,
+          },
+        )
 
         def execute(exec_ctx)
           items =

@@ -141,7 +141,10 @@ export default class WorkflowNode extends Component {
     if (!nodeType || typeof nodeType === "string") {
       return [];
     }
-    return getNodeIssues(this.data.configuration, nodeType.property_schema);
+    return getNodeIssues(
+      this.data.configuration,
+      nodeType.properties || nodeType.property_schema
+    );
   }
 
   <template>

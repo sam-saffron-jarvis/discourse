@@ -4,27 +4,18 @@ module DiscourseWorkflows
   module Nodes
     module If
       class V1 < NodeType
-        def self.identifier
-          "condition:if"
-        end
-
-        def self.icon
-          "arrows-split-up-and-left"
-        end
-
-        def self.color
-          "blue"
-        end
-
-        def self.outputs
-          [
+        description(
+          name: "condition:if",
+          version: "1.0",
+          defaults: {
+            icon: "arrows-split-up-and-left",
+            color: "blue",
+          },
+          outputs: [
             { key: "true", label_key: "discourse_workflows.branch.true" },
             { key: "false", label_key: "discourse_workflows.branch.false" },
-          ]
-        end
-
-        def self.property_schema
-          {
+          ],
+          properties: {
             combinator: {
               type: :options,
               options: %w[and or],
@@ -45,8 +36,8 @@ module DiscourseWorkflows
                 hidden: true,
               },
             },
-          }
-        end
+          },
+        )
 
         def execute(exec_ctx)
           exec_ctx.input_items.partition { |item| exec_ctx.get_parameter(:conditions, item) }

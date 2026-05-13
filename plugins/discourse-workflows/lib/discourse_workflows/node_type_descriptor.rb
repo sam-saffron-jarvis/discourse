@@ -47,15 +47,16 @@ module DiscourseWorkflows
     end
 
     def label_key
-      "#{DEFAULT_I18N_PREFIX}.nodes.#{identifier}"
+      description[:displayName] || description[:display_name_key] ||
+        "#{DEFAULT_I18N_PREFIX}.nodes.#{identifier}"
     end
 
     def description_key
-      "#{DEFAULT_I18N_PREFIX}.node_descriptions.#{identifier}"
+      description[:description_key] || "#{DEFAULT_I18N_PREFIX}.node_descriptions.#{identifier}"
     end
 
     def group
-      default_group
+      description[:group] || default_group
     end
 
     def palette_group
@@ -63,11 +64,11 @@ module DiscourseWorkflows
     end
 
     def property_i18n_prefix
-      DEFAULT_I18N_PREFIX
+      description[:property_i18n_prefix] || DEFAULT_I18N_PREFIX
     end
 
     def property_i18n_scope
-      identifier.split(":").last
+      description[:property_i18n_scope] || identifier.split(":").last
     end
 
     def operation_label_key(operation)
@@ -109,6 +110,7 @@ module DiscourseWorkflows
       {
         icon: icon,
         color: color,
+        defaults: description[:defaults],
         label_key: label_key,
         description_key: description_key,
         palette_group: palette_group,

@@ -4,24 +4,15 @@ module DiscourseWorkflows
   module Nodes
     module Sort
       class V1 < NodeType
-        def self.identifier
-          "action:sort"
-        end
-
-        def self.icon
-          "arrow-down-a-z"
-        end
-
-        def self.color
-          "yellow"
-        end
-
-        def self.group
-          "flow"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:sort",
+          version: "1.0",
+          defaults: {
+            icon: "arrow-down-a-z",
+            color: "yellow",
+          },
+          group: "flow",
+          properties: {
             type: {
               type: :options,
               required: true,
@@ -80,12 +71,8 @@ module DiscourseWorkflows
                 lang: :javascript,
               },
             },
-          }
-        end
-
-        def self.output_schema
-          {}
-        end
+          },
+        )
 
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }

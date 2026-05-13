@@ -8,20 +8,14 @@ module DiscourseWorkflows
 
         DEFAULT_STATUS_CODES = { "redirect" => 302, "json" => 200, "text" => 200, "no_data" => 204 }
 
-        def self.identifier
-          "action:respond_to_webhook"
-        end
-
-        def self.icon
-          "reply"
-        end
-
-        def self.color
-          "purple"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:respond_to_webhook",
+          version: "1.0",
+          defaults: {
+            icon: "reply",
+            color: "purple",
+          },
+          properties: {
             response_type: {
               type: :options,
               required: true,
@@ -78,19 +72,16 @@ module DiscourseWorkflows
                 },
               },
             },
-          }
-        end
-
-        def self.output_schema
-          {
+          },
+          output_schema: {
             response_type: :string,
             status_code: :integer,
             redirect_url: :string,
             allowed_redirect_domains: :array,
             response_body: :string,
             headers: :object,
-          }
-        end
+          },
+        )
 
         def execute(exec_ctx)
           items =

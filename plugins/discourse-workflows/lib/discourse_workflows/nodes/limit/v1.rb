@@ -4,24 +4,15 @@ module DiscourseWorkflows
   module Nodes
     module Limit
       class V1 < NodeType
-        def self.identifier
-          "action:limit"
-        end
-
-        def self.icon
-          "magnifying-glass-minus"
-        end
-
-        def self.color
-          "yellow"
-        end
-
-        def self.group
-          "flow"
-        end
-
-        def self.property_schema
-          {
+        description(
+          name: "action:limit",
+          version: "1.0",
+          defaults: {
+            icon: "magnifying-glass-minus",
+            color: "yellow",
+          },
+          group: "flow",
+          properties: {
             max_items: {
               type: :integer,
               required: false,
@@ -33,8 +24,8 @@ module DiscourseWorkflows
               options: %w[first last],
               default: "first",
             },
-          }
-        end
+          },
+        )
 
         def execute(exec_ctx)
           max = @configuration.fetch("max_items") { 10 }.to_i

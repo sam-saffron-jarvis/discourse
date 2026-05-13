@@ -3,43 +3,19 @@
 RSpec.describe DiscourseWorkflows::NodeTypeDescriptor do
   let(:trigger_class) do
     Class.new(DiscourseWorkflows::NodeType) do
-      def self.identifier
-        "trigger:test_event"
-      end
-
-      def self.icon
-        "bolt"
-      end
-
-      def self.color
-        "blue"
-      end
+      description(name: "trigger:test_event", defaults: { icon: "bolt", color: "blue" })
     end
   end
 
   let(:action_class) do
-    Class.new(DiscourseWorkflows::NodeType) do
-      def self.identifier
-        "action:do_thing"
-      end
-    end
+    Class.new(DiscourseWorkflows::NodeType) { description(name: "action:do_thing") }
   end
 
   let(:condition_class) do
-    Class.new(DiscourseWorkflows::NodeType) do
-      def self.identifier
-        "condition:check"
-      end
-    end
+    Class.new(DiscourseWorkflows::NodeType) { description(name: "condition:check") }
   end
 
-  let(:flow_class) do
-    Class.new(DiscourseWorkflows::NodeType) do
-      def self.identifier
-        "flow:wait"
-      end
-    end
-  end
+  let(:flow_class) { Class.new(DiscourseWorkflows::NodeType) { description(name: "flow:wait") } }
 
   describe "#kind" do
     it "extracts the prefix from the identifier" do
@@ -110,13 +86,15 @@ RSpec.describe DiscourseWorkflows::NodeTypeDescriptor do
     it "returns empty when operation has single option" do
       klass =
         Class.new(DiscourseWorkflows::NodeType) do
-          def self.identifier
-            "action:single_op"
-          end
-
-          def self.property_schema
-            { operation: { type: :options, options: %w[get] } }
-          end
+          description(
+            name: "action:single_op",
+            properties: {
+              operation: {
+                type: :options,
+                options: %w[get],
+              },
+            },
+          )
         end
 
       expect(klass.operations).to eq([])
@@ -125,13 +103,15 @@ RSpec.describe DiscourseWorkflows::NodeTypeDescriptor do
     it "returns labeled operations when multiple options exist" do
       klass =
         Class.new(DiscourseWorkflows::NodeType) do
-          def self.identifier
-            "action:multi_op"
-          end
-
-          def self.property_schema
-            { operation: { type: :options, options: %w[get insert delete] } }
-          end
+          description(
+            name: "action:multi_op",
+            properties: {
+              operation: {
+                type: :options,
+                options: %w[get insert delete],
+              },
+            },
+          )
         end
 
       ops = klass.operations
@@ -142,25 +122,24 @@ RSpec.describe DiscourseWorkflows::NodeTypeDescriptor do
 
   describe "#ports" do
     it "normalizes outputs into port definitions" do
-      expect(trigger_class.ports).to eq([{ key: "main", primary: true }])
+      expect(trigger_class.ports).to eq([{ key: "main", type: "main", index: 0, primary: true }])
     end
 
     it "handles multiple outputs for branching nodes" do
       klass =
         Class.new(DiscourseWorkflows::NodeType) do
-          def self.identifier
-            "condition:branch"
-          end
-
-          def self.outputs
-            [{ key: "true", label_key: "t" }, { key: "false", label_key: "f" }]
-          end
+          description(
+            name: "condition:branch",
+            outputs: [{ key: "true", label_key: "t" }, { key: "false", label_key: "f" }],
+          )
         end
 
       ports = klass.ports
       expect(ports.length).to eq(2)
-      expect(ports[0]).to eq({ key: "true", label_key: "t", primary: true })
-      expect(ports[1]).to eq({ key: "false", label_key: "f", primary: false })
+      expect(ports[0]).to eq({ key: "true", type: "main", index: 0, label_key: "t", primary: true })
+      expect(ports[1]).to eq(
+        { key: "false", type: "main", index: 1, label_key: "f", primary: false },
+      )
     end
   end
 
@@ -179,17 +158,13 @@ RSpec.describe DiscourseWorkflows::NodeTypeDescriptor do
     it "reflects branching and manually_triggerable" do
       klass =
         Class.new(DiscourseWorkflows::NodeType) do
-          def self.identifier
-            "trigger:manual"
-          end
-
-          def self.outputs
-            %w[true false]
-          end
-
-          def self.manually_triggerable?
-            true
-          end
+          description(
+            name: "trigger:manual",
+            outputs: %w[true false],
+            capabilities: {
+              manually_triggerable: true,
+            },
+          )
         end
 
       caps = klass.capabilities

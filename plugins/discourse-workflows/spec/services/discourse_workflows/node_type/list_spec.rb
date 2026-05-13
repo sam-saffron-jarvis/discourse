@@ -34,9 +34,20 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
 
       it "includes expected schema fields for each node type" do
         node_type = result[:node_types].find { |nt| nt[:identifier] == "action:create_post" }
-        expect(node_type).to include(:identifier, :kind, :property_schema)
+        expect(node_type).to include(
+          :displayName,
+          :name,
+          :version,
+          :defaults,
+          :inputs,
+          :outputs,
+          :properties,
+          :credentials,
+          :webhooks,
+        )
+        expect(node_type[:name]).to eq("action:create_post")
         expect(node_type[:kind]).to eq("action")
-        expect(node_type[:property_schema].keys).to contain_exactly(
+        expect(node_type[:properties].keys).to contain_exactly(
           :topic_id,
           :raw,
           :reply_to_post_number,
@@ -47,7 +58,7 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
       it "returns UI hints for schema-driven configurators" do
         node_type = result[:node_types].find { |nt| nt[:identifier] == "action:create_post" }
 
-        expect(node_type.dig(:property_schema, :raw, :ui)).to eq(control: :textarea)
+        expect(node_type.dig(:properties, :raw, :ui)).to eq(control: :textarea)
       end
 
       it "includes specialized property-engine controls in node schemas" do
@@ -57,22 +68,20 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
         condition = result[:node_types].find { |nt| nt[:identifier] == "condition:if" }
         webhook = result[:node_types].find { |nt| nt[:identifier] == "trigger:webhook" }
 
-        expect(award_badge.dig(:property_schema, :badge_id, :ui, :control)).to eq(:combo_box)
-        expect(code.dig(:property_schema, :code, :ui, :control)).to eq(:code)
-        expect(data_table.dig(:property_schema, :columns, :ui, :control)).to eq(:data_table_columns)
-        expect(data_table.dig(:property_schema, :sort_column, :ui, :control)).to eq(
+        expect(award_badge.dig(:properties, :badge_id, :ui, :control)).to eq(:combo_box)
+        expect(code.dig(:properties, :code, :ui, :control)).to eq(:code)
+        expect(data_table.dig(:properties, :columns, :ui, :control)).to eq(:data_table_columns)
+        expect(data_table.dig(:properties, :sort_column, :ui, :control)).to eq(
           :data_table_column_select,
         )
-        expect(condition.dig(:property_schema, :conditions, :ui, :control)).to eq(
-          :condition_builder,
-        )
-        expect(webhook.dig(:property_schema, :url_preview, :ui, :control)).to eq(:url_preview)
+        expect(condition.dig(:properties, :conditions, :ui, :control)).to eq(:condition_builder)
+        expect(webhook.dig(:properties, :url_preview, :ui, :control)).to eq(:url_preview)
       end
 
       it "declares options_source for dynamic combo box fields" do
         award_badge = result[:node_types].find { |nt| nt[:identifier] == "action:badge" }
 
-        expect(award_badge.dig(:property_schema, :badge_id, :options_source)).to eq("badges")
+        expect(award_badge.dig(:properties, :badge_id, :options_source)).to eq("badges")
         expect(award_badge).not_to have_key(:metadata)
       end
 
@@ -115,8 +124,20 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
         )
         expect(condition[:ports]).to eq(
           [
-            { key: "true", primary: true, label_key: "discourse_workflows.branch.true" },
-            { key: "false", primary: false, label_key: "discourse_workflows.branch.false" },
+            {
+              key: "true",
+              type: "main",
+              index: 0,
+              primary: true,
+              label_key: "discourse_workflows.branch.true",
+            },
+            {
+              key: "false",
+              type: "main",
+              index: 1,
+              primary: false,
+              label_key: "discourse_workflows.branch.false",
+            },
           ],
         )
       end
@@ -164,21 +185,11 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
     it "includes unavailable node types with available: false" do
       unavailable_class =
         Class.new(DiscourseWorkflows::NodeType) do
-          def self.identifier
-            "action:unavailable_palette_test"
-          end
-
-          def self.name
-            "DiscourseWorkflows::Nodes::UnavailablePaletteTest"
-          end
-
-          def self.available?
-            false
-          end
-
-          def self.unavailable_reason_key
-            "discourse_workflows.node_unavailable.test_reason"
-          end
+          description(
+            name: "action:unavailable_palette_test",
+            available: false,
+            unavailable_reason_key: "discourse_workflows.node_unavailable.test_reason",
+          )
         end
 
       DiscoursePluginRegistry.register_discourse_workflows_node(

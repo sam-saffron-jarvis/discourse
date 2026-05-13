@@ -4,29 +4,20 @@ module DiscourseWorkflows
   module Nodes
     module PostCreated
       class V1 < NodeType
-        def self.identifier
-          "trigger:post_created"
-        end
-
-        def self.icon
-          "comment"
-        end
-
-        def self.color
-          "indigo"
-        end
-
-        def self.group
-          "discourse_triggers"
-        end
-
-        def self.event_name
-          :post_created
-        end
-
-        def self.output_schema
-          { post: Schemas::Post.fields, topic: Schemas::Topic.fields }
-        end
+        description(
+          name: "trigger:post_created",
+          version: "1.0",
+          defaults: {
+            icon: "comment",
+            color: "indigo",
+          },
+          group: "discourse_triggers",
+          output_schema: {
+            post: Schemas::Post.fields,
+            topic: Schemas::Topic.fields,
+          },
+          events: [:post_created],
+        )
 
         def initialize(post, opts = nil, *)
           super(configuration: {})
