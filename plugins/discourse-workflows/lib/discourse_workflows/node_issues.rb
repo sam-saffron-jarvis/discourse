@@ -29,11 +29,62 @@ module DiscourseWorkflows
             issues << { path: path, name: name_s, message: "required" }
           end
 
-          if field[:type] == :collection && value.is_a?(Array)
-            item_schema = (field[:item_schema] || {}).merge(field[:extra_item_schema] || {})
-            value.each_with_index do |item, index|
+          case field[:type]
+          when :collection
+            if value.is_a?(Hash)
+              field[:options].to_a.each do |option|
+                option_name = option[:name].to_s
+                next unless value.key?(option_name)
+
+                option_schema = { option_name => option.except(:name, :display_name) }
+                issues.concat(walk(option_schema, value, path))
+              end
+            elsif value.is_a?(Array)
+              item_schema = (field[:item_schema] || {}).merge(field[:extra_item_schema] || {})
+              value.each_with_index do |item, index|
+                item_hash = item.is_a?(Hash) ? item.deep_stringify_keys : {}
+                issues.concat(walk(item_schema, item_hash, "#{path}.#{index}"))
+              end
+            end
+          when :fixed_collection
+            field[:options].to_a.each do |group|
+              group_name = group[:name].to_s
+              rows = CollectionParameters.rows_from_value(value, group: group_name)
+              if field[:required] && !blank_value?(value) && blank_value?(rows)
+                issues << { path: "#{path}.#{group_name}", name: name_s, message: "required" }
+              end
+
+              rows.each_with_index do |item, index|
+                item_hash = item.is_a?(Hash) ? item.deep_stringify_keys : {}
+                issues.concat(
+                  walk(group[:values] || {}, item_hash, "#{path}.#{group_name}.#{index}"),
+                )
+              end
+            end
+          when :assignment_collection
+            assignments = CollectionParameters.rows_from_value(value, group: "assignments")
+            if field[:required] && !blank_value?(value) && blank_value?(assignments)
+              issues << { path: "#{path}.assignments", name: name_s, message: "required" }
+            end
+
+            assignment_schema = {
+              name: {
+                type: :string,
+                required: true,
+              },
+              type: {
+                type: :options,
+                required: true,
+              },
+              value: {
+                type: :string,
+                required: true,
+              },
+            }
+
+            assignments.each_with_index do |item, index|
               item_hash = item.is_a?(Hash) ? item.deep_stringify_keys : {}
-              issues.concat(walk(item_schema, item_hash, "#{path}.#{index}"))
+              issues.concat(walk(assignment_schema, item_hash, "#{path}.assignments.#{index}"))
             end
           end
         end
@@ -52,6 +103,9 @@ module DiscourseWorkflows
       def field_visible?(field, config)
         ui = field[:ui] || {}
         return false if ui[:hidden]
+        display_options = field[:display_options] || {}
+        return false if display_options[:show] && !matches_rules?(display_options[:show], config)
+        return false if display_options[:hide] && matches_rules?(display_options[:hide], config)
         return false if field[:visible_if] && !matches_rules?(field[:visible_if], config)
         return false if field[:visible_unless] && matches_rules?(field[:visible_unless], config)
         true

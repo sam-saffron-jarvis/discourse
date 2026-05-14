@@ -6,8 +6,10 @@ import {
   findNodeType,
   normalizeSchema,
 } from "../../../lib/workflows/property-engine";
+import AssignmentCollection from "./assignment-collection";
 import Collection from "./collection";
 import Field from "./field";
+import FixedCollection from "./fixed-collection";
 
 export default class PropertyEngineConfigurator extends Component {
   get allFields() {
@@ -34,6 +36,26 @@ export default class PropertyEngineConfigurator extends Component {
       {{#if (fieldVisible field @configuration)}}
         {{#if (eq (fieldControl field) "collection")}}
           <Collection
+            @form={{@form}}
+            @formApi={{@formApi}}
+            @fieldName={{field.name}}
+            @nodeDefinition={{this.nodeDefinition}}
+            @nodeType={{this.nodeType}}
+            @nodeTypes={{@nodeTypes}}
+            @schema={{field}}
+          />
+        {{else if (eq (fieldControl field) "fixed_collection")}}
+          <FixedCollection
+            @form={{@form}}
+            @formApi={{@formApi}}
+            @fieldName={{field.name}}
+            @nodeDefinition={{this.nodeDefinition}}
+            @nodeType={{this.nodeType}}
+            @nodeTypes={{@nodeTypes}}
+            @schema={{field}}
+          />
+        {{else if (eq (fieldControl field) "assignment_collection")}}
+          <AssignmentCollection
             @form={{@form}}
             @formApi={{@formApi}}
             @fieldName={{field.name}}

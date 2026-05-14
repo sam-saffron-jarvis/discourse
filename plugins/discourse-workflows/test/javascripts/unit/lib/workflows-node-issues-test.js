@@ -33,34 +33,48 @@ module("Unit | lib | discourse-workflows | node-issues", function () {
 
   test("treats empty arrays as missing when required", function (assert) {
     const schema = {
-      form_fields: { type: "collection", required: true, item_schema: {} },
+      form_fields: {
+        type: "fixed_collection",
+        required: true,
+        options: [{ name: "values", values: {} }],
+      },
     };
 
-    assert.strictEqual(getNodeIssues({ form_fields: [] }, schema).length, 1);
+    assert.strictEqual(
+      getNodeIssues({ form_fields: { values: [] } }, schema).length,
+      1
+    );
   });
 
-  test("walks collection items and reports missing nested required fields", function (assert) {
+  test("walks fixed collection items and reports missing nested required fields", function (assert) {
     const schema = {
       form_fields: {
-        type: "collection",
-        item_schema: {
-          field_label: { type: "string", required: true },
-          field_type: { type: "options", required: true },
-        },
+        type: "fixed_collection",
+        options: [
+          {
+            name: "values",
+            values: {
+              field_label: { type: "string", required: true },
+              field_type: { type: "options", required: true },
+            },
+          },
+        ],
       },
     };
     const config = {
-      form_fields: [
-        { field_label: "", field_type: "text" },
-        { field_label: "Name", field_type: "" },
-      ],
+      form_fields: {
+        values: [
+          { field_label: "", field_type: "text" },
+          { field_label: "Name", field_type: "" },
+        ],
+      },
     };
 
     const issues = getNodeIssues(config, schema);
 
     assert.deepEqual(issues.map((i) => i.path).sort(), [
-      "form_fields.0.field_label",
-      "form_fields.1.field_type",
+      "form_fields.values.0.field_label",
+      "form_fields.values.1.field_type",
     ]);
   });
 
@@ -82,28 +96,31 @@ module("Unit | lib | discourse-workflows | node-issues", function () {
     );
   });
 
-  test("merges extra_item_schema when walking collections", function (assert) {
+  test("walks optional fields inside fixed collections", function (assert) {
     const schema = {
       form_fields: {
-        type: "collection",
-        item_schema: {
-          field_label: { type: "string", required: true },
-        },
-        extra_item_schema: {
-          field_name: { type: "string" },
-          custom_required: { type: "string", required: true },
-        },
+        type: "fixed_collection",
+        options: [
+          {
+            name: "values",
+            values: {
+              field_label: { type: "string", required: true },
+              field_name: { type: "string" },
+              custom_required: { type: "string", required: true },
+            },
+          },
+        ],
       },
     };
 
     const issues = getNodeIssues(
-      { form_fields: [{ field_label: "Name" }] },
+      { form_fields: { values: [{ field_label: "Name" }] } },
       schema
     );
 
     assert.deepEqual(
       issues.map((i) => i.path),
-      ["form_fields.0.custom_required"]
+      ["form_fields.values.0.custom_required"]
     );
   });
 

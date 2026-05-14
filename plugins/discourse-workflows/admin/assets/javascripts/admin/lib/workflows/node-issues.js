@@ -1,4 +1,10 @@
-import { fieldVisible } from "./property-engine";
+import {
+  fieldType,
+  fieldVisible,
+  fixedCollectionGroups,
+  fixedCollectionRows,
+  normalizePropertyOptions,
+} from "./property-engine";
 
 function isBlank(value) {
   if (value === undefined || value === null) {
@@ -18,6 +24,10 @@ function itemSchemaFor(field) {
     ...(field.item_schema || {}),
     ...(field.extra_item_schema || {}),
   };
+}
+
+function fixedCollectionItemSchema(group) {
+  return group.values || {};
 }
 
 function applyDefaults(schema, config) {
@@ -45,7 +55,64 @@ function walk(schema, config, pathPrefix, issues) {
       issues.push({ path, name, message: "required" });
     }
 
-    if (field.type === "collection" && Array.isArray(value)) {
+    const type = fieldType(field);
+
+    if (
+      type === "collection" &&
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
+      normalizePropertyOptions(field.options || []).forEach((option) => {
+        if (Object.hasOwn(value, option.name)) {
+          walk({ [option.name]: option }, value, path, issues);
+        }
+      });
+    } else if (
+      type === "fixed_collection" &&
+      value &&
+      typeof value === "object"
+    ) {
+      fixedCollectionGroups(field).forEach((group) => {
+        const rows = fixedCollectionRows(value, group.name);
+        if (field.required && isBlank(rows)) {
+          issues.push({
+            path: `${path}.${group.name}`,
+            name,
+            message: "required",
+          });
+        }
+        rows.forEach((item, index) => {
+          walk(
+            fixedCollectionItemSchema(group),
+            item || {},
+            `${path}.${group.name}.${index}`,
+            issues
+          );
+        });
+      });
+    } else if (
+      type === "assignment_collection" &&
+      value &&
+      typeof value === "object"
+    ) {
+      const assignments = fixedCollectionRows(value, "assignments");
+      if (field.required && isBlank(assignments)) {
+        issues.push({ path: `${path}.assignments`, name, message: "required" });
+      }
+      assignments.forEach((item, index) => {
+        walk(
+          {
+            name: { type: "string", required: true },
+            type: { type: "options", required: true },
+            value: { type: "string", required: true },
+          },
+          item || {},
+          `${path}.assignments.${index}`,
+          issues
+        );
+      });
+    } else if (field.type === "collection" && Array.isArray(value)) {
       const inner = itemSchemaFor(field);
       value.forEach((item, index) => {
         walk(inner, item || {}, `${path}.${index}`, issues);

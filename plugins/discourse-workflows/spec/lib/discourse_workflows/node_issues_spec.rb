@@ -11,7 +11,7 @@ RSpec.describe DiscourseWorkflows::NodeIssues do
       type: "action:test",
       type_version: "1.0",
       name: "Test",
-      configuration: configuration,
+      parameters: configuration,
     )
   end
 
@@ -33,31 +33,41 @@ RSpec.describe DiscourseWorkflows::NodeIssues do
     expect(issues.size).to eq(1)
   end
 
-  it "walks collection items and reports missing nested required fields" do
+  it "walks fixed collection items and reports missing nested required fields" do
     schema = {
       form_fields: {
-        type: :collection,
-        item_schema: {
-          field_label: {
-            type: :string,
-            required: true,
+        type: :fixed_collection,
+        options: [
+          {
+            name: "values",
+            values: {
+              field_label: {
+                type: :string,
+                required: true,
+              },
+              field_type: {
+                type: :options,
+                required: true,
+              },
+            },
           },
-          field_type: {
-            type: :options,
-            required: true,
-          },
-        },
+        ],
       },
     }
     config = {
-      "form_fields" => [
-        { "field_label" => "", "field_type" => "text" },
-        { "field_label" => "Name", "field_type" => "" },
-      ],
+      "form_fields" => {
+        "values" => [
+          { "field_label" => "", "field_type" => "text" },
+          { "field_label" => "Name", "field_type" => "" },
+        ],
+      },
     }
 
     paths = described_class.for_node(node(config), node_type_class(schema)).map { |i| i[:path] }
-    expect(paths).to contain_exactly("form_fields.0.field_label", "form_fields.1.field_type")
+    expect(paths).to contain_exactly(
+      "form_fields.values.0.field_label",
+      "form_fields.values.1.field_type",
+    )
   end
 
   it "respects visible_if — hidden required fields are not reported" do
@@ -87,26 +97,29 @@ RSpec.describe DiscourseWorkflows::NodeIssues do
     expect(described_class.for_node(node({}), node_type_class(schema))).to be_empty
   end
 
-  it "merges extra_item_schema when walking collections" do
+  it "walks optional fields inside fixed collections" do
     schema = {
       form_fields: {
-        type: :collection,
-        item_schema: {
-          field_label: {
-            type: :string,
-            required: true,
+        type: :fixed_collection,
+        options: [
+          {
+            name: "values",
+            values: {
+              field_label: {
+                type: :string,
+                required: true,
+              },
+              custom_required: {
+                type: :string,
+                required: true,
+              },
+            },
           },
-        },
-        extra_item_schema: {
-          custom_required: {
-            type: :string,
-            required: true,
-          },
-        },
+        ],
       },
     }
-    config = { "form_fields" => [{ "field_label" => "Name" }] }
+    config = { "form_fields" => { "values" => [{ "field_label" => "Name" }] } }
     paths = described_class.for_node(node(config), node_type_class(schema)).map { |i| i[:path] }
-    expect(paths).to eq(["form_fields.0.custom_required"])
+    expect(paths).to eq(["form_fields.values.0.custom_required"])
   end
 end

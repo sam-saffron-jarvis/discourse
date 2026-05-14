@@ -42,30 +42,46 @@ module DiscourseWorkflows
               },
             },
             headers: {
-              type: :collection,
-              item_schema: {
-                key: {
-                  type: :string,
-                  required: true,
-                },
-                value: {
-                  type: :string,
-                  required: true,
-                },
+              type: :fixed_collection,
+              type_options: {
+                multiple_values: true,
               },
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    key: {
+                      type: :string,
+                      required: true,
+                    },
+                    value: {
+                      type: :string,
+                      required: true,
+                    },
+                  },
+                },
+              ],
             },
             query_params: {
-              type: :collection,
-              item_schema: {
-                key: {
-                  type: :string,
-                  required: true,
-                },
-                value: {
-                  type: :string,
-                  required: true,
-                },
+              type: :fixed_collection,
+              type_options: {
+                multiple_values: true,
               },
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    key: {
+                      type: :string,
+                      required: true,
+                    },
+                    value: {
+                      type: :string,
+                      required: true,
+                    },
+                  },
+                },
+              ],
             },
             content_type: {
               type: :options,
@@ -99,22 +115,30 @@ module DiscourseWorkflows
               },
             },
             body_form: {
-              type: :collection,
+              type: :fixed_collection,
               required: false,
               visible_if: {
                 method: %w[POST PUT PATCH],
                 content_type: "form_urlencoded",
               },
-              item_schema: {
-                key: {
-                  type: :string,
-                  required: true,
-                },
-                value: {
-                  type: :string,
-                  required: true,
-                },
+              type_options: {
+                multiple_values: true,
               },
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    key: {
+                      type: :string,
+                      required: true,
+                    },
+                    value: {
+                      type: :string,
+                      required: true,
+                    },
+                  },
+                },
+              ],
             },
             raw_content_type: {
               type: :string,

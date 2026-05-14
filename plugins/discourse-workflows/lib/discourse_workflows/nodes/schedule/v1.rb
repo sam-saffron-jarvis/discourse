@@ -16,152 +16,160 @@ module DiscourseWorkflows
           },
           properties: {
             rules: {
-              type: :collection,
+              type: :fixed_collection,
               required: true,
               max_items: ScheduleRule::MAX_RULES_PER_NODE,
+              type_options: {
+                multiple_values: true,
+              },
               ui: {
                 flat: true,
               },
-              item_schema: {
-                interval: {
-                  type: :options,
-                  required: true,
-                  default: "days",
-                  options: %w[seconds minutes hours days weeks months cron],
-                  ui: {
-                    expression: false,
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    interval: {
+                      type: :options,
+                      required: true,
+                      default: "days",
+                      options: %w[seconds minutes hours days weeks months cron],
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    seconds_between_triggers: {
+                      type: :integer,
+                      default: 30,
+                      min: 1,
+                      max: 59,
+                      visible_if: {
+                        interval: %w[seconds],
+                      },
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    minutes_between_triggers: {
+                      type: :integer,
+                      default: 5,
+                      min: 1,
+                      max: 59,
+                      visible_if: {
+                        interval: %w[minutes],
+                      },
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    hours_between_triggers: {
+                      type: :integer,
+                      default: 1,
+                      min: 1,
+                      max: 23,
+                      visible_if: {
+                        interval: %w[hours],
+                      },
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    days_between_triggers: {
+                      type: :integer,
+                      default: 1,
+                      min: 1,
+                      max: 31,
+                      visible_if: {
+                        interval: %w[days],
+                      },
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    weeks_between_triggers: {
+                      type: :integer,
+                      default: 1,
+                      min: 1,
+                      max: 52,
+                      visible_if: {
+                        interval: %w[weeks],
+                      },
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    months_between_triggers: {
+                      type: :integer,
+                      default: 1,
+                      min: 1,
+                      max: 12,
+                      visible_if: {
+                        interval: %w[months],
+                      },
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    trigger_on_weekdays: {
+                      type: :multi_options,
+                      default: [0],
+                      options: WEEKDAY_OPTIONS,
+                      visible_if: {
+                        interval: %w[weeks],
+                      },
+                      control_options: {
+                        option_format: :weekday,
+                      },
+                    },
+                    trigger_at_day_of_month: {
+                      type: :integer,
+                      default: 1,
+                      min: 1,
+                      max: 31,
+                      visible_if: {
+                        interval: %w[months],
+                      },
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    trigger_at_hour: {
+                      type: :options,
+                      default: 0,
+                      options: HOUR_OPTIONS,
+                      visible_if: {
+                        interval: %w[days weeks months],
+                      },
+                      ui: {
+                        control: :combo_box,
+                        expression: false,
+                      },
+                      control_options: {
+                        option_format: :hour_of_day,
+                      },
+                    },
+                    trigger_at_minute: {
+                      type: :integer,
+                      default: 0,
+                      min: 0,
+                      max: 59,
+                      visible_if: {
+                        interval: %w[hours days weeks months],
+                      },
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    cron: {
+                      type: :string,
+                      validate: :cron,
+                      visible_if: {
+                        interval: %w[cron],
+                      },
+                    },
                   },
                 },
-                seconds_between_triggers: {
-                  type: :integer,
-                  default: 30,
-                  min: 1,
-                  max: 59,
-                  visible_if: {
-                    interval: %w[seconds],
-                  },
-                  ui: {
-                    expression: false,
-                  },
-                },
-                minutes_between_triggers: {
-                  type: :integer,
-                  default: 5,
-                  min: 1,
-                  max: 59,
-                  visible_if: {
-                    interval: %w[minutes],
-                  },
-                  ui: {
-                    expression: false,
-                  },
-                },
-                hours_between_triggers: {
-                  type: :integer,
-                  default: 1,
-                  min: 1,
-                  max: 23,
-                  visible_if: {
-                    interval: %w[hours],
-                  },
-                  ui: {
-                    expression: false,
-                  },
-                },
-                days_between_triggers: {
-                  type: :integer,
-                  default: 1,
-                  min: 1,
-                  max: 31,
-                  visible_if: {
-                    interval: %w[days],
-                  },
-                  ui: {
-                    expression: false,
-                  },
-                },
-                weeks_between_triggers: {
-                  type: :integer,
-                  default: 1,
-                  min: 1,
-                  max: 52,
-                  visible_if: {
-                    interval: %w[weeks],
-                  },
-                  ui: {
-                    expression: false,
-                  },
-                },
-                months_between_triggers: {
-                  type: :integer,
-                  default: 1,
-                  min: 1,
-                  max: 12,
-                  visible_if: {
-                    interval: %w[months],
-                  },
-                  ui: {
-                    expression: false,
-                  },
-                },
-                trigger_on_weekdays: {
-                  type: :multi_options,
-                  default: [0],
-                  options: WEEKDAY_OPTIONS,
-                  visible_if: {
-                    interval: %w[weeks],
-                  },
-                  control_options: {
-                    option_format: :weekday,
-                  },
-                },
-                trigger_at_day_of_month: {
-                  type: :integer,
-                  default: 1,
-                  min: 1,
-                  max: 31,
-                  visible_if: {
-                    interval: %w[months],
-                  },
-                  ui: {
-                    expression: false,
-                  },
-                },
-                trigger_at_hour: {
-                  type: :options,
-                  default: 0,
-                  options: HOUR_OPTIONS,
-                  visible_if: {
-                    interval: %w[days weeks months],
-                  },
-                  ui: {
-                    control: :combo_box,
-                    expression: false,
-                  },
-                  control_options: {
-                    option_format: :hour_of_day,
-                  },
-                },
-                trigger_at_minute: {
-                  type: :integer,
-                  default: 0,
-                  min: 0,
-                  max: 59,
-                  visible_if: {
-                    interval: %w[hours days weeks months],
-                  },
-                  ui: {
-                    expression: false,
-                  },
-                },
-                cron: {
-                  type: :string,
-                  validate: :cron,
-                  visible_if: {
-                    interval: %w[cron],
-                  },
-                },
-              },
+              ],
             },
           },
           output_schema: {

@@ -13,25 +13,25 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "set-fields-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"item_id": "1"}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"item_id": "1"}',
                  }
           g.node "loop-1", "flow:loop_over_items", configuration: { "batch_size" => 1 }
           g.node "process-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => true,
-                   "json" => '{"processed": "true"}',
+                   "mode" => "raw",
+                   "include_other_fields" => true,
+                   "json_output" => '{"processed": "true"}',
                  }
           g.node "done-1",
                  "action:set_fields",
                  name: "Final Step",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => true,
-                   "json" => '{"completed": "true"}',
+                   "mode" => "raw",
+                   "include_other_fields" => true,
+                   "json_output" => '{"completed": "true"}',
                  }
           g.chain "trigger-1", "set-fields-1", "loop-1"
           g.connect "loop-1", "process-1", output: "loop"
@@ -59,16 +59,20 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "process-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => true,
-                   "json" => '{"tagged": "yes"}',
+                   "mode" => "raw",
+                   "include_other_fields" => true,
+                   "json_output" => '{"tagged": "yes"}',
                  }
           g.node "done-1",
                  "action:set_fields",
                  name: "Done",
                  configuration: {
-                   "include_input" => true,
-                   "fields" => [{ "key" => "final", "value" => "true", "type" => "string" }],
+                   "include_other_fields" => true,
+                   "assignments" => {
+                     "assignments" => [
+                       { "name" => "final", "value" => "true", "type" => "string" },
+                     ],
+                   },
                  }
           g.chain "trigger-1", "loop-1"
           g.connect "loop-1", "process-1", output: "loop"
@@ -95,16 +99,16 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "left-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"id": 1, "left": "yes"}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"id": 1, "left": "yes"}',
                  }
           g.node "right-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"topic_id": 1, "right": "yes"}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"topic_id": 1, "right": "yes"}',
                  }
           g.node "merge-1",
                  "flow:merge",
@@ -143,23 +147,23 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "first-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"source": "first"}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"source": "first"}',
                  }
           g.node "second-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"source": "second"}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"source": "second"}',
                  }
           g.node "third-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"source": "third"}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"source": "third"}',
                  }
           g.node "merge-1",
                  "flow:merge",
@@ -197,16 +201,16 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "first-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"source": "first"}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"source": "first"}',
                  }
           g.node "second-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"source": "second"}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"source": "second"}',
                  }
           g.node "merge-1",
                  "flow:merge",

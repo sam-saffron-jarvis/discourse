@@ -38,7 +38,8 @@ module DiscourseWorkflows
         end
 
         def append_query_params(uri, query_params)
-          return unless query_params.is_a?(Array) && query_params.any?
+          query_params = CollectionParameters.rows_from_value(query_params)
+          return if query_params.blank?
 
           existing = URI.decode_www_form(uri.query || "")
           query_params.each { |qp| existing << [qp["key"], qp["value"]] if qp["key"].present? }

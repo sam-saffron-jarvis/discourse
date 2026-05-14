@@ -18,7 +18,7 @@ module DiscourseWorkflows
     end
 
     def initialize(node, submitted_params)
-      @fields = Array(NodeData.parameters(node)["form_fields"])
+      @fields = CollectionParameters.rows(NodeData.parameters(node), "form_fields")
       @submitted = (submitted_params || {}).with_indifferent_access
     end
 

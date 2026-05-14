@@ -271,9 +271,13 @@ RSpec.describe DiscourseWorkflows::Executor do
                  "action:set_fields",
                  name: "Rejected",
                  configuration: {
-                   "include_input" => true,
+                   "include_other_fields" => true,
                    "mode" => "manual",
-                   "fields" => [{ "key" => "rejected", "value" => "yes", "type" => "string" }],
+                   "assignments" => {
+                     "assignments" => [
+                       { "name" => "rejected", "value" => "yes", "type" => "string" },
+                     ],
+                   },
                  }
           g.chain "trigger-1", "filter-1"
           g.connect "filter-1", "action-false", output: "false"

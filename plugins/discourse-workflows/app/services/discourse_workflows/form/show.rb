@@ -122,7 +122,8 @@ module DiscourseWorkflows
             context: exec_context,
             user: guardian.user,
           ),
-        form_fields: Workflow.resolve_field_keys(parameters["form_fields"] || []),
+        form_fields:
+          Workflow.resolve_field_keys(CollectionParameters.rows(parameters, "form_fields")),
         response_mode: "on_received",
         has_downstream_form:
           waiting_execution.node_has_reachable_downstream_of_type?(form_node["id"], "action:form"),
@@ -157,7 +158,7 @@ module DiscourseWorkflows
         uuid: params.uuid,
         form_title: config["form_title"],
         form_description: config["form_description"],
-        form_fields: Workflow.resolve_field_keys(config["form_fields"] || []),
+        form_fields: Workflow.resolve_field_keys(CollectionParameters.rows(config, "form_fields")),
         response_mode: config["response_mode"] || "on_received",
         has_downstream_form:
           workflow.node_has_reachable_downstream_of_type?(

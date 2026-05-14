@@ -11,7 +11,9 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
             configuration: {
               "operation" => "raw",
               "query" => "SELECT username FROM users WHERE id = :user_id",
-              "params" => [{ "name" => "user_id", "value" => user.id.to_s }],
+              "params" => {
+                "values" => [{ "name" => "user_id", "value" => user.id.to_s }],
+              },
             },
           )
 
@@ -45,7 +47,9 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
             configuration: {
               "operation" => "raw",
               "query" => "SELECT username FROM users WHERE id = :user_id",
-              "params" => [{ "name" => "user_id", "value" => user.id.to_s }],
+              "params" => {
+                "values" => [{ "name" => "user_id", "value" => user.id.to_s }],
+              },
             },
           )
 

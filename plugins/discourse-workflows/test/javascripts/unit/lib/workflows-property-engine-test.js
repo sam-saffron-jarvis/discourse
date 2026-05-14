@@ -93,7 +93,11 @@ module("Unit | Utility | workflows property engine", function () {
   test("uses defaults and sensible fallbacks for field values", function (assert) {
     assert.strictEqual(fieldValue({ type: "string", default: "GET" }), "GET");
     assert.false(fieldValue({ type: "boolean" }));
-    assert.deepEqual(fieldValue({ type: "collection" }), []);
+    assert.deepEqual(fieldValue({ type: "collection" }), {});
+    assert.deepEqual(fieldValue({ type: "fixed_collection" }), {});
+    assert.deepEqual(fieldValue({ type: "assignment_collection" }), {
+      assignments: [],
+    });
     assert.strictEqual(fieldValue({ type: "string" }, "custom"), "custom");
   });
 
@@ -117,6 +121,16 @@ module("Unit | Utility | workflows property engine", function () {
       fieldControl({ type: "multi_options" }),
       "multi_combo_box"
     );
+    assert.strictEqual(fieldControl({ type: "collection" }), "collection");
+    assert.strictEqual(
+      fieldControl({ type: "fixed_collection" }),
+      "fixed_collection"
+    );
+    assert.strictEqual(
+      fieldControl({ type: "assignment_collection" }),
+      "assignment_collection"
+    );
+    assert.strictEqual(fieldControl({ type: "fixedCollection" }), "input");
     assert.strictEqual(fieldFormat({ type: "string" }), "full");
     assert.strictEqual(
       fieldFormat({ type: "string", ui: { format: "small" } }),

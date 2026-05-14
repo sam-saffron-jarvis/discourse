@@ -34,9 +34,36 @@ RSpec.describe DiscourseWorkflows::PropertySchemaValidator do
       expect(errors.first).to include("unknown type: :age")
     end
 
+    it "rejects camelCase field type aliases" do
+      expect(validate(rows: { type: :fixedCollection }).first).to include(
+        "unknown type: :fixedCollection",
+      )
+      expect(validate(rows: { type: :assignmentCollection }).first).to include(
+        "unknown type: :assignmentCollection",
+      )
+    end
+
     it "flags unknown top-level field keys" do
       errors = validate(title: { type: :string, expression: true })
       expect(errors.first).to include("[:expression]")
+    end
+
+    it "rejects camelCase field option aliases" do
+      errors =
+        validate(
+          title: {
+            type: :string,
+            displayOptions: {
+              show: {
+              },
+            },
+            typeOptions: {
+              maxAllowedFields: 1,
+            },
+          },
+        )
+      expect(errors.first).to include(":displayOptions")
+      expect(errors.first).to include(":typeOptions")
     end
 
     it "flags unknown ui keys" do
@@ -74,6 +101,21 @@ RSpec.describe DiscourseWorkflows::PropertySchemaValidator do
       expect(errors.first).to include(":rowz")
     end
 
+    it "rejects camelCase type_options keys" do
+      errors =
+        validate(
+          rows: {
+            type: :fixed_collection,
+            options: [{ name: "values", values: { cell: { type: :string } } }],
+            type_options: {
+              maxAllowedFields: 3,
+            },
+          },
+        )
+      expect(errors.first).to include("rows.type_options")
+      expect(errors.first).to include(":maxAllowedFields")
+    end
+
     it "requires :options for option-typed fields" do
       errors = validate(choice: { type: :options, default: "a" })
       expect(errors.first).to include("type :options requires")
@@ -89,29 +131,28 @@ RSpec.describe DiscourseWorkflows::PropertySchemaValidator do
       expect(errors.first).to include(":credential_type")
     end
 
-    it "lets extra_item_schema reference item_schema siblings" do
+    it "lets fixed collection fields reference siblings in the same group" do
       schema = {
         rows: {
-          type: :collection,
-          item_schema: {
-            kind: {
-              type: :options,
-              options: %w[text dropdown],
-            },
-          },
-          extra_item_schema: {
-            choices: {
-              type: :collection,
-              visible_if: {
-                kind: %w[dropdown],
-              },
-              item_schema: {
-                label: {
-                  type: :string,
+          type: :fixed_collection,
+          options: [
+            {
+              name: "values",
+              values: {
+                kind: {
+                  type: :options,
+                  options: %w[text dropdown],
+                },
+                choices: {
+                  type: :fixed_collection,
+                  visible_if: {
+                    kind: %w[dropdown],
+                  },
+                  options: [{ name: "values", values: { label: { type: :string } } }],
                 },
               },
             },
-          },
+          ],
         },
       }
       expect(validate(schema)).to eq([])
@@ -122,14 +163,56 @@ RSpec.describe DiscourseWorkflows::PropertySchemaValidator do
       expect(errors.first).to include(":multi_options")
     end
 
-    it "requires :item_schema for collection fields" do
+    it "requires :options for collection fields" do
       errors = validate(rows: { type: :collection })
-      expect(errors.first).to include(":collection requires :item_schema")
+      expect(errors.first).to include("type :collection requires")
     end
 
-    it "recurses into item_schema" do
-      errors = validate(rows: { type: :collection, item_schema: { cell: { type: :unknown } } })
-      expect(errors.first).to include("rows.item_schema.cell.type")
+    it "requires :options for fixed collection fields" do
+      errors = validate(rows: { type: :fixed_collection })
+      expect(errors.first).to include("type :fixed_collection requires")
+    end
+
+    it "recurses into fixed collection group values" do
+      errors =
+        validate(
+          rows: {
+            type: :fixed_collection,
+            options: [{ name: "values", values: { cell: { type: :unknown } } }],
+          },
+        )
+      expect(errors.first).to include("rows.options.0.values.cell.type")
+    end
+
+    it "recurses into collection option bag fields" do
+      errors = validate(rows: { type: :collection, options: [{ name: "enabled", type: :unknown }] })
+      expect(errors.first).to include("rows.options.enabled.type")
+    end
+
+    it "rejects camelCase display names in collection definitions" do
+      option_errors =
+        validate(
+          rows: {
+            type: :collection,
+            options: [{ name: "enabled", type: :boolean, displayName: "Enabled" }],
+          },
+        )
+
+      expect(option_errors.first).to include("rows.options.enabled")
+      expect(option_errors.first).to include(":displayName")
+
+      group_errors =
+        validate(
+          rows: {
+            type: :fixed_collection,
+            options: [
+              { name: "values", displayName: "Values", values: { cell: { type: :string } } },
+            ],
+          },
+        )
+
+      expect(group_errors.first).to include("rows.options.0")
+      expect(group_errors.first).to include(":displayName")
     end
 
     it "flags visible_if references to nonexistent sibling fields" do
@@ -179,19 +262,24 @@ RSpec.describe DiscourseWorkflows::PropertySchemaValidator do
     it "scopes sibling checks to the current schema level" do
       schema = {
         rules: {
-          type: :collection,
-          item_schema: {
-            kind: {
-              type: :options,
-              options: %w[a b],
-            },
-            detail: {
-              type: :string,
-              visible_if: {
-                kind: %w[a],
+          type: :fixed_collection,
+          options: [
+            {
+              name: "values",
+              values: {
+                kind: {
+                  type: :options,
+                  options: %w[a b],
+                },
+                detail: {
+                  type: :string,
+                  visible_if: {
+                    kind: %w[a],
+                  },
+                },
               },
             },
-          },
+          ],
         },
       }
       expect(validate(schema)).to eq([])

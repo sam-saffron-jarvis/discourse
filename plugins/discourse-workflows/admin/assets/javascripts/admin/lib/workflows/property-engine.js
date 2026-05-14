@@ -26,6 +26,10 @@ function fallbackValueForType(type) {
     case "boolean":
       return false;
     case "collection":
+    case "fixed_collection":
+      return {};
+    case "assignment_collection":
+      return { assignments: [] };
     case "array":
     case "multi_options":
       return [];
@@ -153,6 +157,50 @@ export function normalizeOptions(options = []) {
   );
 }
 
+export function normalizePropertyOptions(options = []) {
+  return options.map((option) => ({
+    name: option.name || option.value,
+    ...option,
+  }));
+}
+
+export function fixedCollectionGroups(schema = {}) {
+  return normalizePropertyOptions(schema.options || []);
+}
+
+export function fixedCollectionGroup(schema = {}) {
+  return fixedCollectionGroups(schema)[0] || { name: "values", values: {} };
+}
+
+export function fixedCollectionGroupMultiple(group = {}, schema = {}) {
+  const type_options = schema.type_options || {};
+  if (Object.hasOwn(type_options, "multiple_values")) {
+    return Boolean(type_options.multiple_values);
+  }
+  if (Object.hasOwn(group, "multiple_values")) {
+    return Boolean(group.multiple_values);
+  }
+  return true;
+}
+
+export function fixedCollectionRows(value, groupName = "values") {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  const groupValue = value?.[groupName];
+  if (Array.isArray(groupValue)) {
+    return groupValue;
+  }
+  if (groupValue && typeof groupValue === "object") {
+    return [groupValue];
+  }
+  return [];
+}
+
+export function fieldType(schema = {}) {
+  return schema.type || "string";
+}
+
 export function propertyOptionLabel(nodeDefinitionOrType, fieldName, option) {
   const base = i18nBase(nodeDefinitionOrType);
 
@@ -165,16 +213,14 @@ export function propertyOptionLabel(nodeDefinitionOrType, fieldName, option) {
   );
 }
 
-export function fieldType(schema = {}) {
-  return schema.type || "string";
-}
-
 const TYPE_TO_CONTROL = {
   boolean: "boolean",
   icon: "icon",
   options: "select",
   multi_options: "multi_combo_box",
   collection: "collection",
+  fixed_collection: "fixed_collection",
+  assignment_collection: "assignment_collection",
   notice: "notice",
   credential: "credential",
 };
@@ -192,7 +238,9 @@ export function fieldSupportsExpression(schema = {}) {
     return Boolean(ui.expression);
   }
 
-  return ["string", "integer", "icon"].includes(fieldType(schema));
+  return ["string", "integer", "number", "float", "icon"].includes(
+    fieldType(schema)
+  );
 }
 
 export function fieldShowDescription(schema = {}) {
@@ -212,7 +260,9 @@ export function fieldInputType(schema = {}) {
   if (ui.control === "password") {
     return "password";
   }
-  return fieldType(schema) === "integer" ? "number" : "text";
+  return ["integer", "float", "number"].includes(fieldType(schema))
+    ? "number"
+    : "text";
 }
 
 export function fieldValue(schema = {}, value) {
@@ -230,12 +280,30 @@ export function emptyCollectionItem(itemSchema = {}, extraItemSchema = {}) {
   );
 }
 
+export function emptyFixedCollectionItem(group = {}) {
+  return emptyCollectionItem(group.values || {});
+}
+
 export function isExpression(value) {
   return typeof value === "string" && value.startsWith("=");
 }
 
 export function fieldVisible(schema = {}, configuration = {}) {
   if (fieldUi(schema).hidden) {
+    return false;
+  }
+
+  const display_options = schema.display_options;
+  if (
+    display_options?.show &&
+    !matchesRules(display_options.show, configuration)
+  ) {
+    return false;
+  }
+  if (
+    display_options?.hide &&
+    matchesRules(display_options.hide, configuration)
+  ) {
     return false;
   }
 

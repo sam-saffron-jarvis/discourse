@@ -13,9 +13,9 @@ RSpec.describe DiscourseWorkflows::Executor do
                  "action:set_fields",
                  name: "After",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => true,
-                   "json" => '{"done": "true"}',
+                   "mode" => "raw",
+                   "include_other_fields" => true,
+                   "json_output" => '{"done": "true"}',
                  }
           g.chain "trigger-1", "wait-1", "after-1"
         end
@@ -134,9 +134,9 @@ RSpec.describe DiscourseWorkflows::Executor do
                  "action:set_fields",
                  name: "After",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => true,
-                   "json" => '{"done": "true"}',
+                   "mode" => "raw",
+                   "include_other_fields" => true,
+                   "json_output" => '{"done": "true"}',
                  }
           g.chain "trigger-1", "wait-1", "after-1"
         end

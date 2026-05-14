@@ -47,28 +47,36 @@ module DiscourseWorkflows
               },
             },
             fields_to_match: {
-              type: :collection,
+              type: :fixed_collection,
               required: false,
               visible_if: {
                 mode: "combine",
                 combine_by: "matching_fields",
               },
-              item_schema: {
-                field_1: {
-                  type: :string,
-                  required: true,
-                  ui: {
-                    expression: false,
-                  },
-                },
-                field_2: {
-                  type: :string,
-                  required: true,
-                  ui: {
-                    expression: false,
-                  },
-                },
+              type_options: {
+                multiple_values: true,
               },
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    field_1: {
+                      type: :string,
+                      required: true,
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    field_2: {
+                      type: :string,
+                      required: true,
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                  },
+                },
+              ],
             },
             join_mode: {
               type: :options,
@@ -286,16 +294,19 @@ module DiscourseWorkflows
         end
 
         def match_fields(config)
-          Array(config["fields_to_match"]).map.with_index do |field, index|
-            field_1 = field["field_1"].presence || field["field1"].presence
-            field_2 = field["field_2"].presence || field["field2"].presence || field_1
-            if field_1.blank? || field_2.blank?
-              raise DiscourseWorkflows::NodeError,
-                    "Fields to match pair #{index + 1} must define both input fields"
-            end
+          CollectionParameters
+            .rows(config, "fields_to_match")
+            .map
+            .with_index do |field, index|
+              field_1 = field["field_1"].presence || field["field1"].presence
+              field_2 = field["field_2"].presence || field["field2"].presence || field_1
+              if field_1.blank? || field_2.blank?
+                raise DiscourseWorkflows::NodeError,
+                      "Fields to match pair #{index + 1} must define both input fields"
+              end
 
-            [field_1, field_2]
-          end
+              [field_1, field_2]
+            end
         end
 
         def validate_match_fields!(input_1, input_2, fields)

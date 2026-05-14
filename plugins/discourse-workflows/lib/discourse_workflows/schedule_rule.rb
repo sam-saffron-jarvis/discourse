@@ -211,7 +211,7 @@ module DiscourseWorkflows
     end
 
     def rules_from_configuration(configuration)
-      Array.wrap(configuration.with_indifferent_access[:rules])
+      CollectionParameters.rows(configuration.with_indifferent_access, :rules)
     end
 
     def valid_rule?(rule)

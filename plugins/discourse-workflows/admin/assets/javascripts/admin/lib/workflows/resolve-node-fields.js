@@ -1,4 +1,4 @@
-import { fieldVisible } from "./property-engine";
+import { fieldVisible, fixedCollectionRows } from "./property-engine";
 
 function formFieldKey(field) {
   if (field.field_name) {
@@ -35,7 +35,8 @@ const FORM_FIELD_TYPE_MAP = {
 };
 
 function fieldsFromFormFields(formFields) {
-  if (!formFields?.length) {
+  const rows = fixedCollectionRows(formFields);
+  if (!rows.length) {
     return null;
   }
   return [
@@ -43,7 +44,7 @@ function fieldsFromFormFields(formFields) {
       key: "form_data",
       type: "object",
       id: "form_data",
-      children: formFields.map((f) =>
+      children: rows.map((f) =>
         toFieldEntry(
           formFieldKey(f),
           FORM_FIELD_TYPE_MAP[f.field_type] || "string"
@@ -52,6 +53,27 @@ function fieldsFromFormFields(formFields) {
     },
     toFieldEntry("submitted_at", "string"),
   ];
+}
+
+function fieldsFromAssignments(assignments) {
+  const rows = fixedCollectionRows(assignments, "assignments");
+  if (!rows.length) {
+    return null;
+  }
+
+  return rows
+    .filter((assignment) => assignment.name)
+    .map((assignment) =>
+      toFieldEntry(
+        assignment.name,
+        {
+          number: "number",
+          boolean: "boolean",
+          array: "array",
+          object: "object",
+        }[assignment.type] || "string"
+      )
+    );
 }
 
 export function fieldsFromSchema(outputSchema) {
@@ -80,7 +102,8 @@ export default function resolveNodeFields(
 ) {
   const config = configuration || node.configuration || {};
   const result =
-    fieldsFromConfig(config.output_fields) || fieldsFromConfig(config.fields);
+    fieldsFromConfig(config.output_fields) ||
+    fieldsFromAssignments(config.assignments);
 
   if (result) {
     return result;

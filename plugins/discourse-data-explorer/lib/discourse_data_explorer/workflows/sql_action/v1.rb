@@ -69,21 +69,29 @@ module DiscourseDataExplorer
               },
             },
             params: {
-              type: :collection,
+              type: :fixed_collection,
               required: false,
               visible_if: {
                 operation: "raw",
               },
-              item_schema: {
-                name: {
-                  type: :string,
-                  required: true,
-                },
-                value: {
-                  type: :string,
-                  required: true,
-                },
+              type_options: {
+                multiple_values: true,
               },
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    name: {
+                      type: :string,
+                      required: true,
+                    },
+                    value: {
+                      type: :string,
+                      required: true,
+                    },
+                  },
+                },
+              ],
             },
             query: {
               type: :string,
@@ -186,9 +194,11 @@ module DiscourseDataExplorer
           end
 
           req_params = {}
-          Array(config["params"]).each do |param|
-            req_params[param["name"].to_sym] = param["value"] if param["name"].present?
-          end
+          DiscourseWorkflows::CollectionParameters
+            .rows(config, "params")
+            .each do |param|
+              req_params[param["name"].to_sym] = param["value"] if param["name"].present?
+            end
 
           if req_params.present?
             sql =

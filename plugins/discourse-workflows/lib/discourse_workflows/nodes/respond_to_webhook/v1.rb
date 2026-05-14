@@ -38,16 +38,14 @@ module DiscourseWorkflows
               },
             },
             allowed_redirect_domains: {
-              type: :collection,
+              type: :fixed_collection,
               visible_if: {
                 response_type: %w[redirect],
               },
-              item_schema: {
-                domain: {
-                  type: :string,
-                  required: true,
-                },
+              type_options: {
+                multiple_values: true,
               },
+              options: [{ name: "values", values: { domain: { type: :string, required: true } } }],
             },
             response_body: {
               type: :string,
@@ -60,17 +58,25 @@ module DiscourseWorkflows
               },
             },
             headers: {
-              type: :collection,
-              item_schema: {
-                key: {
-                  type: :string,
-                  required: true,
-                },
-                value: {
-                  type: :string,
-                  required: true,
-                },
+              type: :fixed_collection,
+              type_options: {
+                multiple_values: true,
               },
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    key: {
+                      type: :string,
+                      required: true,
+                    },
+                    value: {
+                      type: :string,
+                      required: true,
+                    },
+                  },
+                },
+              ],
             },
           },
           output_schema: {
@@ -112,9 +118,9 @@ module DiscourseWorkflows
         end
 
         def normalize_allowed_redirect_domains(domains_config)
-          Array(domains_config).filter_map do |domain_config|
-            domain_config["domain"].to_s.strip.downcase.presence
-          end
+          CollectionParameters
+            .rows_from_value(domains_config)
+            .filter_map { |domain_config| domain_config["domain"].to_s.strip.downcase.presence }
         end
       end
     end

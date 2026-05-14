@@ -20,6 +20,7 @@ import {
   nodeTypeStyle,
 } from "../../../lib/workflows/node-types";
 import {
+  fieldType,
   findNodeType,
   getPropertySchema,
 } from "../../../lib/workflows/property-engine";
@@ -98,7 +99,14 @@ export default class NodeConfigurator extends Component {
       }
       if (fs.default !== undefined) {
         config[key] = fs.default;
-      } else if (fs.type === "collection" || fs.type === "array") {
+      } else if (
+        fieldType(fs) === "collection" ||
+        fieldType(fs) === "fixed_collection"
+      ) {
+        config[key] = {};
+      } else if (fieldType(fs) === "assignment_collection") {
+        config[key] = { assignments: [] };
+      } else if (fieldType(fs) === "array") {
         config[key] = [];
       }
     }

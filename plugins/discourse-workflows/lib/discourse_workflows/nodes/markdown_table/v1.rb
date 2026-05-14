@@ -25,24 +25,32 @@ module DiscourseWorkflows
               },
             },
             columns: {
-              type: :collection,
+              type: :fixed_collection,
               required: false,
               visible_if: {
                 mapping_mode: "manual",
               },
-              item_schema: {
-                header: {
-                  type: :string,
-                  required: true,
-                  ui: {
-                    expression: false,
+              type_options: {
+                multiple_values: true,
+              },
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    header: {
+                      type: :string,
+                      required: true,
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    value: {
+                      type: :string,
+                      required: true,
+                    },
                   },
                 },
-                value: {
-                  type: :string,
-                  required: true,
-                },
-              },
+              ],
             },
           },
           output_schema: {
@@ -55,7 +63,7 @@ module DiscourseWorkflows
             if @configuration["mapping_mode"] == "auto"
               auto_table(exec_ctx.input_items)
             else
-              configured_table(exec_ctx, @configuration.fetch("columns") { [] })
+              configured_table(exec_ctx, CollectionParameters.rows(@configuration, "columns"))
             end
 
           return [[wrap({ "markdown" => "" })]] if headers.empty?
@@ -79,7 +87,7 @@ module DiscourseWorkflows
           headers = columns.map { |c| c["header"].to_s }
           rows =
             exec_ctx.input_items.map do |item|
-              resolved = exec_ctx.get_parameters(item).fetch("columns") { [] }
+              resolved = CollectionParameters.rows(exec_ctx.get_parameters(item), "columns")
               resolved.map { |c| format_cell(c["value"]) }
             end
           [headers, rows]

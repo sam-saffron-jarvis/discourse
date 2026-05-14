@@ -464,8 +464,8 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
             g.node "set-fields-1",
                    "action:set_fields",
                    configuration: {
-                     "mode" => "json",
-                     "json" => '{"result": "done"}',
+                     "mode" => "raw",
+                     "json_output" => '{"result": "done"}',
                    }
           end
         setup_webhook_with_response(

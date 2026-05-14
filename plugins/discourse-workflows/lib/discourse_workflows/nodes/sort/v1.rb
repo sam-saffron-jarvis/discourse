@@ -20,26 +20,34 @@ module DiscourseWorkflows
               default: "simple",
             },
             sort_fields: {
-              type: :collection,
+              type: :fixed_collection,
               required: false,
               visible_if: {
                 type: "simple",
               },
-              item_schema: {
-                field_name: {
-                  type: :string,
-                  required: true,
-                  ui: {
-                    expression: false,
+              type_options: {
+                multiple_values: true,
+              },
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    field_name: {
+                      type: :string,
+                      required: true,
+                      ui: {
+                        expression: false,
+                      },
+                    },
+                    order: {
+                      type: :options,
+                      required: true,
+                      options: %w[ascending descending],
+                      default: "ascending",
+                    },
                   },
                 },
-                order: {
-                  type: :options,
-                  required: true,
-                  options: %w[ascending descending],
-                  default: "ascending",
-                },
-              },
+              ],
             },
             code: {
               type: :string,
@@ -96,7 +104,7 @@ module DiscourseWorkflows
         private
 
         def sort_simple(input_items, config)
-          sort_fields = config["sort_fields"]
+          sort_fields = CollectionParameters.rows(config, "sort_fields")
           return input_items.dup if sort_fields.blank?
 
           input_items.sort { |a, b| compare_items(a, b, sort_fields) }

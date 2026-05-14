@@ -37,27 +37,38 @@ module DiscourseWorkflows
           type: :string,
         },
         options: {
-          type: :collection,
+          type: :fixed_collection,
           visible_if: {
             field_type: %w[dropdown],
           },
-          item_schema: {
-            value: {
-              type: :string,
-              required: true,
-              ui: {
-                show_label: false,
+          type_options: {
+            multiple_values: true,
+          },
+          options: [
+            {
+              name: "values",
+              values: {
+                value: {
+                  type: :string,
+                  required: true,
+                  ui: {
+                    show_label: false,
+                  },
+                },
               },
             },
-          },
+          ],
         },
       }.freeze
 
       SCHEMA = {
-        type: :collection,
+        type: :fixed_collection,
         required: true,
-        item_schema: ITEM_SCHEMA,
-        extra_item_schema: EXTRA_ITEM_SCHEMA,
+        type_options: {
+          multiple_values: true,
+          hide_optional_fields: true,
+        },
+        options: [{ name: "values", values: ITEM_SCHEMA.merge(EXTRA_ITEM_SCHEMA) }],
       }.freeze
 
       OUTPUT_SCHEMA = { form_data: :object, submitted_at: :string }.freeze

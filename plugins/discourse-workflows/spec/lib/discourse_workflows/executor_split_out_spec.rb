@@ -11,9 +11,9 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "set-fields-1",
                  "action:set_fields",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"urls": ["a.png", "b.png", "c.png"]}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"urls": ["a.png", "b.png", "c.png"]}',
                  }
           g.node "split-1",
                  "action:split_out",
@@ -31,9 +31,9 @@ RSpec.describe DiscourseWorkflows::Executor do
                  "action:set_fields",
                  name: "Done",
                  configuration: {
-                   "mode" => "json",
-                   "include_input" => false,
-                   "json" => '{"done": true}',
+                   "mode" => "raw",
+                   "include_other_fields" => false,
+                   "json_output" => '{"done": true}',
                  }
           g.chain "trigger-1", "set-fields-1", "split-1", "loop-1"
           g.connect "loop-1", "code-1", output: "loop"

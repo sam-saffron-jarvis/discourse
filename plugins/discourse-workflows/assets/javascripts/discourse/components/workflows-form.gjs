@@ -18,7 +18,9 @@ function controlType(field) {
 }
 
 function parseDropdownOptions(field) {
-  const options = field.options || [];
+  const options = Array.isArray(field.options)
+    ? field.options
+    : field.options?.values || [];
   return options
     .filter((opt) => opt.value)
     .map((opt) => ({ id: opt.value, name: opt.value }));

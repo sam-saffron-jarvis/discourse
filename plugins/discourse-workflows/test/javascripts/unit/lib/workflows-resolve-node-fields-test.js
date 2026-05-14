@@ -51,6 +51,49 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
     assert.strictEqual(fields[0].key, "response");
   });
 
+  test("resolveNodeFields uses assignment collection fields", function (assert) {
+    const node = {
+      type: "action:set_fields",
+      configuration: {
+        assignments: {
+          assignments: [
+            { name: "score", type: "number" },
+            { name: "profile", type: "object" },
+          ],
+        },
+      },
+    };
+
+    const fields = resolveNodeFields(node, []);
+
+    assert.deepEqual(fields, [
+      { key: "score", type: "number", id: "score" },
+      { key: "profile", type: "object", id: "profile" },
+    ]);
+  });
+
+  test("resolveNodeFields reads form fields from fixed collections", function (assert) {
+    const node = {
+      type: "trigger:form",
+      configuration: {
+        form_fields: {
+          values: [
+            { field_label: "Name", field_type: "text" },
+            { field_label: "Age", field_type: "number" },
+          ],
+        },
+      },
+    };
+
+    const fields = resolveNodeFields(node, []);
+    const formData = fields.find((field) => field.key === "form_data");
+
+    assert.deepEqual(formData.children, [
+      { key: "name", type: "string", id: "name" },
+      { key: "age", type: "integer", id: "age" },
+    ]);
+  });
+
   test("resolveNodeFields falls back to output_schema from node type", function (assert) {
     const node = { type: "trigger:webhook", configuration: {} };
     const nodeTypes = [

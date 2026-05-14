@@ -55,22 +55,27 @@ module("Integration | Component | workflows property engine", function (hooks) {
   test("preserves focus for collection fields while typing", async function (assert) {
     this.setProperties({
       configuration: {
-        headers: [{ key: "", value: "" }],
+        headers: { values: [{ key: "", value: "" }] },
       },
       nodeType: "action:http_request",
       schema: {
         headers: {
-          type: "collection",
-          item_schema: {
-            key: {
-              type: "string",
-              required: true,
+          type: "fixed_collection",
+          options: [
+            {
+              name: "values",
+              values: {
+                key: {
+                  type: "string",
+                  required: true,
+                },
+                value: {
+                  type: "string",
+                  required: true,
+                },
+              },
             },
-            value: {
-              type: "string",
-              required: true,
-            },
-          },
+          ],
         },
       },
     });

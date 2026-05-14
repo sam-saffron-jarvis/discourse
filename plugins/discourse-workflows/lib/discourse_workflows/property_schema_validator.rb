@@ -5,10 +5,14 @@ module DiscourseWorkflows
     KNOWN_FIELD_TYPES = %i[
       string
       integer
+      number
+      float
       boolean
       options
       multi_options
       collection
+      fixed_collection
+      assignment_collection
       array
       object
       notice
@@ -29,13 +33,27 @@ module DiscourseWorkflows
       validate
       visible_if
       visible_unless
+      display_options
       item_schema
       extra_item_schema
+      type_options
       ui
       control_options
     ].freeze
 
     TYPE_SPECIFIC_KEYS = { credential: %i[credential_type] }.freeze
+
+    KNOWN_TYPE_OPTIONS_KEYS = %i[
+      add_optional_field_button_text
+      assignment_types
+      hide_optional_fields
+      item_title
+      layout
+      max_allowed_fields
+      min_required_fields
+      multiple_values
+      sortable
+    ].freeze
 
     KNOWN_UI_KEYS = %i[
       control
@@ -86,7 +104,7 @@ module DiscourseWorkflows
       user_or_group
     ].freeze
 
-    TYPES_REQUIRING_OPTIONS = %i[options multi_options].freeze
+    TYPES_REQUIRING_OPTIONS = %i[options multi_options collection fixed_collection].freeze
 
     Error =
       Struct.new(:node, :path, :message) do
@@ -149,9 +167,11 @@ module DiscourseWorkflows
       validate_field_type(field, path: field_path)
       validate_field_options(field, path: field_path)
       validate_ui(field, path: field_path)
+      validate_type_options(field, path: field_path)
       validate_control_options(field, path: field_path)
       validate_visibility(field, path: field_path, sibling_keys: sibling_keys)
       validate_item_schemas(field, path: field_path)
+      validate_collection_options(field, path: field_path)
     end
 
     def validate_field_keys(field, path:)
@@ -162,9 +182,8 @@ module DiscourseWorkflows
     end
 
     def validate_field_type(field, path:)
-      type = field[:type]
-      return if KNOWN_FIELD_TYPES.include?(type)
-      add_error(path + [:type], "unknown type: #{type.inspect}")
+      return if KNOWN_FIELD_TYPES.include?(field[:type])
+      add_error(path + [:type], "unknown type: #{field[:type].inspect}")
     end
 
     def validate_field_options(field, path:)
@@ -194,6 +213,22 @@ module DiscourseWorkflows
       control = ui[:control]
       return if control.nil? || KNOWN_UI_CONTROLS.include?(control)
       add_error(ui_path + [:control], "unknown control: #{control.inspect}")
+    end
+
+    def validate_type_options(field, path:)
+      options = field[:type_options]
+      return if options.nil?
+
+      options_path = path + [:type_options]
+
+      unless options.is_a?(Hash)
+        add_error(options_path, "expected Hash, got #{options.class}")
+        return
+      end
+
+      unknown = options.keys - KNOWN_TYPE_OPTIONS_KEYS
+      return if unknown.empty?
+      add_error(options_path, "unknown type_options key(s): #{unknown.sort.inspect}")
     end
 
     def validate_control_options(field, path:)
@@ -231,12 +266,7 @@ module DiscourseWorkflows
     end
 
     def validate_item_schemas(field, path:)
-      type = field[:type]
       item_schema = field[:item_schema]
-
-      if type == :collection && item_schema.nil?
-        add_error(path, "type :collection requires :item_schema")
-      end
 
       validate_schema(item_schema, path: path + [:item_schema]) if item_schema.is_a?(Hash)
 
@@ -251,6 +281,63 @@ module DiscourseWorkflows
         path: path + [:extra_item_schema],
         siblings: extra_siblings,
       )
+    end
+
+    def validate_collection_options(field, path:)
+      case field[:type]
+      when :collection
+        validate_option_bag_options(field[:options], path: path + [:options])
+      when :fixed_collection
+        validate_fixed_collection_options(field[:options], path: path + [:options])
+      end
+    end
+
+    def validate_option_bag_options(options, path:)
+      return unless options.is_a?(Array)
+
+      siblings = options.filter_map { |option| option[:name]&.to_sym if option.is_a?(Hash) }
+      options.each_with_index do |option, index|
+        option_path = path + [index]
+        unless option.is_a?(Hash)
+          add_error(option_path, "expected option definition Hash, got #{option.class}")
+          next
+        end
+
+        name = option[:name]
+        if name.blank?
+          add_error(option_path, "collection option requires :name")
+          next
+        end
+
+        option_field = option.except(:name, :display_name)
+        validate_field(name.to_sym, option_field, path: path, sibling_keys: siblings)
+      end
+    end
+
+    def validate_fixed_collection_options(options, path:)
+      return unless options.is_a?(Array)
+
+      options.each_with_index do |group, index|
+        group_path = path + [index]
+        unless group.is_a?(Hash)
+          add_error(group_path, "expected fixed collection group Hash, got #{group.class}")
+          next
+        end
+
+        unknown = group.keys - %i[name display_name values]
+        if unknown.any?
+          add_error(group_path, "unknown fixed collection group key(s): #{unknown.sort.inspect}")
+        end
+
+        add_error(group_path, "fixed collection group requires :name") if group[:name].blank?
+        values = group[:values]
+        unless values.is_a?(Hash)
+          add_error(group_path + [:values], "expected Hash, got #{values.class}")
+          next
+        end
+
+        validate_schema(values, path: group_path + [:values])
+      end
     end
 
     def validate_schema_with_siblings(schema, path:, siblings:)

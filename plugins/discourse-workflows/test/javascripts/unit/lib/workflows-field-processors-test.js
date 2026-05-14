@@ -75,7 +75,9 @@ module("Unit | lib | discourse-workflows | field-processors", function () {
       clientId: "trigger",
       type: "trigger:form",
       configuration: {
-        form_fields: [{ field_label: "Name", field_type: "text" }],
+        form_fields: {
+          values: [{ field_label: "Name", field_type: "text" }],
+        },
       },
     };
     const action = {
@@ -108,10 +110,12 @@ module("Unit | lib | discourse-workflows | field-processors", function () {
       clientId: "trigger",
       type: "trigger:form",
       configuration: {
-        form_fields: [
-          { field_label: "Email", field_type: "text" },
-          { field_label: "Phone", field_type: "text" },
-        ],
+        form_fields: {
+          values: [
+            { field_label: "Email", field_type: "text" },
+            { field_label: "Phone", field_type: "text" },
+          ],
+        },
       },
     };
     const action = {
