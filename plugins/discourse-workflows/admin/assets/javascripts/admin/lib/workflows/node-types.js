@@ -45,8 +45,33 @@ function resolveNodeType(nodeTypeOrIdentifier) {
   return { name: nodeTypeOrIdentifier, identifier: nodeTypeOrIdentifier };
 }
 
-export function nodeTypeUi(nodeTypeOrIdentifier) {
+export function resolveNodeTypeVersion(
+  nodeTypeOrIdentifier,
+  typeVersion = null
+) {
   const nodeType = resolveNodeType(nodeTypeOrIdentifier);
+
+  if (!nodeType || typeof nodeTypeOrIdentifier === "string") {
+    return nodeType;
+  }
+
+  if (typeVersion && nodeType.versions?.[typeVersion]) {
+    return nodeType.versions[typeVersion];
+  }
+
+  if (nodeType.latest) {
+    return nodeType.latest;
+  }
+
+  if (nodeType.latest_version && nodeType.versions?.[nodeType.latest_version]) {
+    return nodeType.versions[nodeType.latest_version];
+  }
+
+  return nodeType;
+}
+
+export function nodeTypeUi(nodeTypeOrIdentifier, typeVersion = null) {
+  const nodeType = resolveNodeTypeVersion(nodeTypeOrIdentifier, typeVersion);
 
   return {
     ...(nodeType?.defaults || {}),
@@ -55,63 +80,77 @@ export function nodeTypeUi(nodeTypeOrIdentifier) {
   };
 }
 
-export function nodeTypeIcon(nodeTypeOrIdentifier) {
-  return nodeTypeUi(nodeTypeOrIdentifier).icon || null;
+export function nodeTypeIcon(nodeTypeOrIdentifier, typeVersion = null) {
+  return nodeTypeUi(nodeTypeOrIdentifier, typeVersion).icon || null;
 }
 
-export function nodeTypeColor(nodeTypeOrIdentifier) {
-  const color = nodeTypeUi(nodeTypeOrIdentifier).color;
+export function nodeTypeColor(nodeTypeOrIdentifier, typeVersion = null) {
+  const color = nodeTypeUi(nodeTypeOrIdentifier, typeVersion).color;
   return color ? `var(--workflow-node-color-${color})` : DEFAULT_COLOR;
 }
 
-export function nodeTypeStyle(nodeTypeOrIdentifier) {
-  return trustHTML(`--node-icon-color: ${nodeTypeColor(nodeTypeOrIdentifier)}`);
+export function nodeTypeStyle(nodeTypeOrIdentifier, typeVersion = null) {
+  return trustHTML(
+    `--node-icon-color: ${nodeTypeColor(nodeTypeOrIdentifier, typeVersion)}`
+  );
 }
 
-export function nodeTypePaletteGroup(nodeTypeOrIdentifier) {
-  return nodeTypeUi(nodeTypeOrIdentifier).palette_group || null;
+export function nodeTypePaletteGroup(nodeTypeOrIdentifier, typeVersion = null) {
+  return nodeTypeUi(nodeTypeOrIdentifier, typeVersion).palette_group || null;
 }
 
-export function nodeTypePropertyI18nPrefix(nodeTypeOrIdentifier) {
+export function nodeTypePropertyI18nPrefix(
+  nodeTypeOrIdentifier,
+  typeVersion = null
+) {
   return (
-    nodeTypeUi(nodeTypeOrIdentifier).property_i18n_prefix ||
-    resolveNodeType(nodeTypeOrIdentifier)?.metadata?.i18n_prefix ||
+    nodeTypeUi(nodeTypeOrIdentifier, typeVersion).property_i18n_prefix ||
+    resolveNodeTypeVersion(nodeTypeOrIdentifier, typeVersion)?.metadata
+      ?.i18n_prefix ||
     DEFAULT_PROPERTY_I18N_PREFIX
   );
 }
 
-export function nodeTypePropertyI18nScope(nodeTypeOrIdentifier) {
+export function nodeTypePropertyI18nScope(
+  nodeTypeOrIdentifier,
+  typeVersion = null
+) {
   return (
-    nodeTypeUi(nodeTypeOrIdentifier).property_i18n_scope ||
+    nodeTypeUi(nodeTypeOrIdentifier, typeVersion).property_i18n_scope ||
     nodeTypeIdentifier(nodeTypeOrIdentifier)?.split(":").pop() ||
     ""
   );
 }
 
-export function nodeTypeLabelKey(nodeTypeOrIdentifier) {
+export function nodeTypeLabelKey(nodeTypeOrIdentifier, typeVersion = null) {
   return (
-    nodeTypeUi(nodeTypeOrIdentifier).label_key ||
+    nodeTypeUi(nodeTypeOrIdentifier, typeVersion).label_key ||
     `discourse_workflows.nodes.${nodeTypeIdentifier(nodeTypeOrIdentifier)}`
   );
 }
 
-export function nodeTypeLabel(nodeTypeOrIdentifier) {
-  return i18n(nodeTypeLabelKey(nodeTypeOrIdentifier));
+export function nodeTypeLabel(nodeTypeOrIdentifier, typeVersion = null) {
+  return i18n(nodeTypeLabelKey(nodeTypeOrIdentifier, typeVersion));
 }
 
-export function nodeTypeDescriptionKey(nodeTypeOrIdentifier) {
+export function nodeTypeDescriptionKey(
+  nodeTypeOrIdentifier,
+  typeVersion = null
+) {
   return (
-    nodeTypeUi(nodeTypeOrIdentifier).description_key ||
+    nodeTypeUi(nodeTypeOrIdentifier, typeVersion).description_key ||
     `discourse_workflows.node_descriptions.${nodeTypeIdentifier(nodeTypeOrIdentifier)}`
   );
 }
 
-export function nodeTypeDescription(nodeTypeOrIdentifier) {
-  return translatedOrNull(nodeTypeDescriptionKey(nodeTypeOrIdentifier));
+export function nodeTypeDescription(nodeTypeOrIdentifier, typeVersion = null) {
+  return translatedOrNull(
+    nodeTypeDescriptionKey(nodeTypeOrIdentifier, typeVersion)
+  );
 }
 
-export function nodeTypeCapabilities(nodeTypeOrIdentifier) {
-  const nodeType = resolveNodeType(nodeTypeOrIdentifier);
+export function nodeTypeCapabilities(nodeTypeOrIdentifier, typeVersion = null) {
+  const nodeType = resolveNodeTypeVersion(nodeTypeOrIdentifier, typeVersion);
 
   return {
     ...(nodeType?.description?.capabilities || {}),
@@ -119,15 +158,20 @@ export function nodeTypeCapabilities(nodeTypeOrIdentifier) {
   };
 }
 
-export function nodeTypeIsManuallyTriggerable(nodeTypeOrIdentifier) {
+export function nodeTypeIsManuallyTriggerable(
+  nodeTypeOrIdentifier,
+  typeVersion = null
+) {
   return Boolean(
-    nodeTypeCapabilities(nodeTypeOrIdentifier).manually_triggerable ||
-    resolveNodeType(nodeTypeOrIdentifier)?.manually_triggerable
+    nodeTypeCapabilities(nodeTypeOrIdentifier, typeVersion)
+      .manually_triggerable ||
+    resolveNodeTypeVersion(nodeTypeOrIdentifier, typeVersion)
+      ?.manually_triggerable
   );
 }
 
-export function nodeTypePorts(nodeTypeOrIdentifier) {
-  const nodeType = resolveNodeType(nodeTypeOrIdentifier);
+export function nodeTypePorts(nodeTypeOrIdentifier, typeVersion = null) {
+  const nodeType = resolveNodeTypeVersion(nodeTypeOrIdentifier, typeVersion);
   const ports = nodeType?.outputs || nodeType?.ports;
 
   if (Array.isArray(ports) && ports.length > 0) {
@@ -171,7 +215,10 @@ function mergeInputs(node) {
 }
 
 export function nodeTypeInputs(nodeTypeOrIdentifier, node = null) {
-  const nodeType = resolveNodeType(nodeTypeOrIdentifier);
+  const nodeType = resolveNodeTypeVersion(
+    nodeTypeOrIdentifier,
+    node?.type_version
+  );
 
   if (nodeTypeIdentifier(nodeType) === "flow:merge") {
     return mergeInputs(node);
@@ -207,16 +254,16 @@ export function nodeTypeInputLabel(
   return input?.label || input?.display_name || humanizeKey(keyOrIndex);
 }
 
-export function nodeTypePort(nodeTypeOrIdentifier, key) {
+export function nodeTypePort(nodeTypeOrIdentifier, key, typeVersion = null) {
   return (
-    nodeTypePorts(nodeTypeOrIdentifier).find((port) => port.key === key) || {
-      key,
-    }
+    nodeTypePorts(nodeTypeOrIdentifier, typeVersion).find(
+      (port) => port.key === key
+    ) || { key }
   );
 }
 
-export function nodeTypePortLabel(nodeTypeOrIdentifier, key) {
-  const port = nodeTypePort(nodeTypeOrIdentifier, key);
+export function nodeTypePortLabel(nodeTypeOrIdentifier, key, node = null) {
+  const port = nodeTypePort(nodeTypeOrIdentifier, key, node?.type_version);
 
   if (port.label_key) {
     return translatedOrNull(port.label_key) || port.label || key;
@@ -225,8 +272,10 @@ export function nodeTypePortLabel(nodeTypeOrIdentifier, key) {
   return port.label || key;
 }
 
-export function nodeTypeOutputKeys(nodeTypeOrIdentifier) {
-  return nodeTypePorts(nodeTypeOrIdentifier).map((port) => port.key);
+export function nodeTypeOutputKeys(nodeTypeOrIdentifier, node = null) {
+  return nodeTypePorts(nodeTypeOrIdentifier, node?.type_version).map(
+    (port) => port.key
+  );
 }
 
 export function nodeTypePrimaryPort(nodeTypeOrIdentifier) {
@@ -239,7 +288,7 @@ export function nodeTypePrimaryOutputKey(nodeTypeOrIdentifier) {
 }
 
 export function nodeTypeOperations(nodeTypeOrIdentifier) {
-  const nodeType = resolveNodeType(nodeTypeOrIdentifier);
+  const nodeType = resolveNodeTypeVersion(nodeTypeOrIdentifier);
 
   if (Array.isArray(nodeType?.operations) && nodeType.operations.length > 0) {
     return nodeType.operations;

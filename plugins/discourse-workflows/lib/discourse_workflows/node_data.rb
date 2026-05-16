@@ -16,21 +16,15 @@ module DiscourseWorkflows
       read(node, "credentials") || {}
     end
 
-    def settings(node)
-      read(node, "settings") || {}
-    end
-
-    def webhook_id(node)
-      read(node, "webhook_id")
-    end
-
     def resolved_parameters(node)
       parameters(node).deep_dup.merge(credential_parameters(credentials(node)))
     end
 
     def credential_parameters(credentials_hash)
-      normalize_credentials(credentials_hash).each_with_object({}) do |(slot, credential), result|
-        field_name = credential["field_name"].presence || "#{slot}_id"
+      normalize_credentials(credentials_hash).each_with_object({}) do |(_slot, credential), result|
+        field_name = credential["field_name"].presence
+        next if field_name.blank?
+
         result[field_name] = credential["id"]
       end
     end
@@ -45,7 +39,11 @@ module DiscourseWorkflows
         settings[key] = parameters.delete(key) if parameters.key?(key)
       end
 
-      sync_auth_credential_type(parameters, credentials)
+      if parameters.key?("authentication")
+        sync_auth_credential_type(parameters, credentials)
+      else
+        credentials.delete("auth")
+      end
       extract_credentials(parameters, credentials)
 
       {
@@ -58,7 +56,8 @@ module DiscourseWorkflows
 
     def normalize_credentials(credentials_hash)
       (credentials_hash || {}).each_with_object({}) do |(slot, credential), result|
-        credential = { "id" => credential } unless credential.is_a?(Hash)
+        next unless credential.is_a?(Hash)
+
         credential = credential.deep_stringify_keys
         next if credential["id"].blank?
 
@@ -108,6 +107,11 @@ module DiscourseWorkflows
       if credential_type.blank?
         credentials.delete("auth")
       elsif credentials["auth"].present?
+        if credentials["auth"]["field_name"].blank? || credentials["auth"]["credential_type"].blank?
+          credentials.delete("auth")
+          return
+        end
+
         credentials["auth"]["credential_type"] = credential_type
       end
     end

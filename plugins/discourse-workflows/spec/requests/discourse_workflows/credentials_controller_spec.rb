@@ -128,13 +128,23 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
       credential = Fabricate(:discourse_workflows_credential)
       graph =
         build_workflow_graph do |g|
-          g.node "webhook-1", "trigger:webhook", configuration: { "credential_id" => credential.id }
+          g.node "webhook-1",
+                 "trigger:webhook",
+                 configuration: {
+                   "authentication" => "basic_auth",
+                   "credential_id" => credential.id,
+                 }
         end
-      Fabricate(:discourse_workflows_workflow, created_by: admin, **graph)
+      workflow =
+        Fabricate(:discourse_workflows_workflow, name: "My Workflow", created_by: admin, **graph)
 
       delete "/admin/plugins/discourse-workflows/credentials/#{credential.id}.json"
 
       expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body["type"]).to eq("credential_in_use")
+      expect(response.parsed_body["referencing_workflows"]).to contain_exactly(
+        { "id" => workflow.id, "name" => "My Workflow" },
+      )
     end
   end
 end

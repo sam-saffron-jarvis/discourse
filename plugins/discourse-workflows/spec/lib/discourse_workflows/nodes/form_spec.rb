@@ -7,7 +7,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Form::V1 do
   def build_exec_ctx(configuration, resume_token: nil)
     DiscourseWorkflows::Executor::NodeExecutionContext.new(
       input_items: [{ "json" => {} }],
-      configuration: configuration,
+      parameters: configuration,
       property_schema: described_class.property_schema,
       node_context: {
       },
@@ -26,7 +26,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Form::V1 do
       exec_ctx = build_exec_ctx(config, resume_token: "tok-xyz")
       allow(MessageBus).to receive(:publish)
 
-      result = described_class.new(configuration: config).execute(exec_ctx)
+      result = described_class.new(parameters: config).execute(exec_ctx)
 
       expect(exec_ctx).to be_waiting
       expect(exec_ctx.waiting_until).to be_nil

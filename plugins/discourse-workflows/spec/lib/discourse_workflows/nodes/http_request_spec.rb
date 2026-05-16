@@ -101,14 +101,14 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
         "body_json" => '{"name":"test"}',
       }
 
-      action = described_class.new(configuration: config)
+      action = described_class.new(parameters: config)
       sandbox = DiscourseWorkflows::JsSandbox.new({ "$json" => {} })
       resolver = DiscourseWorkflows::ExpressionResolver.new({ "$json" => {} }, sandbox: sandbox)
       exec_ctx =
         DiscourseWorkflows::Executor::NodeExecutionContext.new(
           input_items: [item],
           resolver: resolver,
-          configuration: config,
+          parameters: config,
           property_schema: described_class.property_schema,
         )
       action.execute(exec_ctx)

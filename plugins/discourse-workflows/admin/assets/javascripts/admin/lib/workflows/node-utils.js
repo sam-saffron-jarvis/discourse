@@ -45,17 +45,17 @@ function estimatePortLabelWidth(label) {
   );
 }
 
-function resolveOutputKeys(nodeTypeOrIdentifier, outputKeys) {
+function resolveOutputKeys(nodeTypeOrIdentifier, node, outputKeys) {
   if (Array.isArray(outputKeys) && outputKeys.length > 0) {
     return outputKeys;
   }
 
-  return nodeTypeOutputKeys(nodeTypeOrIdentifier);
+  return nodeTypeOutputKeys(nodeTypeOrIdentifier, node);
 }
 
 export function nodeWidth(node, { nodeType = null, outputKeys } = {}) {
   const nodeTypeOrIdentifier = nodeType || node?.type;
-  const keys = resolveOutputKeys(nodeTypeOrIdentifier, outputKeys);
+  const keys = resolveOutputKeys(nodeTypeOrIdentifier, node, outputKeys);
 
   if (keys.length < 2) {
     return NODE_WIDTH;
@@ -65,7 +65,7 @@ export function nodeWidth(node, { nodeType = null, outputKeys } = {}) {
     0,
     ...keys.map((key) =>
       estimatePortLabelWidth(
-        nodeTypePortLabel(nodeTypeOrIdentifier, key) || key
+        nodeTypePortLabel(nodeTypeOrIdentifier, key, node) || key
       )
     )
   );

@@ -35,7 +35,7 @@ export default class ComboBoxField extends Component {
       args.metadata?.[source] || args.nodeDefinition?.metadata?.[source];
     if (source && identifier && !localOptions) {
       this.workflowsNodeTypes
-        .loadSourceOptions(identifier, source)
+        .loadSourceOptions(identifier, source, args.nodeDefinition?.version)
         .then((options) => {
           this._remoteOptions = options;
         });

@@ -1,3 +1,4 @@
+import { resolveNodeTypeVersion } from "./node-types";
 import { fieldVisible, fixedCollectionRows } from "./property-engine";
 
 function formFieldKey(field) {
@@ -117,7 +118,9 @@ export default function resolveNodeFields(
   const nodeType = nodeTypes.find(
     (nt) => nt.name === node.type || nt.identifier === node.type
   );
-  const schema = nodeType?.outputSchema || nodeType?.output_schema;
+  const versionedNodeType = resolveNodeTypeVersion(nodeType, node.type_version);
+  const schema =
+    versionedNodeType?.outputSchema || versionedNodeType?.output_schema;
   if (!schema || !Object.keys(schema).length) {
     return null;
   }

@@ -120,8 +120,6 @@ export function parseWorkflowImport(text) {
     .map((c) => ({
       sourceClientId: regularNodes[c.source_index].clientId,
       targetClientId: regularNodes[c.target_index].clientId,
-      sourceOutput: c.source_output || "main",
-      targetInput: c.target_input || "main",
       connectionType: c.connection_type || "main",
       sourceOutputIndex: normalizeSourceOutputIndex(c),
       targetInputIndex: normalizeTargetInputIndex(c),

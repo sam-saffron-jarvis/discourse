@@ -3,6 +3,7 @@ import { i18n } from "discourse-i18n";
 import {
   nodeTypePropertyI18nPrefix,
   nodeTypePropertyI18nScope,
+  resolveNodeTypeVersion,
   translatedOrNull,
 } from "./node-types";
 
@@ -42,10 +43,6 @@ function translationKeyWithFallback(keys = []) {
   return keys.find((key) => translatedOrNull(key) !== null) || null;
 }
 
-function nodeMetadata(nodeDefinitionOrType) {
-  return nodeDefinitionOrType?.metadata || {};
-}
-
 export function findNodeType(nodeTypes, nodeType) {
   return (
     nodeTypes?.find(
@@ -60,6 +57,13 @@ export function getPropertySchema(nodeTypes, nodeType, typeVersion = null) {
 
   if (!definition) {
     return {};
+  }
+
+  const versionedDefinition = resolveNodeTypeVersion(definition, typeVersion);
+  if (versionedDefinition?.properties || versionedDefinition?.property_schema) {
+    return (
+      versionedDefinition.properties || versionedDefinition.property_schema
+    );
   }
 
   const versions =
@@ -80,10 +84,7 @@ export function normalizeSchema(schema = {}) {
 }
 
 export function propertyI18nPrefix(nodeDefinitionOrType) {
-  return (
-    nodeTypePropertyI18nPrefix(nodeDefinitionOrType) ||
-    nodeMetadata(nodeDefinitionOrType).i18n_prefix
-  );
+  return nodeTypePropertyI18nPrefix(nodeDefinitionOrType);
 }
 
 export function propertyScope(nodeDefinitionOrType) {

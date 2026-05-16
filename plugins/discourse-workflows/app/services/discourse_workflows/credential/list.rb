@@ -47,8 +47,8 @@ module DiscourseWorkflows
 
       last_id = credentials[limit - 1].id
       "/admin/plugins/discourse-workflows/credentials.json?#{
-  { cursor: last_id, limit: limit, type: params.type }.compact_blank.to_query
-}"
+        { cursor: last_id, limit: limit, type: params.type }.compact_blank.to_query
+      }"
     end
 
     def truncate_credentials(params:, credentials:)

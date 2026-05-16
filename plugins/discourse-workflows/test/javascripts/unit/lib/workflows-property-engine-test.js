@@ -7,6 +7,7 @@ import {
   fieldSupportsExpression,
   fieldValue,
   fieldVisible,
+  getPropertySchema,
   normalizeOptions,
   propertyDescription,
   propertyI18nPrefix,
@@ -66,6 +67,39 @@ module("Unit | Utility | workflows property engine", function () {
       propertySelectNoneKey(nodeDefinition, "agent_id"),
       "discourse_ai.discourse_workflows.ai_agent.select_agent"
     );
+  });
+
+  test("gets property schema from the saved node type version", function (assert) {
+    const nodeTypes = [
+      {
+        identifier: "action:versioned",
+        latest_version: "2.0",
+        latest: {
+          properties: {
+            new_field: { type: "string" },
+          },
+        },
+        versions: {
+          "1.0": {
+            properties: {
+              old_field: { type: "string" },
+            },
+          },
+          "2.0": {
+            properties: {
+              new_field: { type: "string" },
+            },
+          },
+        },
+      },
+    ];
+
+    assert.deepEqual(getPropertySchema(nodeTypes, "action:versioned", "1.0"), {
+      old_field: { type: "string" },
+    });
+    assert.deepEqual(getPropertySchema(nodeTypes, "action:versioned"), {
+      new_field: { type: "string" },
+    });
   });
 
   test("normalizes options and option labels", function (assert) {

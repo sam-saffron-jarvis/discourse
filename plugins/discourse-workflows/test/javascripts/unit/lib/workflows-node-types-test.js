@@ -3,11 +3,13 @@ import {
   nodeTypeInputLabel,
   nodeTypeInputs,
   nodeTypeOperationLabel,
+  nodeTypeOutputKeys,
   nodeTypePaletteGroup,
   nodeTypePortLabel,
   nodeTypePrimaryOutputKey,
   nodeTypePropertyI18nPrefix,
   nodeTypePropertyI18nScope,
+  resolveNodeTypeVersion,
 } from "discourse/plugins/discourse-workflows/admin/lib/workflows/node-types";
 
 module("Unit | Utility | workflows node types", function () {
@@ -90,6 +92,36 @@ module("Unit | Utility | workflows node types", function () {
     assert.strictEqual(nodeTypePortLabel(filterNodeType, "true"), "Kept");
     assert.strictEqual(nodeTypePortLabel(filterNodeType, "false"), "Rejected");
     assert.strictEqual(nodeTypePrimaryOutputKey(loopNodeType), "done");
+  });
+
+  test("resolves a full node definition for a saved type version", function (assert) {
+    const nodeType = {
+      identifier: "action:versioned",
+      latest_version: "2.0",
+      latest: {
+        identifier: "action:versioned",
+        version: "2.0",
+        outputs: [{ key: "new", primary: true }],
+      },
+      versions: {
+        "1.0": {
+          identifier: "action:versioned",
+          version: "1.0",
+          outputs: [{ key: "old", primary: true }],
+        },
+        "2.0": {
+          identifier: "action:versioned",
+          version: "2.0",
+          outputs: [{ key: "new", primary: true }],
+        },
+      },
+    };
+
+    assert.strictEqual(resolveNodeTypeVersion(nodeType, "1.0").version, "1.0");
+    assert.deepEqual(nodeTypeOutputKeys(nodeType, { type_version: "1.0" }), [
+      "old",
+    ]);
+    assert.deepEqual(nodeTypeOutputKeys(nodeType), ["new"]);
   });
 
   test("uses merge mode configuration for input sockets", function (assert) {

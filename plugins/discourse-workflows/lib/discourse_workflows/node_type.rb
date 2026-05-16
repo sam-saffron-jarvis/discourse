@@ -161,24 +161,16 @@ module DiscourseWorkflows
       description.dig(:capabilities, key) == true
     end
 
-    def initialize(
-      parameters: nil,
-      credentials: {},
-      settings: {},
-      webhook_id: nil,
-      configuration: nil
-    )
+    def initialize(parameters: nil, credentials: {}, settings: {}, webhook_id: nil)
       split =
         NodeData.split(
-          parameters: parameters || configuration || {},
+          parameters: parameters || {},
           credentials: credentials,
           settings: settings,
           webhook_id: webhook_id,
         )
       @parameters = split["parameters"]
       @credentials = split["credentials"]
-      @settings = split["settings"]
-      @webhook_id = split["webhook_id"]
       @configuration = @parameters
     end
 

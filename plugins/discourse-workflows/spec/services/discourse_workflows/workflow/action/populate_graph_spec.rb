@@ -57,6 +57,40 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
       end
     end
 
+    context "when a node type has multiple versions" do
+      it "uses the latest version for new nodes without a submitted type_version" do
+        v1 =
+          Class.new(DiscourseWorkflows::NodeType) do
+            description(name: "action:populate_versioned_test", version: "1.0")
+          end
+        v2 =
+          Class.new(DiscourseWorkflows::NodeType) do
+            description(name: "action:populate_versioned_test", version: "2.0")
+          end
+
+        DiscoursePluginRegistry.register_discourse_workflows_node(v1, Plugin::Instance.new)
+        DiscoursePluginRegistry.register_discourse_workflows_node(v2, Plugin::Instance.new)
+        DiscourseWorkflows::Registry.reset_indexes!
+
+        result =
+          described_class.call(
+            workflow: workflow,
+            nodes_data: [
+              { client_id: "node-1", type: "action:populate_versioned_test", name: "Versioned" },
+            ],
+            connections_data: [],
+          )
+
+        expect(result).to eq(true)
+        expect(workflow.reload.nodes.first["type_version"]).to eq("2.0")
+      ensure
+        DiscoursePluginRegistry._raw_discourse_workflows_nodes.reject! do |entry|
+          [v1, v2].include?(entry[:value])
+        end
+        DiscourseWorkflows::Registry.reset_indexes!
+      end
+    end
+
     context "with nodes and connections" do
       let(:nodes_data) do
         [
@@ -69,13 +103,13 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
               "tag_names" => "processed",
             },
           },
-          { client_id: "node-3", type: "action:send_message", name: "Send Message" },
+          { client_id: "node-3", type: "action:log", name: "Log" },
         ]
       end
 
       let(:connections_data) do
         [
-          { source_client_id: "node-1", target_client_id: "node-2", source_output: "yes" },
+          { source_client_id: "node-1", target_client_id: "node-2", source_output_index: 0 },
           { source_client_id: "node-2", target_client_id: "node-3" },
         ]
       end
@@ -115,8 +149,8 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
           },
         )
         expect(nodes[2]).to include(
-          "type" => "action:send_message",
-          "name" => "Send Message",
+          "type" => "action:log",
+          "name" => "Log",
           "position_index" => 2,
           "parameters" => {
           },

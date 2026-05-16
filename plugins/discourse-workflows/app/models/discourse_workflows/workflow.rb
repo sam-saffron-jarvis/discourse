@@ -3,8 +3,6 @@
 module DiscourseWorkflows
   class Workflow < ActiveRecord::Base
     self.table_name = "discourse_workflows_workflows"
-    self.ignored_columns = %w[enabled run_as_username]
-
     has_many :executions,
              class_name: "DiscourseWorkflows::Execution",
              foreign_key: "workflow_id",

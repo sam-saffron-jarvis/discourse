@@ -181,7 +181,7 @@ module DiscourseWorkflows
         )
 
         def initialize(*)
-          super(configuration: {})
+          super(parameters: {})
         end
 
         def self.validate_configuration(configuration, errors)

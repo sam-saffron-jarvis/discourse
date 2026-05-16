@@ -17,7 +17,7 @@ module DiscourseWorkflows
         )
 
         def initialize(*)
-          super(configuration: {})
+          super(parameters: {})
         end
 
         def output

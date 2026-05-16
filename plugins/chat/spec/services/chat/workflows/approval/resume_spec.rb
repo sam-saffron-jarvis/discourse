@@ -112,7 +112,12 @@ RSpec.describe Chat::Workflows::Approval::Resume do
                    }
             g.chain "trigger-1", "wait-1"
           end
-        Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+        Fabricate(
+          :discourse_workflows_workflow,
+          created_by: user,
+          enabled: true,
+          **graph,
+        ).tap { |wf| publish_workflow!(wf) }
       end
 
       let(:execution) { DiscourseWorkflows::Executor.new(workflow, "trigger-1", {}).run }

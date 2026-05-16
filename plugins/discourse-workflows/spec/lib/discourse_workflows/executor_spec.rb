@@ -480,5 +480,60 @@ RSpec.describe DiscourseWorkflows::Executor do
         expect(execution.status).to eq("success")
       end
     end
+
+    context "with versioned node implementations" do
+      let(:v1_node_class) do
+        Class.new(DiscourseWorkflows::NodeType) do
+          description(name: "action:executor_versioned_test", version: "1.0")
+
+          def execute(_ctx)
+            [[DiscourseWorkflows::Item.wrap("version" => "1.0")]]
+          end
+        end
+      end
+
+      let(:v2_node_class) do
+        Class.new(DiscourseWorkflows::NodeType) do
+          description(name: "action:executor_versioned_test", version: "2.0")
+
+          def execute(_ctx)
+            [[DiscourseWorkflows::Item.wrap("version" => "2.0")]]
+          end
+        end
+      end
+
+      before do
+        plugin = Plugin::Instance.new
+        DiscoursePluginRegistry.register_discourse_workflows_node(v1_node_class, plugin)
+        DiscoursePluginRegistry.register_discourse_workflows_node(v2_node_class, plugin)
+        DiscourseWorkflows::Registry.reset_indexes!
+      end
+
+      after do
+        DiscoursePluginRegistry._raw_discourse_workflows_nodes.reject! do |entry|
+          [v1_node_class, v2_node_class].include?(entry[:value])
+        end
+        DiscourseWorkflows::Registry.reset_indexes!
+      end
+
+      it "dispatches execution to the saved node type version" do
+        graph =
+          build_workflow_graph do |g|
+            g.node "trigger-1", "trigger:topic_closed", name: "Topic Closed"
+            g.node "action-1", "action:executor_versioned_test", name: "Versioned"
+            g.chain "trigger-1", "action-1"
+          end
+        graph[:nodes].find { |node| node["id"] == "action-1" }["type_version"] = "2.0"
+        workflow =
+          Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
+
+        execution = described_class.new(workflow, "trigger-1", {}).run
+
+        expect(execution.status).to eq("success")
+        expect(execution.execution_data.entries.dig("action-1", 0, "output", 0, "json")).to eq(
+          "version" => "2.0",
+        )
+      end
+    end
   end
 end

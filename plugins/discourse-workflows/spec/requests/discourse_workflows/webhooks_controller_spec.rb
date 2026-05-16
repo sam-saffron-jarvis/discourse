@@ -265,7 +265,8 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
             {
               "source_node_id" => "webhook-1",
               "target_node_id" => target_node_id,
-              "source_output" => "main",
+              "source_output_index" => 0,
+              "target_input_index" => 0,
             },
           ],
         )

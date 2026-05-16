@@ -19,7 +19,8 @@ module DiscourseWorkflows
     end
 
     def options
-      node_class = DiscourseWorkflows::Registry.find_node_type(params[:identifier])
+      node_class =
+        DiscourseWorkflows::Registry.find_node_type(params[:identifier], version: params[:version])
       raise Discourse::NotFound unless node_class.respond_to?(:load_options)
 
       options = node_class.load_options(params[:source_key])

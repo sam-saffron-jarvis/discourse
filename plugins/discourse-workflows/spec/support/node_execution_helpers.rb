@@ -11,7 +11,7 @@ module NodeExecutionHelpers
   )
     item = { "json" => {} } if item.nil? && input_items.nil?
     input_items = input_items || [item]
-    action = described_class.new(configuration: configuration)
+    action = described_class.new(parameters: configuration)
     resolver_context = { "$json" => input_items.first&.dig("json") || {} }
     sandbox = DiscourseWorkflows::JsSandbox.new(resolver_context)
     resolver = DiscourseWorkflows::ExpressionResolver.new(resolver_context, sandbox: sandbox)
@@ -19,7 +19,7 @@ module NodeExecutionHelpers
       input_items: input_items,
       input_groups: input_groups,
       resolver: resolver,
-      configuration: configuration,
+      parameters: configuration,
       property_schema: described_class.property_schema,
       resolver_context: resolver_context,
     }

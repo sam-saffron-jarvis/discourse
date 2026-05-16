@@ -20,7 +20,6 @@ module DiscourseWorkflows
         credentials: {},
         settings: {},
         webhook_id: nil,
-        configuration: nil,
         property_schema: {},
         node_context: {},
         user: nil,
@@ -38,16 +37,13 @@ module DiscourseWorkflows
         @input_items = @input_groups[0] || []
         split =
           NodeData.split(
-            parameters: parameters || configuration || {},
+            parameters: parameters || {},
             credentials: credentials,
             settings: settings,
             webhook_id: webhook_id,
           )
         @parameters = split["parameters"]
-        @credentials = NodeData.normalize_credentials(split["credentials"])
-        @settings = split["settings"]
-        @webhook_id = split["webhook_id"]
-        @configuration = @parameters
+        @credentials = split["credentials"]
         @property_schema = property_schema
         @node_context = node_context
         @user = user

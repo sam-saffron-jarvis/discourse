@@ -46,8 +46,8 @@ module DiscourseWorkflows
       @connections << {
         "source_node_id" => source,
         "target_node_id" => target,
-        "source_output" => output,
-        "target_input" => input,
+        "source_output_index" => connection_index(output),
+        "target_input_index" => connection_index(input),
       }
       self
     end
@@ -59,6 +59,20 @@ module DiscourseWorkflows
 
     def to_h
       { nodes: @nodes, connections: @connections }
+    end
+
+    private
+
+    def connection_index(value)
+      value = value.to_s
+      return 0 if value.blank? || value == "main" || value == "true" || value == "done"
+
+      match = value.match(/\Ainput_(\d+)\z/)
+      return match[1].to_i - 1 if match
+
+      return 1 if %w[false loop].include?(value)
+
+      value.to_i
     end
   end
 end

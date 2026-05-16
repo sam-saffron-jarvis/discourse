@@ -68,7 +68,7 @@ module DiscourseWorkflows
       step = Array(steps).find { |s| s["status"] == "success" }
       return unless step
 
-      items = step["output_items"] || step["items"] || []
+      items = step["output_items"] || []
       json = items.dig(0, "json") || {}
 
       if step["node_type"]&.start_with?("trigger:")

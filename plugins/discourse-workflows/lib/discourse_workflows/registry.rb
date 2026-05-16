@@ -43,15 +43,16 @@ module DiscourseWorkflows
       end
 
       def latest_version(identifier)
-        DEFAULT_VERSION
+        available_versions(identifier).last
       end
 
       def available_versions(identifier)
-        [DEFAULT_VERSION]
+        versions_by_identifier[identifier] || []
       end
 
       def reset_indexes!
         @node_type_index = nil
+        @versions_by_identifier = nil
         @credential_type_index = nil
         @schema_extensions_index = nil
       end
@@ -62,8 +63,22 @@ module DiscourseWorkflows
         @node_type_index ||=
           nodes.each_with_object({}) do |klass, h|
             version = klass.respond_to?(:version) ? klass.version : DEFAULT_VERSION
-            h[[klass.identifier, version]] = klass
+            key = [klass.identifier, version]
+            if h.key?(key)
+              raise ArgumentError, "Duplicate workflow node type #{klass.identifier} v#{version}"
+            end
+            h[key] = klass
           end
+      end
+
+      def versions_by_identifier
+        @versions_by_identifier ||=
+          node_type_index
+            .keys
+            .group_by(&:first)
+            .transform_values do |keys|
+              keys.map(&:second).sort_by { |version| Gem::Version.new(version) }
+            end
       end
 
       def credential_type_index

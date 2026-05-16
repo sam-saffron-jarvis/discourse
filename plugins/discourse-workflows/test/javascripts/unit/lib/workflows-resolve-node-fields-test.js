@@ -108,6 +108,29 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
     assert.strictEqual(fields[0].key, "body");
   });
 
+  test("resolveNodeFields uses output_schema for the saved node type version", function (assert) {
+    const node = {
+      type: "trigger:webhook",
+      type_version: "1.0",
+      configuration: {},
+    };
+    const nodeTypes = [
+      {
+        identifier: "trigger:webhook",
+        latest_version: "2.0",
+        latest: { output_schema: { latest_body: "object" } },
+        versions: {
+          "1.0": { output_schema: { old_body: "object" } },
+          "2.0": { output_schema: { latest_body: "object" } },
+        },
+      },
+    ];
+    const fields = resolveNodeFields(node, nodeTypes);
+
+    assert.strictEqual(fields.length, 1);
+    assert.strictEqual(fields[0].key, "old_body");
+  });
+
   test("resolveNodeFields filters fields by visible_if", function (assert) {
     const node = {
       type: "flow:wait",

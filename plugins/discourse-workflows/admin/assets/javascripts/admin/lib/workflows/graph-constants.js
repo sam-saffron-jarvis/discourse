@@ -10,7 +10,7 @@ export function normalizeTargetInput(targetInput) {
   return targetInput || "main";
 }
 
-export function legacyConnectionIndex(value) {
+export function portIndexFromKey(value) {
   value = value?.toString();
   if (!value || value === "main" || value === "true" || value === "done") {
     return 0;
@@ -32,7 +32,7 @@ export function normalizeSourceOutputIndex(connection) {
   return (
     connection.sourceOutputIndex ??
     connection.source_output_index ??
-    legacyConnectionIndex(connection.sourceOutput ?? connection.source_output)
+    portIndexFromKey(connection.sourceOutput)
   );
 }
 
@@ -40,7 +40,7 @@ export function normalizeTargetInputIndex(connection) {
   return (
     connection.targetInputIndex ??
     connection.target_input_index ??
-    legacyConnectionIndex(connection.targetInput ?? connection.target_input)
+    portIndexFromKey(connection.targetInput)
   );
 }
 
@@ -53,11 +53,9 @@ export function graphConnectionKey({
   targetInputIndex,
 }) {
   const outputIndex =
-    sourceOutputIndex ??
-    legacyConnectionIndex(normalizeSourceOutput(sourceOutput));
+    sourceOutputIndex ?? portIndexFromKey(normalizeSourceOutput(sourceOutput));
   const inputIndex =
-    targetInputIndex ??
-    legacyConnectionIndex(normalizeTargetInput(targetInput));
+    targetInputIndex ?? portIndexFromKey(normalizeTargetInput(targetInput));
   return `${source}::${outputIndex}::${target}::${inputIndex}`;
 }
 

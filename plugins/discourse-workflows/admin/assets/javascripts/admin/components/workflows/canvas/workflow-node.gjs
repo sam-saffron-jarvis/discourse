@@ -18,10 +18,12 @@ import {
   nodeTypeIsManuallyTriggerable,
   nodeTypePortLabel,
   nodeTypeStyle,
+  resolveNodeTypeVersion,
 } from "../../../lib/workflows/node-types";
 
-function resolveType(workflowsNodeTypes, type) {
-  return workflowsNodeTypes.findNodeType(type) || type;
+function resolveType(workflowsNodeTypes, node) {
+  const nodeType = workflowsNodeTypes.findNodeType(node.type) || node.type;
+  return resolveNodeTypeVersion(nodeType, node.type_version);
 }
 import { nodeDescription, nodeLabel } from "../../../lib/workflows/node-utils";
 import CanvasHoverToolbar from "./hover-toolbar";
@@ -62,7 +64,7 @@ export default class WorkflowNode extends Component {
   }
 
   get resolvedNodeType() {
-    return resolveType(this.workflowsNodeTypes, this.data.type);
+    return resolveType(this.workflowsNodeTypes, this.data);
   }
 
   get isTrigger() {

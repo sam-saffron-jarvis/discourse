@@ -34,7 +34,7 @@ module DiscourseWorkflows
         )
 
         def initialize(body:, headers:, query:, method:, webhook_url:)
-          super(configuration: {})
+          super(parameters: {})
           @body = body
           @headers = headers
           @query = query

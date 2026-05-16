@@ -1,7 +1,7 @@
 import {
-  legacyConnectionIndex,
   normalizeSourceOutputIndex,
   normalizeTargetInputIndex,
+  portIndexFromKey,
 } from "../lib/workflows/graph-constants";
 
 export default class WorkflowConnection {
@@ -24,16 +24,16 @@ export default class WorkflowConnection {
       args.sourceClientId ?? args.source_node_id?.toString();
     this.targetClientId =
       args.targetClientId ?? args.target_node_id?.toString();
-    this.sourceOutput = args.sourceOutput ?? args.source_output ?? "main";
-    this.targetInput = args.targetInput ?? args.target_input ?? "main";
+    this.sourceOutput = args.sourceOutput ?? "main";
+    this.targetInput = args.targetInput ?? "main";
     this.connectionType = args.connectionType ?? args.connection_type ?? "main";
     this.sourceOutputIndex =
       args.sourceOutputIndex ??
       args.source_output_index ??
-      legacyConnectionIndex(this.sourceOutput);
+      portIndexFromKey(this.sourceOutput);
     this.targetInputIndex =
       args.targetInputIndex ??
       args.target_input_index ??
-      legacyConnectionIndex(this.targetInput);
+      portIndexFromKey(this.targetInput);
   }
 }

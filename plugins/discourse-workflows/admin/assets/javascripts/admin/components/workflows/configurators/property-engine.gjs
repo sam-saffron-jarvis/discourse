@@ -1,5 +1,6 @@
 import Component from "@glimmer/component";
 import { eq } from "discourse/truth-helpers";
+import { resolveNodeTypeVersion } from "../../../lib/workflows/node-types";
 import {
   fieldControl,
   fieldVisible,
@@ -21,10 +22,11 @@ export default class PropertyEngineConfigurator extends Component {
   }
 
   get nodeDefinition() {
-    return (
+    const definition =
       this.args.nodeDefinition ||
-      findNodeType(this.args.nodeTypes, this.nodeType)
-    );
+      findNodeType(this.args.nodeTypes, this.nodeType);
+
+    return resolveNodeTypeVersion(definition, this.args.node?.type_version);
   }
 
   get metadata() {

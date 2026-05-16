@@ -98,10 +98,6 @@ export default class FixedCollection extends Component {
     return type_options.hide_optional_fields;
   }
 
-  get hasExtraFields() {
-    return this.groups.some((group) => this.extraItemFields(group).length > 0);
-  }
-
   get nodeDefinition() {
     return (
       this.args.nodeDefinition ||

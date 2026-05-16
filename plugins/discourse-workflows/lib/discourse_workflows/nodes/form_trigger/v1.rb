@@ -57,7 +57,7 @@ module DiscourseWorkflows
         )
 
         def initialize(form_data:, submitted_at:)
-          super(configuration: {})
+          super(parameters: {})
           @form_data = form_data
           @submitted_at = submitted_at
         end

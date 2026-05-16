@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "Auto-tag new topics",
   "description": "Automatically adds tags to new topics based on their category.",
   "nodes": [
@@ -99,12 +99,14 @@
     {
       "source_index": 0,
       "target_index": 1,
-      "source_output": "main"
+      "source_output_index": 0,
+      "target_input_index": 0
     },
     {
       "source_index": 1,
       "target_index": 2,
-      "source_output": "true"
+      "source_output_index": 0,
+      "target_input_index": 0
     }
   ]
 }

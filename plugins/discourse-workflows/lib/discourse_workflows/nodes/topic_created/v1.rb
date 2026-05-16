@@ -19,7 +19,7 @@ module DiscourseWorkflows
         )
 
         def initialize(topic, opts = nil, *)
-          super(configuration: {})
+          super(parameters: {})
           @topic = topic
           @opts = opts
         end

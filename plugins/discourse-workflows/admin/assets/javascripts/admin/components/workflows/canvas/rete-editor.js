@@ -87,7 +87,8 @@ export class ReteEditorBridge {
         }
 
         for (const key of nodeTypeOutputKeys(
-          nodeTypesByIdentifier.get(data.type) || data.type
+          nodeTypesByIdentifier.get(data.type) || data.type,
+          data
         )) {
           this.addOutput(key, new ClassicPreset.Output(socket, key, true));
         }

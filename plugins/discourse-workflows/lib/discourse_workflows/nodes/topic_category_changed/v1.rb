@@ -20,7 +20,7 @@ module DiscourseWorkflows
         )
 
         def initialize(topic, old_category)
-          super(configuration: {})
+          super(parameters: {})
           @topic = topic
           @old_category = old_category
         end

@@ -10,9 +10,10 @@ module DiscourseWorkflows
     end
 
     def to_h
-      description = serializable_description
-      ui = @latest_class.ui_metadata
-      capabilities = @latest_class.capabilities
+      latest = serializable_version(@latest_class, @latest_version)
+      description = latest[:description]
+      ui = latest[:ui]
+      capabilities = latest[:capabilities]
 
       {
         displayName: description[:displayName],
@@ -23,7 +24,7 @@ module DiscourseWorkflows
         outputs: description[:outputs],
         properties: description[:properties],
         property_versions: property_schema_versions,
-        outputSchema: output_schema,
+        outputSchema: latest[:output_schema],
         credentials: description[:credentials],
         webhooks: description[:webhooks],
         description: description,
@@ -31,13 +32,15 @@ module DiscourseWorkflows
         kind: @latest_class.kind,
         latest_version: @latest_version,
         available_versions: @available_versions,
+        latest: latest,
+        versions: version_descriptions,
         property_schema: @latest_class.property_schema,
         property_schema_versions: property_schema_versions,
-        output_schema: output_schema,
+        output_schema: latest[:output_schema],
         ui: ui,
         capabilities: capabilities,
-        ports: @latest_class.ports,
-        operations: @latest_class.operations,
+        ports: latest[:outputs],
+        operations: latest[:operations],
         icon: ui[:icon],
         color: ui[:color],
         branching: capabilities[:branching],
@@ -50,6 +53,13 @@ module DiscourseWorkflows
 
     private
 
+    def version_descriptions
+      @available_versions.to_h do |version|
+        klass = Registry.find_node_type(@identifier, version: version)
+        [version, serializable_version(klass, version)]
+      end
+    end
+
     def property_schema_versions
       return if @available_versions.size <= 1
 
@@ -58,21 +68,43 @@ module DiscourseWorkflows
       end
     end
 
-    def serializable_description
-      @latest_class.description.merge(
-        displayName: @latest_class.label_key,
-        descriptionKey: @latest_class.description_key,
-        name: @identifier,
-        version: @latest_version,
-        inputs: @latest_class.input_ports,
-        outputs: @latest_class.ports,
-        properties: @latest_class.properties,
-        output_schema: output_schema,
-      )
-    end
+    def serializable_version(klass, version)
+      output_schema = klass.respond_to?(:output_schema) ? klass.output_schema : {}
+      description =
+        klass.description.merge(
+          displayName: klass.label_key,
+          descriptionKey: klass.description_key,
+          name: @identifier,
+          version: version,
+          inputs: klass.input_ports,
+          outputs: klass.ports,
+          properties: klass.properties,
+          output_schema: output_schema,
+        )
 
-    def output_schema
-      @latest_class.respond_to?(:output_schema) ? @latest_class.output_schema : {}
+      {
+        displayName: description[:displayName],
+        name: @identifier,
+        version: version,
+        defaults: description[:defaults],
+        inputs: description[:inputs],
+        outputs: description[:outputs],
+        properties: description[:properties],
+        outputSchema: output_schema,
+        credentials: description[:credentials],
+        webhooks: description[:webhooks],
+        description: description,
+        identifier: @identifier,
+        kind: klass.kind,
+        property_schema: klass.property_schema,
+        output_schema: output_schema,
+        ui: klass.ui_metadata,
+        capabilities: klass.capabilities,
+        ports: klass.ports,
+        operations: klass.operations,
+        available: klass.available?,
+        unavailable_reason_key: (klass.unavailable_reason_key unless klass.available?),
+      }.compact
     end
   end
 end

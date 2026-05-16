@@ -6,6 +6,10 @@ function credentialTypeFor(configuration) {
     : null;
 }
 
+function validCredentialType(credential) {
+  return ["basic_auth", "bearer_token"].includes(credential?.credential_type);
+}
+
 function splitConfiguration(type, configuration = {}, existing = {}) {
   const parameters = structuredClone(configuration || {});
   const settings = structuredClone(existing.settings || {});
@@ -34,11 +38,18 @@ function splitConfiguration(type, configuration = {}, existing = {}) {
     delete parameters.credential_id;
   } else if (Object.hasOwn(parameters, "authentication")) {
     const credentialType = credentialTypeFor(parameters);
-    if (credentialType && credentials.auth) {
+    if (
+      credentialType &&
+      credentials.auth?.id &&
+      credentials.auth?.field_name &&
+      validCredentialType(credentials.auth)
+    ) {
       credentials.auth.credential_type = credentialType;
-    } else if (!credentialType) {
+    } else {
       delete credentials.auth;
     }
+  } else {
+    delete credentials.auth;
   }
 
   if (type === "trigger:form" && Object.hasOwn(parameters, "uuid")) {
@@ -62,9 +73,12 @@ function configurationFromNodeData({
   };
 
   const authCredential = credentials?.auth;
-  if (authCredential?.id) {
-    configuration[authCredential.field_name || "credential_id"] =
-      authCredential.id;
+  if (
+    authCredential?.id &&
+    authCredential.field_name &&
+    validCredentialType(authCredential)
+  ) {
+    configuration[authCredential.field_name] = authCredential.id;
   }
 
   if (type === "trigger:form" && webhookId) {

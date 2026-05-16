@@ -29,7 +29,7 @@ export default class StickyNote {
   }
 
   static fromNode(node) {
-    const config = node.parameters || node.configuration || {};
+    const config = node.parameters || {};
     return new StickyNote({
       clientId: node.id?.toString() ?? node.clientId,
       position: node.position ?? { x: 0, y: 0 },

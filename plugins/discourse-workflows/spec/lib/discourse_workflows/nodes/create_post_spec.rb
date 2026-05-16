@@ -136,13 +136,13 @@ RSpec.describe DiscourseWorkflows::Nodes::CreatePost::V1 do
       sandbox = DiscourseWorkflows::JsSandbox.new(resolver_context)
       resolver = DiscourseWorkflows::ExpressionResolver.new(resolver_context, sandbox: sandbox)
       result =
-        described_class.new(configuration: config).execute(
+        described_class.new(parameters: config).execute(
           DiscourseWorkflows::Executor::NodeExecutionContext.new(
             input_items: [{ "json" => { "name" => "Ada" } }],
             node_context: {
             },
             resolver: resolver,
-            configuration: config,
+            parameters: config,
             property_schema: described_class.property_schema,
           ),
         )[

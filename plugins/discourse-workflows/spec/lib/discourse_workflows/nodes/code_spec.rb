@@ -16,12 +16,12 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
   end
 
   def execute_code(code, items: [{ "json" => {} }], **kwargs)
-    action = described_class.new(configuration: { "code" => code })
+    action = described_class.new(parameters: { "code" => code })
     action.execute(build_exec_ctx(items, **kwargs))[0]
   end
 
   def execute_code_with_log(code, items: [{ "json" => {} }], **kwargs)
-    action = described_class.new(configuration: kwargs.delete(:configuration) || { "code" => code })
+    action = described_class.new(parameters: kwargs.delete(:configuration) || { "code" => code })
     exec_ctx = build_exec_ctx(items, **kwargs)
     action.execute(exec_ctx)
     exec_ctx.log
@@ -131,7 +131,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
     it "exposes $input.params for the current code node" do
       action =
         described_class.new(
-          configuration: {
+          parameters: {
             "code" => "return { mode: $input.params.mode };",
             "mode" => "run_once_for_each_item",
           },
@@ -222,7 +222,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
 
     it "uses a single sandbox for all input items" do
       items = (1..5).map { |i| { "json" => { "x" => i } } }
-      action = described_class.new(configuration: { "code" => "return { val: $json.x * 2 };" })
+      action = described_class.new(parameters: { "code" => "return { val: $json.x * 2 };" })
       exec_ctx = build_exec_ctx(items)
       sandbox_calls = 0
       original_with_sandbox = exec_ctx.method(:with_sandbox)
@@ -247,7 +247,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
     context "with mode run_once_for_all_items" do
       def execute_all(code, items:, **kwargs)
         action =
-          described_class.new(configuration: { "code" => code, "mode" => "run_once_for_all_items" })
+          described_class.new(parameters: { "code" => code, "mode" => "run_once_for_all_items" })
         action.execute(build_exec_ctx(items, **kwargs))[0]
       end
 

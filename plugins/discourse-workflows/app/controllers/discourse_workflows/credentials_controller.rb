@@ -95,10 +95,7 @@ module DiscourseWorkflows
             json:
               failed_json.merge(
                 type: "credential_in_use",
-                referencing_workflows:
-                  result[:referencing_workflows]
-                    .pluck(:id, :name)
-                    .map { |id, name| { id:, name: } },
+                referencing_workflows: result[:referencing_workflows],
               ),
             status: :unprocessable_entity,
           )

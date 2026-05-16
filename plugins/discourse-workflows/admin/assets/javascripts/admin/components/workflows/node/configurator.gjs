@@ -18,6 +18,7 @@ import {
   nodeTypeIcon,
   nodeTypeLabel,
   nodeTypeStyle,
+  resolveNodeTypeVersion,
 } from "../../../lib/workflows/node-types";
 import {
   fieldType,
@@ -82,7 +83,10 @@ export default class NodeConfigurator extends Component {
   }
 
   get resolvedNodeType() {
-    return findNodeType(this.nodeTypes, this.args.model.node.type);
+    return resolveNodeTypeVersion(
+      findNodeType(this.nodeTypes, this.args.model.node.type),
+      this.args.model.node.type_version
+    );
   }
 
   async #loadTypes() {

@@ -184,30 +184,6 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewConte
           end
         end
 
-        context "with a step using legacy items key" do
-          before do
-            Fabricate(
-              :discourse_workflows_execution_data,
-              execution: execution,
-              data: {
-                entries: {
-                  "Topic created" => [
-                    {
-                      "status" => "success",
-                      "node_type" => "trigger:topic_created",
-                      "items" => [{ "json" => { "title" => "Legacy items" } }],
-                    },
-                  ],
-                },
-              }.to_json,
-            )
-          end
-
-          it "reads json from items when output_items is missing" do
-            expect(context["$trigger"]).to eq({ "title" => "Legacy items" })
-          end
-        end
-
         context "with no successful step in the entry" do
           before do
             Fabricate(

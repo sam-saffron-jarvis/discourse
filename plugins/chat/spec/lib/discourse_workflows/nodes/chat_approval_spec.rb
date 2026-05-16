@@ -25,7 +25,7 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
         node_context: {
         },
         resolver: resolver,
-        configuration: config,
+        parameters: config,
         property_schema: described_class.property_schema,
         execution_id: execution.id,
         node_id: "node_abc",
@@ -42,7 +42,7 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
         "timeout_minutes" => "30",
         "timeout_action" => "fail",
       }
-      instance = described_class.new(configuration: config)
+      instance = described_class.new(parameters: config)
       exec_ctx = build_exec_ctx(config)
 
       freeze_time do
@@ -61,7 +61,7 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
         "channel_id" => channel.id.to_s,
         "timeout_action" => "fail",
       }
-      instance = described_class.new(configuration: config)
+      instance = described_class.new(parameters: config)
       exec_ctx = build_exec_ctx(config)
       instance.execute(exec_ctx)
 
@@ -78,7 +78,7 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
         "channel_id" => channel.id.to_s,
         "timeout_action" => "deny",
       }
-      instance = described_class.new(configuration: config)
+      instance = described_class.new(parameters: config)
       exec_ctx = build_exec_ctx(config)
       instance.execute(exec_ctx)
 

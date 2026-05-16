@@ -229,12 +229,14 @@ RSpec.describe DiscourseWorkflows::FormsController do
             {
               "source_node_id" => "trigger-1",
               "target_node_id" => "form-action-1",
-              "source_output" => "main",
+              "source_output_index" => 0,
+              "target_input_index" => 0,
             },
             {
               "source_node_id" => "form-action-1",
               "target_node_id" => "form-completion-1",
-              "source_output" => "main",
+              "source_output_index" => 0,
+              "target_input_index" => 0,
             },
           ],
         )

@@ -20,6 +20,7 @@ RSpec.describe "Chat interaction listener for workflow approvals" do
         g.chain "trigger-1", "wait-1"
       end
     workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+    publish_workflow!(workflow)
 
     execution = DiscourseWorkflows::Executor.new(workflow, "trigger-1", {}).run
     expect(execution.status).to eq("waiting")

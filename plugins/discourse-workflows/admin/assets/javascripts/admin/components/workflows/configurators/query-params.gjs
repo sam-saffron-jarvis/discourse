@@ -17,7 +17,7 @@ export default class QueryParams extends Component {
       args.nodeDefinition?.name || args.nodeDefinition?.identifier;
     if (identifier) {
       this.workflowsNodeTypes
-        .loadSourceOptions(identifier, "queries")
+        .loadSourceOptions(identifier, "queries", args.nodeDefinition?.version)
         .then((queries) => {
           this._loadedQueries = queries;
         });

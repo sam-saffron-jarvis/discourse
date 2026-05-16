@@ -50,17 +50,18 @@ export default class WorkflowsNodeTypes extends Service {
     return this.nodeTypeMap.get(identifier) || null;
   }
 
-  async loadSourceOptions(identifier, sourceKey) {
-    const cacheKey = `${identifier}:${sourceKey}`;
+  async loadSourceOptions(identifier, sourceKey, typeVersion = null) {
+    const cacheKey = `${identifier}:${typeVersion || "latest"}:${sourceKey}`;
     if (this._sourceOptionsCache.has(cacheKey)) {
       return this._sourceOptionsCache.get(cacheKey);
     }
 
     try {
       const encodedIdentifier = encodeURIComponent(identifier);
-      const result = await ajax(
-        `/admin/plugins/discourse-workflows/node-types/${encodedIdentifier}/options/${sourceKey}.json`
-      );
+      const url = `/admin/plugins/discourse-workflows/node-types/${encodedIdentifier}/options/${sourceKey}.json`;
+      const result = await ajax(url, {
+        data: typeVersion ? { version: typeVersion } : undefined,
+      });
       const options = result.options || [];
       this._sourceOptionsCache.set(cacheKey, options);
       return options;

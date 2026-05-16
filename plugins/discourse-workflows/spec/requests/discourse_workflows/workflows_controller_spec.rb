@@ -107,7 +107,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
                  },
                ],
                connections: [
-                 { source_client_id: "t1", target_client_id: "a1", source_output: "main" },
+                 { source_client_id: "t1", target_client_id: "a1", source_output_index: 0 },
                ],
              },
            }

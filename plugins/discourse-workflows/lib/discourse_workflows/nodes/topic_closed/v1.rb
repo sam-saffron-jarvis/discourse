@@ -19,7 +19,7 @@ module DiscourseWorkflows
         )
 
         def initialize(topic, status, enabled)
-          super(configuration: {})
+          super(parameters: {})
           @topic = topic
           @status = status
           @enabled = enabled

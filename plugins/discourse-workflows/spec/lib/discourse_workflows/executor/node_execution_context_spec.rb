@@ -11,7 +11,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx =
         described_class.new(
           input_items: [],
-          configuration: config,
+          parameters: config,
           property_schema: schema,
           resolver: resolver,
         )
@@ -47,8 +47,15 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx =
         described_class.new(
           input_items: [],
-          configuration: {
-            "credential_id" => credential.id,
+          parameters: {
+            "authentication" => "basic_auth",
+          },
+          credentials: {
+            "auth" => {
+              "id" => credential.id,
+              "field_name" => "credential_id",
+              "credential_type" => "basic_auth",
+            },
           },
           resolver: resolver,
         )
@@ -92,7 +99,12 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
 
     it "does not reveal whether an unauthorized credential id exists" do
       ctx, resolver, sandbox =
-        build_credential_context(configuration: { "credential_id" => credential.id + 1 })
+        build_credential_context(
+          configuration: {
+            "authentication" => "basic_auth",
+            "credential_id" => credential.id + 1,
+          },
+        )
 
       expect { ctx.get_credential(credential.id) }.to raise_error(Discourse::InvalidAccess)
       expect { ctx.get_credential(credential.id + 1000) }.to raise_error(Discourse::InvalidAccess)
@@ -108,8 +120,15 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx =
         described_class.new(
           input_items: [],
-          configuration: {
-            "credential_id" => credential.id + 1,
+          parameters: {
+            "authentication" => "basic_auth",
+          },
+          credentials: {
+            "auth" => {
+              "id" => credential.id + 1,
+              "field_name" => "credential_id",
+              "credential_type" => "basic_auth",
+            },
           },
           resolver: resolver,
         )
@@ -129,7 +148,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx =
         described_class.new(
           input_items: [],
-          configuration: {
+          parameters: {
             "data_table_id" => data_table.id,
           },
           resolver: nil,
@@ -163,7 +182,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx =
         described_class.new(
           input_items: [],
-          configuration: {
+          parameters: {
             "data_table_id" => data_table.id + 1,
           },
           resolver: nil,
@@ -340,7 +359,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
   def build_data_table_context(workflow: nil, configuration: { "data_table_id" => data_table.id })
     described_class.new(
       input_items: [],
-      configuration: configuration,
+      parameters: configuration,
       resolver: nil,
       workflow: workflow,
       node_id: workflow ? "dt-1" : nil,
@@ -350,19 +369,27 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
   def workflow_with_credential_dependency(credential)
     graph =
       build_workflow_graph do |g|
-        g.node "http-1", "action:http_request", configuration: { "credential_id" => credential.id }
+        g.node "http-1",
+               "action:http_request",
+               configuration: {
+                 "authentication" => "basic_auth",
+                 "credential_id" => credential.id,
+               }
       end
     Fabricate(:discourse_workflows_workflow, created_by: admin, **graph)
   end
 
-  def build_credential_context(workflow: nil, configuration: { "credential_id" => credential.id })
+  def build_credential_context(
+    workflow: nil,
+    configuration: { "authentication" => "basic_auth", "credential_id" => credential.id }
+  )
     resolver_context = { "$json" => {} }
     sandbox = DiscourseWorkflows::JsSandbox.new(resolver_context)
     resolver = DiscourseWorkflows::ExpressionResolver.new(resolver_context, sandbox: sandbox)
     ctx =
       described_class.new(
         input_items: [],
-        configuration: configuration,
+        parameters: configuration,
         resolver: resolver,
         workflow: workflow,
         node_id: workflow ? "http-1" : nil,

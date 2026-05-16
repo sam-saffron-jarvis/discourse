@@ -16,7 +16,7 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
   end
 
   def execute_node(configuration:, item:, run_as_user: Discourse.system_user)
-    action = described_class.new(configuration: configuration)
+    action = described_class.new(parameters: configuration)
     input_items = [item]
     resolver =
       DiscourseWorkflows::ExpressionResolver.new(
@@ -28,7 +28,7 @@ RSpec.describe DiscourseWorkflows::Nodes::AssignTopic::V1 do
         input_items: input_items,
         user: run_as_user,
         resolver: resolver,
-        configuration: configuration,
+        parameters: configuration,
         property_schema: described_class.property_schema,
         node_context: {
         },

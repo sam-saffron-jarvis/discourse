@@ -41,6 +41,7 @@ RSpec.describe DiscourseWorkflows::Credential::Destroy do
             g.node "webhook-1",
                    "trigger:webhook",
                    configuration: {
+                     "authentication" => "basic_auth",
                      "credential_id" => credential.id,
                    }
           end
@@ -52,7 +53,9 @@ RSpec.describe DiscourseWorkflows::Credential::Destroy do
       it { is_expected.to fail_a_policy(:credential_not_in_use) }
 
       it "exposes referencing workflows" do
-        expect(result[:referencing_workflows]).to contain_exactly(workflow)
+        expect(result[:referencing_workflows]).to contain_exactly(
+          { id: workflow.id, name: "My Workflow" },
+        )
       end
     end
 

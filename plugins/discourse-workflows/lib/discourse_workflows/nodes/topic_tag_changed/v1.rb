@@ -23,7 +23,7 @@ module DiscourseWorkflows
         )
 
         def initialize(topic, payload = {})
-          super(configuration: {})
+          super(parameters: {})
           @topic = topic
           @old_tag_names = payload[:old_tag_names] || []
           @new_tag_names = payload[:new_tag_names] || []

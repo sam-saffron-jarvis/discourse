@@ -26,7 +26,7 @@ module DiscourseWorkflows
         )
 
         def initialize(topic)
-          super(configuration: {})
+          super(parameters: {})
           @topic = topic
         end
 

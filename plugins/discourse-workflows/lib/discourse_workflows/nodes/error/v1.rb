@@ -18,7 +18,7 @@ module DiscourseWorkflows
         )
 
         def initialize(error_data = {}, *)
-          super(configuration: {})
+          super(parameters: {})
           @error_data = error_data.is_a?(Hash) ? error_data : {}
         end
 

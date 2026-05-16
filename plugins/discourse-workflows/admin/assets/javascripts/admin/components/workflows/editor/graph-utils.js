@@ -2,11 +2,11 @@ import {
   buildOutgoingIndex,
   collectLoopBodyNodeIds,
   graphConnectionKey,
-  legacyConnectionIndex,
   LOOP_NODE_TYPE,
   normalizeSourceOutput,
   normalizeSourceOutputIndex,
   normalizeTargetInputIndex,
+  portIndexFromKey,
 } from "../../../lib/workflows/graph-constants";
 
 export {
@@ -39,8 +39,7 @@ function hasExplicitTargetInput(connection) {
   return (
     connection.targetInputIndex != null ||
     connection.target_input_index != null ||
-    (connection.targetInput && connection.targetInput !== "main") ||
-    (connection.target_input && connection.target_input !== "main")
+    (connection.targetInput && connection.targetInput !== "main")
   );
 }
 
@@ -132,7 +131,7 @@ export function normalizeMergeConfiguration(configuration = {}) {
       use_data_of_input: configuration.use_data_of_input || "input_1",
       use_data_of_input_index:
         configuration.use_data_of_input_index ??
-        legacyConnectionIndex(configuration.use_data_of_input),
+        portIndexFromKey(configuration.use_data_of_input),
       choose_output: configuration.choose_output || "specified_input",
     };
   }

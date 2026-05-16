@@ -63,7 +63,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Create do
         ]
       end
       let(:connections) do
-        [{ source_client_id: "node_1", target_client_id: "node_2", source_output: "yes" }]
+        [{ source_client_id: "node_1", target_client_id: "node_2", source_output_index: 0 }]
       end
 
       it { is_expected.to run_successfully }

@@ -211,5 +211,61 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
       DiscoursePluginRegistry.discourse_workflows_nodes.delete(unavailable_class)
       DiscourseWorkflows::Registry.reset_indexes!
     end
+
+    it "serializes full descriptions for each registered node version" do
+      v1 =
+        Class.new(DiscourseWorkflows::NodeType) do
+          description(
+            name: "action:versioned_palette_test",
+            version: "1.0",
+            properties: {
+              old_field: {
+                type: :string,
+              },
+            },
+            output_schema: {
+              old_output: :string,
+            },
+            outputs: [{ key: "old", primary: true }],
+          )
+        end
+      v2 =
+        Class.new(DiscourseWorkflows::NodeType) do
+          description(
+            name: "action:versioned_palette_test",
+            version: "2.0",
+            properties: {
+              new_field: {
+                type: :string,
+              },
+            },
+            output_schema: {
+              new_output: :string,
+            },
+            outputs: [{ key: "new", primary: true }],
+          )
+        end
+
+      DiscoursePluginRegistry.register_discourse_workflows_node(v1, Plugin::Instance.new)
+      DiscoursePluginRegistry.register_discourse_workflows_node(v2, Plugin::Instance.new)
+      DiscourseWorkflows::Registry.reset_indexes!
+
+      result = described_class.call(guardian: admin.guardian)
+      node_type =
+        result[:node_types].find { |nt| nt[:identifier] == "action:versioned_palette_test" }
+
+      expect(node_type[:latest_version]).to eq("2.0")
+      expect(node_type[:available_versions]).to eq(%w[1.0 2.0])
+      expect(node_type[:properties]).to have_key(:new_field)
+      expect(node_type.dig(:versions, "1.0", :properties)).to have_key(:old_field)
+      expect(node_type.dig(:versions, "1.0", :output_schema)).to eq(old_output: :string)
+      expect(node_type.dig(:versions, "1.0", :outputs)).to contain_exactly(include(key: "old"))
+      expect(node_type.dig(:versions, "2.0", :properties)).to have_key(:new_field)
+    ensure
+      DiscoursePluginRegistry._raw_discourse_workflows_nodes.reject! do |entry|
+        [v1, v2].include?(entry[:value])
+      end
+      DiscourseWorkflows::Registry.reset_indexes!
+    end
   end
 end
