@@ -13,10 +13,15 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
     fab!(:user, :admin)
     fab!(:workflow) { Fabricate(:discourse_workflows_workflow, created_by: user) }
 
-    let(:params) { { workflow_id: workflow.id, name:, error_workflow_id:, nodes:, connections: } }
+    let(:params) do
+      attrs = { workflow_id: workflow.id, name:, error_workflow_id:, nodes:, connections: }
+      attrs[:timezone] = timezone unless timezone == :not_provided
+      attrs
+    end
     let(:dependencies) { { guardian: user.guardian } }
     let(:name) { "Updated Workflow" }
     let(:error_workflow_id) { nil }
+    let(:timezone) { :not_provided }
     let(:nodes) { [] }
     let(:connections) { [] }
 
@@ -47,9 +52,26 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
     end
 
     context "when error workflow is invalid" do
-      let(:error_workflow_id) { workflow.id }
+      let(:error_workflow_id) { -1 }
 
       it { is_expected.to fail_with_an_invalid_model(:workflow) }
+    end
+
+    context "when the workflow handles its own errors" do
+      let(:error_workflow_id) { workflow.id }
+
+      it { is_expected.to run_successfully }
+
+      it "sets itself as the error workflow" do
+        result
+        expect(workflow.reload.error_workflow_id).to eq(workflow.id)
+      end
+    end
+
+    context "when timezone is invalid" do
+      let(:timezone) { "Mars/Olympus" }
+
+      it { is_expected.to fail_a_contract }
     end
 
     context "when graph population fails" do
@@ -160,6 +182,17 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
         workflow.reload
         expect(workflow).to have_attributes(name: "Updated Workflow")
         expect(workflow).to be_published
+      end
+
+      context "with a workflow timezone" do
+        let(:timezone) { "Europe/Paris" }
+
+        it "stores the timezone in workflow settings" do
+          result
+
+          expect(workflow.reload.settings).to include("timezone" => "Europe/Paris")
+          expect(workflow.draft_version.settings).to include("timezone" => "Europe/Paris")
+        end
       end
 
       it "populates the workflow graph" do

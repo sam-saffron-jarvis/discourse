@@ -4,20 +4,27 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
   fab!(:user)
   fab!(:workflow) { Fabricate(:discourse_workflows_workflow, created_by: user) }
 
-  describe ".to_rrule" do
-    it "returns nil for seconds (handled by self-rescheduling job)" do
+  describe ".to_cron_expression" do
+    let(:node_key) { "workflow-1:trigger-1" }
+
+    it "converts seconds interval" do
       rule = { "interval" => "seconds", "seconds_between_triggers" => 30 }
-      expect(described_class.to_rrule(rule)).to be_nil
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("*/30 * * * * *")
     end
 
     it "converts minutes interval" do
       rule = { "interval" => "minutes", "minutes_between_triggers" => 5 }
-      expect(described_class.to_rrule(rule)).to eq("FREQ=MINUTELY;INTERVAL=5")
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("46 */5 * * * *")
     end
 
     it "converts hours interval with trigger_at_minute" do
       rule = { "interval" => "hours", "hours_between_triggers" => 2, "trigger_at_minute" => 15 }
-      expect(described_class.to_rrule(rule)).to eq("FREQ=HOURLY;INTERVAL=2;BYMINUTE=15")
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("46 15 */2 * * *")
+    end
+
+    it "converts non-divisor hours interval to hourly cron for recurrence filtering" do
+      rule = { "interval" => "hours", "hours_between_triggers" => 18, "trigger_at_minute" => 15 }
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("46 15 * * * *")
     end
 
     it "converts days interval" do
@@ -27,7 +34,7 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
         "trigger_at_hour" => 9,
         "trigger_at_minute" => 30,
       }
-      expect(described_class.to_rrule(rule)).to eq("FREQ=DAILY;INTERVAL=1;BYHOUR=9;BYMINUTE=30")
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("46 30 9 * * *")
     end
 
     it "converts weeks interval with weekdays" do
@@ -38,14 +45,12 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
         "trigger_at_hour" => 8,
         "trigger_at_minute" => 0,
       }
-      expect(described_class.to_rrule(rule)).to eq(
-        "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,FR;BYHOUR=8;BYMINUTE=0",
-      )
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("46 0 8 * * 1,5")
     end
 
-    it "defaults to Sunday when weekdays empty" do
+    it "uses wildcard weekdays when weekdays are empty" do
       rule = { "interval" => "weeks", "trigger_on_weekdays" => [] }
-      expect(described_class.to_rrule(rule)).to include("BYDAY=SU")
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("46 4 2 * * *")
     end
 
     it "converts months interval" do
@@ -56,23 +61,27 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
         "trigger_at_hour" => 12,
         "trigger_at_minute" => 0,
       }
-      expect(described_class.to_rrule(rule)).to eq(
-        "FREQ=MONTHLY;INTERVAL=3;BYMONTHDAY=15;BYHOUR=12;BYMINUTE=0",
-      )
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("46 0 12 15 */3 *")
     end
 
-    it "clamps values to valid ranges" do
+    it "applies deterministic cron jitter to omitted time fields" do
+      rule = { "interval" => "months", "months_between_triggers" => 1 }
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("46 4 2 27 */1 *")
+    end
+
+    it "clamps cron generation values to valid ranges" do
       rule = { "interval" => "minutes", "minutes_between_triggers" => 100 }
-      expect(described_class.to_rrule(rule)).to eq("FREQ=MINUTELY;INTERVAL=59")
+      expect(described_class.to_cron_expression(rule, node_key)).to eq("46 */59 * * * *")
     end
   end
 
   describe ".matches_now?" do
     let(:dtstart) { Time.utc(2026, 1, 1, 0, 0) }
 
-    it "returns false for seconds rules" do
-      rule = { "interval" => "seconds" }
-      expect(described_class.matches_now?(rule, dtstart, Time.current.utc)).to be(false)
+    it "matches seconds interval within the current minute" do
+      freeze_time Time.utc(2026, 3, 18, 9, 0)
+      rule = { "interval" => "seconds", "seconds_between_triggers" => 30 }
+      expect(described_class.matches_now?(rule, dtstart, Time.current.utc)).to be(true)
     end
 
     it "matches cron rules via CronParser" do
@@ -152,23 +161,18 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       expect(described_class.matches_now?(rule, dtstart, Time.current.utc)).to be(true)
     end
 
-    it "handles every-3-days recurrence correctly" do
-      dtstart = Time.utc(2026, 3, 15, 9, 0)
+    it "matches in the configured timezone" do
+      freeze_time Time.utc(2026, 3, 18, 8, 0)
       rule = {
         "interval" => "days",
-        "days_between_triggers" => 3,
+        "days_between_triggers" => 1,
         "trigger_at_hour" => 9,
         "trigger_at_minute" => 0,
       }
 
-      freeze_time Time.utc(2026, 3, 18, 9, 0) # 3 days later
-      expect(described_class.matches_now?(rule, dtstart, Time.current.utc)).to be(true)
-
-      freeze_time Time.utc(2026, 3, 19, 9, 0) # 4 days later
-      expect(described_class.matches_now?(rule, dtstart, Time.current.utc)).to be(false)
-
-      freeze_time Time.utc(2026, 3, 21, 9, 0) # 6 days later
-      expect(described_class.matches_now?(rule, dtstart, Time.current.utc)).to be(true)
+      expect(
+        described_class.matches_now?(rule, dtstart, Time.current.utc, timezone: "Europe/Paris"),
+      ).to be(true)
     end
   end
 
@@ -176,6 +180,34 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
     it "returns rules array" do
       config = { "rules" => [{ "interval" => "days" }] }
       expect(described_class.rules_from_configuration(config)).to eq([{ "interval" => "days" }])
+    end
+
+    it "accepts n8n schedule trigger rule shape" do
+      config = {
+        "rule" => {
+          "interval" => [
+            { "field" => "cronExpression", "expression" => "0 9 * * MON-FRI" },
+            {
+              "field" => "days",
+              "daysInterval" => 3,
+              "triggerAtHour" => 9,
+              "triggerAtMinute" => 30,
+            },
+          ],
+        },
+      }
+
+      expect(described_class.rules_from_configuration(config)).to eq(
+        [
+          { "interval" => "cronExpression", "cron" => "0 9 * * MON-FRI" },
+          {
+            "interval" => "days",
+            "days_between_triggers" => 3,
+            "trigger_at_hour" => 9,
+            "trigger_at_minute" => 30,
+          },
+        ],
+      )
     end
 
     it "returns empty array for empty config" do
@@ -188,6 +220,14 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       expect(described_class.valid_rule?({ "interval" => "cron", "cron" => "0 9 * * *" })).to eq(
         true,
       )
+    end
+
+    it "validates n8n cronExpression rules" do
+      expect(
+        described_class.valid_rule?(
+          { "field" => "cronExpression", "expression" => "0 9 * * MON-FRI" },
+        ),
+      ).to eq(true)
     end
 
     it "rejects invalid cron" do
@@ -373,6 +413,58 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
 
       described_class.fire_matching_trigger!(published_trigger, now)
       expect(Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size).to eq(1)
+    end
+
+    it "fires each matching second for six-field cron rules" do
+      freeze_time Time.utc(2026, 3, 18, 9, 0)
+      cron_node = {
+        "id" => "trigger-2",
+        "parameters" => {
+          "rules" => [{ "interval" => "cron", "cron" => "*/20 * * * * *" }],
+        },
+      }
+      cron_match =
+        DiscourseWorkflows::PublishedTrigger.new(
+          workflow: schedule_workflow,
+          workflow_version: workflow_version,
+          trigger_node: cron_node,
+        )
+
+      expect { described_class.fire_matching_trigger!(cron_match, Time.current.utc) }.to change {
+        Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size
+      }.by(3)
+
+      timestamps =
+        Jobs::DiscourseWorkflows::ExecuteWorkflow
+          .jobs
+          .last(3)
+          .map { |job| job["args"].first.dig("trigger_data", "timestamp") }
+      expect(timestamps).to eq(
+        %w[2026-03-18T09:00:00.000Z 2026-03-18T09:00:20.000Z 2026-03-18T09:00:40.000Z],
+      )
+    end
+
+    it "fires independent rules that match the same second" do
+      freeze_time Time.utc(2026, 3, 18, 9, 0)
+      cron_node = {
+        "id" => "trigger-2",
+        "parameters" => {
+          "rules" => [
+            { "interval" => "cron", "cron" => "0 9 * * *" },
+            { "interval" => "cron", "cron" => "0 9 * * *" },
+          ],
+        },
+      }
+      cron_match =
+        DiscourseWorkflows::PublishedTrigger.new(
+          workflow: schedule_workflow,
+          workflow_version: workflow_version,
+          trigger_node: cron_node,
+        )
+
+      expect { described_class.fire_matching_trigger!(cron_match, Time.current.utc) }.to change {
+        Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size
+      }.by(2)
     end
 
     it "skips seconds rules" do

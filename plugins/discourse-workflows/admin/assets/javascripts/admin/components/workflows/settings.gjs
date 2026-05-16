@@ -5,6 +5,7 @@ import { service } from "@ember/service";
 import Form from "discourse/components/form";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
+import TimezoneInput from "discourse/select-kit/components/timezone-input";
 import { i18n } from "discourse-i18n";
 import ErrorWorkflowChooser from "./error-workflow-chooser";
 
@@ -15,6 +16,7 @@ export default class WorkflowSettings extends Component {
 
   formData = {
     error_workflow_id: this.args.workflow.error_workflow_id,
+    timezone: this.args.workflow.timezone || "UTC",
   };
 
   errorWorkflowContent =
@@ -58,6 +60,7 @@ export default class WorkflowSettings extends Component {
             workflow: {
               name: this.args.workflow.name,
               error_workflow_id: data.error_workflow_id,
+              timezone: data.timezone,
             },
           },
         }
@@ -96,9 +99,23 @@ export default class WorkflowSettings extends Component {
             @onChange={{field.set}}
             @options={{hash
               none="discourse_workflows.settings.error_workflow_none"
-              excludeWorkflowId=@workflow.id
             }}
           />
+        </field.Control>
+      </form.Field>
+
+      <form.Field
+        @name="timezone"
+        @title={{i18n "discourse_workflows.settings.timezone"}}
+        @description={{i18n
+          "discourse_workflows.settings.timezone_description"
+        }}
+        @type="custom"
+        @format="full"
+        as |field|
+      >
+        <field.Control>
+          <TimezoneInput @value={{field.value}} @onChange={{field.set}} />
         </field.Control>
       </form.Field>
 

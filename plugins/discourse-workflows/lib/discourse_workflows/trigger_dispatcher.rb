@@ -2,7 +2,7 @@
 
 module DiscourseWorkflows
   class TriggerDispatcher
-    def self.enqueue(published_trigger, trigger_data:, user_id: nil)
+    def self.enqueue(published_trigger, trigger_data:, user_id: nil, run_at: nil)
       args = {
         workflow_id: published_trigger.workflow_id,
         workflow_version_id: published_trigger.workflow_version_id,
@@ -10,6 +10,10 @@ module DiscourseWorkflows
         trigger_data: trigger_data,
       }
       args[:user_id] = user_id if user_id
+
+      if run_at.present? && run_at > Time.current
+        return Jobs.enqueue_at(run_at, Jobs::DiscourseWorkflows::ExecuteWorkflow, args)
+      end
 
       Jobs.enqueue(Jobs::DiscourseWorkflows::ExecuteWorkflow, args)
     end

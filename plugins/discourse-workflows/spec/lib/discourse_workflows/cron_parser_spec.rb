@@ -55,6 +55,17 @@ RSpec.describe DiscourseWorkflows::CronParser do
       expect(described_class.matches?("0 10 * * 7", sunday)).to be(true)
     end
 
+    it "handles optional seconds" do
+      time = Time.utc(2026, 3, 18, 9, 0, 30)
+      expect(described_class.matches?("30 0 9 * * *", time)).to be(true)
+      expect(described_class.matches?("0 9 * * *", time)).to be(false)
+    end
+
+    it "handles month and weekday names" do
+      time = Time.utc(2026, 3, 18, 9, 0) # Wednesday
+      expect(described_class.matches?("0 9 * mar MON-FRI", time)).to be(true)
+    end
+
     it "uses standard cron semantics when day-of-month and day-of-week are both restricted" do
       monday = Time.utc(2026, 6, 8, 9, 0) # Monday
       first_of_month = Time.utc(2026, 4, 1, 9, 0) # Wednesday, first of month
@@ -73,7 +84,7 @@ RSpec.describe DiscourseWorkflows::CronParser do
       expect(described_class.matches?("10-5 * * * *", time)).to be(false)
       expect(described_class.matches?("*/0 * * * *", time)).to be(false)
       expect(described_class.matches?("1,,2 * * * *", time)).to be(false)
-      expect(described_class.matches?("* * * * MON", time)).to be(false)
+      expect(described_class.matches?("* * * * ?", time)).to be(false)
     end
   end
 
@@ -82,6 +93,8 @@ RSpec.describe DiscourseWorkflows::CronParser do
       expect(described_class.valid?("* * * * *")).to be(true)
       expect(described_class.valid?("0 9 * * 1-5")).to be(true)
       expect(described_class.valid?("*/15 * * * *")).to be(true)
+      expect(described_class.valid?("*/10 * * * * *")).to be(true)
+      expect(described_class.valid?("0 9 * * MON-FRI")).to be(true)
     end
 
     it "rejects invalid expressions" do
@@ -93,7 +106,7 @@ RSpec.describe DiscourseWorkflows::CronParser do
       expect(described_class.valid?("10-5 * * * *")).to be(false)
       expect(described_class.valid?("*/0 * * * *")).to be(false)
       expect(described_class.valid?("1,,2 * * * *")).to be(false)
-      expect(described_class.valid?("* * * * MON")).to be(false)
+      expect(described_class.valid?("* * * * ?")).to be(false)
     end
   end
 end

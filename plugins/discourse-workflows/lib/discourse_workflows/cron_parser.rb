@@ -5,7 +5,14 @@ module DiscourseWorkflows
     InvalidExpression = Class.new(StandardError)
 
     FieldDefinition =
-      Struct.new(:name, :range, :value_extractor, :value_normalizer, keyword_init: true) do
+      Struct.new(
+        :name,
+        :range,
+        :value_extractor,
+        :value_normalizer,
+        :aliases,
+        keyword_init: true,
+      ) do
         def value_for(time)
           normalize(value_extractor.call(time))
         end
@@ -14,6 +21,12 @@ module DiscourseWorkflows
           return value if value_normalizer.nil?
 
           value_normalizer.call(value)
+        end
+
+        def value_from_token(token)
+          aliases&.fetch(token.to_s.upcase, nil) || Integer(token)
+        rescue ArgumentError, TypeError
+          raise InvalidExpression
         end
       end
 
@@ -31,7 +44,9 @@ module DiscourseWorkflows
     CompiledExpression =
       Struct.new(:fields, keyword_init: true) do
         def matches?(time)
-          unless fields.values_at(:minute, :hour, :month).all? { |field| field.matches?(time) }
+          unless fields
+                   .values_at(:second, :minute, :hour, :month)
+                   .all? { |field| field.matches?(time) }
             return false
           end
 
@@ -46,7 +61,16 @@ module DiscourseWorkflows
         end
       end
 
+    MONTH_ALIASES =
+      %w[JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC]
+        .each_with_index
+        .to_h { |name, index| [name, index + 1] }
+        .freeze
+
+    WEEKDAY_ALIASES = %w[SUN MON TUE WED THU FRI SAT].each_with_index.to_h.freeze
+
     FIELD_DEFINITIONS = [
+      FieldDefinition.new(name: :second, range: 0..59, value_extractor: ->(time) { time.sec }),
       FieldDefinition.new(name: :minute, range: 0..59, value_extractor: ->(time) { time.min }),
       FieldDefinition.new(name: :hour, range: 0..23, value_extractor: ->(time) { time.hour }),
       FieldDefinition.new(
@@ -54,12 +78,18 @@ module DiscourseWorkflows
         range: 1..31,
         value_extractor: ->(time) { time.mday },
       ),
-      FieldDefinition.new(name: :month, range: 1..12, value_extractor: ->(time) { time.month }),
+      FieldDefinition.new(
+        name: :month,
+        range: 1..12,
+        value_extractor: ->(time) { time.month },
+        aliases: MONTH_ALIASES,
+      ),
       FieldDefinition.new(
         name: :day_of_week,
         range: 0..7,
         value_extractor: ->(time) { time.wday },
         value_normalizer: ->(value) { value == 7 ? 0 : value },
+        aliases: WEEKDAY_ALIASES,
       ),
     ].freeze
 
@@ -89,6 +119,7 @@ module DiscourseWorkflows
       raise InvalidExpression if expression.blank?
 
       fields = expression.strip.split(/\s+/)
+      fields.unshift("0") if fields.size == FIELD_DEFINITIONS.size - 1
       raise InvalidExpression unless fields.size == FIELD_DEFINITIONS.size
 
       fields
@@ -116,10 +147,15 @@ module DiscourseWorkflows
         normalize_values(definition.range, definition)
       when %r{\A\*/(\d+)\z}
         expand_range(definition.range.begin, definition.range.end, $1, definition)
-      when %r{\A(\d+)-(\d+)(?:/(\d+))?\z}
-        expand_range($1.to_i, $2.to_i, $3 || 1, definition)
-      when /\A(\d+)\z/
-        [normalize_value($1.to_i, definition)]
+      when %r{\A([[:alnum:]]+)-([[:alnum:]]+)(?:/(\d+))?\z}
+        expand_range(
+          definition.value_from_token($1),
+          definition.value_from_token($2),
+          $3 || 1,
+          definition,
+        )
+      when /\A[[:alnum:]]+\z/
+        [normalize_value(definition.value_from_token(part), definition)]
       else
         raise InvalidExpression
       end

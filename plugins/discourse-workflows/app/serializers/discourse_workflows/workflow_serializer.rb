@@ -11,6 +11,7 @@ module DiscourseWorkflows
                :has_unpublished_changes,
                :error_workflow_id,
                :error_workflow_name,
+               :timezone,
                :created_at,
                :updated_at,
                :last_execution_status,
@@ -43,6 +44,10 @@ module DiscourseWorkflows
 
     def error_workflow_name
       object.error_workflow&.name
+    end
+
+    def timezone
+      object.settings&.dig("timezone") || DiscourseWorkflows::ScheduleRule.default_timezone
     end
 
     def include_error_workflow_name?

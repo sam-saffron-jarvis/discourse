@@ -11,6 +11,7 @@ export default class DiscourseWorkflowsWorkflow extends RestModel {
   @tracked published_version_id;
   @tracked has_unpublished_changes;
   @tracked last_execution_status;
+  @tracked timezone;
   @tracked nodes = [];
   @tracked connections = [];
 

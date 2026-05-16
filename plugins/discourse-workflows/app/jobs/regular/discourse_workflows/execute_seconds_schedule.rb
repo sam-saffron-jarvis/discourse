@@ -53,12 +53,16 @@ module Jobs
 
         ::DiscourseWorkflows::TriggerDispatcher.enqueue(
           published_trigger,
-          trigger_data: ::DiscourseWorkflows::Nodes::Schedule::V1.new.output,
+          trigger_data:
+            ::DiscourseWorkflows::Nodes::Schedule::V1.new.output(
+              time: now,
+              timezone: ::DiscourseWorkflows::ScheduleRule.timezone_for(published_trigger),
+            ),
         )
 
         interval = ::DiscourseWorkflows::ScheduleRule.seconds_interval(rule)
-        Jobs.enqueue_in(
-          interval.seconds,
+        Jobs.enqueue_at(
+          ::DiscourseWorkflows::ScheduleRule.next_seconds_occurrence(now, interval),
           Jobs::DiscourseWorkflows::ExecuteSecondsSchedule,
           workflow_id: workflow_id,
           workflow_version_id: workflow_version_id,

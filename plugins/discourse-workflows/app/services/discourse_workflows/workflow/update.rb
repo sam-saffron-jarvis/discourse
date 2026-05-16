@@ -4,10 +4,13 @@ module DiscourseWorkflows
   class Workflow::Update
     include Service::Base
 
+    TIMEZONE_NOT_PROVIDED = Object.new.freeze
+
     params do
       attribute :workflow_id, :integer
       attribute :name, :string
       attribute :error_workflow_id, :integer
+      attribute :timezone, default: -> { TIMEZONE_NOT_PROVIDED }
       attribute :nodes
       attribute :connections
 
@@ -19,13 +22,25 @@ module DiscourseWorkflows
 
       validates :workflow_id, presence: true
       validates :name, presence: true, length: { maximum: 100 }
+      validate :timezone_is_valid
 
       def updatable_attributes
         { name:, error_workflow_id: }
       end
 
+      def timezone_provided?
+        timezone != TIMEZONE_NOT_PROVIDED
+      end
+
       def graph_data_provided?
         !nodes.nil? || !connections.nil?
+      end
+
+      def timezone_is_valid
+        return if !timezone_provided? || timezone.blank?
+        return if ScheduleRule.valid_timezone?(timezone)
+
+        errors.add(:timezone, :invalid)
       end
     end
 
@@ -65,7 +80,9 @@ module DiscourseWorkflows
     end
 
     def update_workflow(workflow:, params:, guardian:)
-      workflow.assign_attributes(**params.updatable_attributes, updated_by: guardian.user)
+      attrs = params.updatable_attributes
+      attrs[:settings] = settings_with_timezone(workflow, params) if params.timezone_provided?
+      workflow.assign_attributes(**attrs, updated_by: guardian.user)
       workflow
     end
 
@@ -105,7 +122,21 @@ module DiscourseWorkflows
     end
 
     def update_draft_version_metadata(workflow:, guardian:)
-      workflow.draft_version&.update(name: workflow.name, updated_by: guardian.user)
+      workflow.draft_version&.update(
+        name: workflow.name,
+        settings: workflow.settings || {},
+        updated_by: guardian.user,
+      )
+    end
+
+    def settings_with_timezone(workflow, params)
+      settings = (workflow.settings || {}).dup
+      if params.timezone.present?
+        settings["timezone"] = params.timezone
+      else
+        settings.delete("timezone")
+      end
+      settings
     end
 
     def expire_workflow_caches

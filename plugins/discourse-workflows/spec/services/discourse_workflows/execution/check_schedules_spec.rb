@@ -6,12 +6,18 @@ RSpec.describe DiscourseWorkflows::Execution::CheckSchedules do
 
     fab!(:user)
 
-    def create_schedule_workflow(configuration:)
+    def create_schedule_workflow(configuration:, settings: {})
       graph =
         build_workflow_graph do |g|
           g.node "trigger-1", "trigger:schedule", configuration: configuration
         end
-      Fabricate(:discourse_workflows_workflow, published: true, created_by: user, **graph)
+      Fabricate(
+        :discourse_workflows_workflow,
+        published: true,
+        created_by: user,
+        settings: settings,
+        **graph,
+      )
     end
 
     context "when plugin is disabled" do
@@ -83,6 +89,36 @@ RSpec.describe DiscourseWorkflows::Execution::CheckSchedules do
         )
 
         expect { result }.to change { Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size }.by(1)
+      end
+
+      it "evaluates the rule in the workflow timezone" do
+        freeze_time Time.utc(2026, 3, 18, 8, 0)
+        create_schedule_workflow(
+          settings: {
+            "timezone" => "Europe/Paris",
+          },
+          configuration: {
+            "rules" => [
+              {
+                "interval" => "days",
+                "days_between_triggers" => 1,
+                "trigger_at_hour" => 9,
+                "trigger_at_minute" => 0,
+              },
+            ],
+          },
+        )
+
+        expect { result }.to change { Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.size }.by(1)
+
+        trigger_data =
+          Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last["args"].first["trigger_data"]
+        expect(trigger_data).to include(
+          "Hour" => "09",
+          "Minute" => "00",
+          "Timezone" => "Europe/Paris (UTC+01:00)",
+        )
+        expect(trigger_data["timestamp"]).to end_with("+01:00")
       end
     end
 

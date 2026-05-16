@@ -1,10 +1,16 @@
 # frozen_string_literal: true
 
+require "digest"
+
 module DiscourseWorkflows
   module ScheduleRule
     module_function
 
-    VALID_INTERVALS = %w[seconds minutes hours days weeks months cron].freeze
+    VALID_INTERVALS = %w[seconds minutes hours days weeks months cron cronExpression].freeze
+    DEFAULT_TIMEZONE = "UTC"
+    RECURRENCE_RULES_KEY = "recurrence_rules"
+    TRIGGERED_OCCURRENCES_KEY = "triggered_occurrences"
+    MAX_TRIGGERED_OCCURRENCES = 200
 
     MAX_RULES_PER_NODE = 5
 
@@ -16,11 +22,11 @@ module DiscourseWorkflows
       end
 
       def interval
-        @data[:interval]
+        @data[:interval] || @data[:field]
       end
 
       def cron
-        @data[:cron]
+        @data[:cron] || @data[:expression]
       end
 
       def [](key)
@@ -38,22 +44,24 @@ module DiscourseWorkflows
 
     module IntervalHandler
       class Seconds
-        def to_rrule(_rule) = nil
+        def to_cron_expression(rule, _node_key)
+          n = (rule[:seconds_between_triggers] || 30).to_i.clamp(1, 59)
+          "*/#{n} * * * * *"
+        end
 
         def valid?(rule)
           n = (rule[:seconds_between_triggers] || 30).to_i
           n >= 1 && n <= 59
         end
 
-        def matches_now?(_rule, _dtstart, _now) = false
-
-        def effective_dtstart(_created, now) = now
+        def recurrence(_rule, _index) = ScheduleRule.inactive_recurrence
       end
 
       class Minutes
-        def to_rrule(rule)
+        def to_cron_expression(rule, node_key)
           n = (rule[:minutes_between_triggers] || 5).to_i.clamp(1, 59)
-          "FREQ=MINUTELY;INTERVAL=#{n}"
+          second = ScheduleRule.stable_int(node_key, "second", 0, 60)
+          "#{second} */#{n} * * * *"
         end
 
         def valid?(rule)
@@ -61,18 +69,25 @@ module DiscourseWorkflows
           n.nil? || n.to_i.between?(1, 59)
         end
 
-        def matches_now?(rule, dtstart, now)
-          ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
-        end
-
-        def effective_dtstart(_created, now) = now.beginning_of_day
+        def recurrence(_rule, _index) = ScheduleRule.inactive_recurrence
       end
 
       class Hours
-        def to_rrule(rule)
+        def to_cron_expression(rule, node_key)
           n = (rule[:hours_between_triggers] || 1).to_i.clamp(1, 23)
-          minute = (rule[:trigger_at_minute] || 0).to_i.clamp(0, 59)
-          "FREQ=HOURLY;INTERVAL=#{n};BYMINUTE=#{minute}"
+          second = ScheduleRule.stable_int(node_key, "second", 0, 60)
+          minute =
+            (
+              if rule[:trigger_at_minute].nil?
+                ScheduleRule.stable_int(node_key, "minute", 0, 60)
+              else
+                rule[:trigger_at_minute].to_i.clamp(0, 59)
+              end
+            )
+
+          return "#{second} #{minute} */#{n} * * *" if (24 % n).zero?
+
+          "#{second} #{minute} * * * *"
         end
 
         def valid?(rule)
@@ -81,19 +96,37 @@ module DiscourseWorkflows
           (n.nil? || n.to_i.between?(1, 23)) && (m.nil? || m.to_i.between?(0, 59))
         end
 
-        def matches_now?(rule, dtstart, now)
-          ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
+        def recurrence(rule, index)
+          ScheduleRule.recurrence_for(
+            interval_size: (rule[:hours_between_triggers] || 1).to_i,
+            index:,
+            type_interval: "hours",
+          )
         end
-
-        def effective_dtstart(_created, now) = now.beginning_of_day
       end
 
       class Days
-        def to_rrule(rule)
+        def to_cron_expression(rule, node_key)
           n = (rule[:days_between_triggers] || 1).to_i.clamp(1, 31)
-          hour = (rule[:trigger_at_hour] || 0).to_i.clamp(0, 23)
-          minute = (rule[:trigger_at_minute] || 0).to_i.clamp(0, 59)
-          "FREQ=DAILY;INTERVAL=#{n};BYHOUR=#{hour};BYMINUTE=#{minute}"
+          second = ScheduleRule.stable_int(node_key, "second", 0, 60)
+          minute =
+            (
+              if rule[:trigger_at_minute].nil?
+                ScheduleRule.stable_int(node_key, "minute", 0, 60)
+              else
+                rule[:trigger_at_minute].to_i.clamp(0, 59)
+              end
+            )
+          hour =
+            (
+              if rule[:trigger_at_hour].nil?
+                ScheduleRule.stable_int(node_key, "hour", 0, 24)
+              else
+                rule[:trigger_at_hour].to_i.clamp(0, 23)
+              end
+            )
+
+          "#{second} #{minute} #{hour} * * *"
         end
 
         def valid?(rule)
@@ -104,31 +137,38 @@ module DiscourseWorkflows
             (m.nil? || m.to_i.between?(0, 59))
         end
 
-        def matches_now?(rule, dtstart, now)
-          ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
+        def recurrence(rule, index)
+          ScheduleRule.recurrence_for(
+            interval_size: (rule[:days_between_triggers] || 1).to_i,
+            index:,
+            type_interval: "days",
+          )
         end
-
-        def effective_dtstart(created, _now) = created.utc.beginning_of_day
       end
 
       class Weeks
-        WEEKDAY_MAP = {
-          0 => "SU",
-          1 => "MO",
-          2 => "TU",
-          3 => "WE",
-          4 => "TH",
-          5 => "FR",
-          6 => "SA",
-        }.freeze
+        def to_cron_expression(rule, node_key)
+          second = ScheduleRule.stable_int(node_key, "second", 0, 60)
+          minute =
+            (
+              if rule[:trigger_at_minute].nil?
+                ScheduleRule.stable_int(node_key, "minute", 0, 60)
+              else
+                rule[:trigger_at_minute].to_i.clamp(0, 59)
+              end
+            )
+          hour =
+            (
+              if rule[:trigger_at_hour].nil?
+                ScheduleRule.stable_int(node_key, "hour", 0, 24)
+              else
+                rule[:trigger_at_hour].to_i.clamp(0, 23)
+              end
+            )
+          weekdays = Array.wrap(rule[:trigger_on_weekdays]).map(&:to_i)
+          days_of_week = weekdays.empty? ? "*" : weekdays.join(",")
 
-        def to_rrule(rule)
-          n = (rule[:weeks_between_triggers] || 1).to_i.clamp(1, 52)
-          hour = (rule[:trigger_at_hour] || 0).to_i.clamp(0, 23)
-          minute = (rule[:trigger_at_minute] || 0).to_i.clamp(0, 59)
-          weekdays = Array.wrap(rule[:trigger_on_weekdays]).map { |d| WEEKDAY_MAP[d.to_i] }.compact
-          weekdays = ["SU"] if weekdays.empty?
-          "FREQ=WEEKLY;INTERVAL=#{n};BYDAY=#{weekdays.join(",")};BYHOUR=#{hour};BYMINUTE=#{minute}"
+          "#{second} #{minute} #{hour} * * #{days_of_week}"
         end
 
         def valid?(rule)
@@ -141,20 +181,45 @@ module DiscourseWorkflows
             (days.blank? || Array.wrap(days).all? { |d| d.to_i.between?(0, 6) })
         end
 
-        def matches_now?(rule, dtstart, now)
-          ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
+        def recurrence(rule, index)
+          ScheduleRule.recurrence_for(
+            interval_size: (rule[:weeks_between_triggers] || 1).to_i,
+            index:,
+            type_interval: "weeks",
+          )
         end
-
-        def effective_dtstart(created, _now) = created.utc.beginning_of_week
       end
 
       class Months
-        def to_rrule(rule)
+        def to_cron_expression(rule, node_key)
           n = (rule[:months_between_triggers] || 1).to_i.clamp(1, 12)
-          day = (rule[:trigger_at_day_of_month] || 1).to_i.clamp(1, 31)
-          hour = (rule[:trigger_at_hour] || 0).to_i.clamp(0, 23)
-          minute = (rule[:trigger_at_minute] || 0).to_i.clamp(0, 59)
-          "FREQ=MONTHLY;INTERVAL=#{n};BYMONTHDAY=#{day};BYHOUR=#{hour};BYMINUTE=#{minute}"
+          second = ScheduleRule.stable_int(node_key, "second", 0, 60)
+          minute =
+            (
+              if rule[:trigger_at_minute].nil?
+                ScheduleRule.stable_int(node_key, "minute", 0, 60)
+              else
+                rule[:trigger_at_minute].to_i.clamp(0, 59)
+              end
+            )
+          hour =
+            (
+              if rule[:trigger_at_hour].nil?
+                ScheduleRule.stable_int(node_key, "hour", 0, 24)
+              else
+                rule[:trigger_at_hour].to_i.clamp(0, 23)
+              end
+            )
+          day =
+            (
+              if rule[:trigger_at_day_of_month].nil?
+                ScheduleRule.stable_int(node_key, "dayOfMonth", 1, 29)
+              else
+                rule[:trigger_at_day_of_month].to_i.clamp(1, 31)
+              end
+            )
+
+          "#{second} #{minute} #{hour} #{day} */#{n} *"
         end
 
         def valid?(rule)
@@ -166,23 +231,21 @@ module DiscourseWorkflows
             (h.nil? || h.to_i.between?(0, 23)) && (m.nil? || m.to_i.between?(0, 59))
         end
 
-        def matches_now?(rule, dtstart, now)
-          ScheduleRule.rrule_matches?(to_rrule(rule), effective_dtstart(dtstart, now), now)
+        def recurrence(rule, index)
+          ScheduleRule.recurrence_for(
+            interval_size: (rule[:months_between_triggers] || 1).to_i,
+            index:,
+            type_interval: "months",
+          )
         end
-
-        def effective_dtstart(created, _now) = created.utc.beginning_of_month
       end
 
       class Cron
-        def to_rrule(_rule) = nil
+        def to_cron_expression(rule, _node_key) = rule.cron
 
         def valid?(rule) = CronParser.valid?(rule.cron)
 
-        def matches_now?(rule, _dtstart, now)
-          rule.cron.present? && CronParser.matches?(rule.cron, now)
-        end
-
-        def effective_dtstart(created, _now) = created.utc
+        def recurrence(_rule, _index) = ScheduleRule.inactive_recurrence
       end
     end
 
@@ -194,24 +257,33 @@ module DiscourseWorkflows
       "weeks" => IntervalHandler::Weeks.new,
       "months" => IntervalHandler::Months.new,
       "cron" => IntervalHandler::Cron.new,
+      "cronExpression" => IntervalHandler::Cron.new,
     }.freeze
 
     def wrap(rule)
       rule.is_a?(Rule) ? rule : Rule.new(rule)
     end
 
-    def to_rrule(rule)
+    def to_cron_expression(rule, node_key = "")
       rule = wrap(rule)
-      rule.handler.to_rrule(rule)
+      rule.handler.to_cron_expression(rule, node_key)
     end
 
-    def matches_now?(rule, dtstart, now)
+    def recurrence(rule, index)
       rule = wrap(rule)
-      rule.handler.matches_now?(rule, dtstart, now)
+      rule.handler.recurrence(rule, index)
+    end
+
+    def matches_now?(rule, _dtstart, now, node_key: "", timezone: default_timezone)
+      matching_times(rule, now, node_key:, timezone:).any?
     end
 
     def rules_from_configuration(configuration)
-      CollectionParameters.rows(configuration.with_indifferent_access, :rules)
+      configuration = configuration.with_indifferent_access
+      rules = CollectionParameters.rows(configuration, :rules)
+      return rules if rules.present?
+
+      Array.wrap(configuration.dig(:rule, :interval)).map { |rule| normalize_n8n_rule(rule) }
     end
 
     def valid_rule?(rule)
@@ -237,9 +309,8 @@ module DiscourseWorkflows
       seconds_tokens[rule_index.to_s] = token
       workflow.update_node_static_data!(node_id, data.merge("seconds_tokens" => seconds_tokens))
 
-      interval = seconds_interval(rule)
-      Jobs.enqueue_in(
-        interval.seconds,
+      Jobs.enqueue_at(
+        next_seconds_occurrence(Time.current.utc, seconds_interval(rule)),
         Jobs::DiscourseWorkflows::ExecuteSecondsSchedule,
         workflow_id: workflow.id,
         workflow_version_id: published_trigger.workflow_version_id,
@@ -278,28 +349,27 @@ module DiscourseWorkflows
     def fire_matching_trigger!(published_trigger, now)
       workflow = published_trigger.workflow
       node_id = published_trigger.trigger_node_id
+      timezone = timezone_for(published_trigger)
+      node_key = "#{workflow.id}:#{node_id}"
       configuration = NodeData.parameters(published_trigger.trigger_node).with_indifferent_access
       rules = rules_from_configuration(configuration)
 
-      rules.each do |rule|
+      rules.each_with_index do |rule, rule_index|
         next if seconds_rule?(rule)
-        next unless matches_now?(rule, workflow.created_at, now)
 
-        fired = false
-        workflow.with_lock do
-          next if TriggerTracking.triggered_this_minute?(workflow, node_id, now)
-          TriggerTracking.mark_triggered!(workflow, node_id, now)
+        matching_times(rule, now, node_key:, timezone:).each do |scheduled_at|
+          workflow.with_lock do
+            unless claim_occurrence!(workflow, node_id, rule_index, rule, scheduled_at, timezone)
+              next
+            end
 
-          DiscourseWorkflows::TriggerDispatcher.enqueue(
-            published_trigger,
-            trigger_data: Nodes::Schedule::V1.new.output,
-          )
-          fired = true
+            DiscourseWorkflows::TriggerDispatcher.enqueue(
+              published_trigger,
+              trigger_data: Nodes::Schedule::V1.new.output(time: scheduled_at, timezone:),
+              run_at: scheduled_at,
+            )
+          end
         end
-
-        # Only one rule fires per minute per node to prevent duplicate executions
-        # when multiple rules happen to match at the same time.
-        break if fired
       end
     end
 
@@ -317,13 +387,167 @@ module DiscourseWorkflows
       end
     end
 
-    def rrule_matches?(rrule_str, effective, now)
-      return false if rrule_str.blank?
+    def matching_times(rule, now, node_key:, timezone:)
+      cron_expression = to_cron_expression(rule, node_key)
+      return [] if cron_expression.blank?
 
-      rrule = RRule::Rule.new(rrule_str, dtstart: effective, tzid: "UTC")
-      window_start = now.beginning_of_minute
-      window_end = window_start + 59.seconds
-      rrule.between(window_start, window_end).any?
+      window_start = now.utc.beginning_of_minute
+      (0..59).filter_map do |offset|
+        scheduled_at = window_start + offset.seconds
+        scheduled_at if CronParser.matches?(cron_expression, scheduled_at.in_time_zone(timezone))
+      end
+    end
+
+    def claim_occurrence!(workflow, node_id, rule_index, rule, scheduled_at, timezone)
+      data = workflow.node_static_data(node_id).deep_dup
+      occurrence_key = "#{rule_index}:#{scheduled_at.utc.iso8601}"
+      triggered_occurrences = Array.wrap(data[TRIGGERED_OCCURRENCES_KEY])
+      return false if triggered_occurrences.include?(occurrence_key)
+
+      recurrence_rule = recurrence(rule, rule_index)
+      if recurrence_rule[:activated]
+        recurrence_rules = Array.wrap(data[RECURRENCE_RULES_KEY])
+        recurrence_value = recurrence_value(recurrence_rule, scheduled_at, timezone)
+        unless recurrence_due?(recurrence_rule, recurrence_rules[rule_index], recurrence_value)
+          return false
+        end
+
+        recurrence_rules[rule_index] = recurrence_value
+        data[RECURRENCE_RULES_KEY] = recurrence_rules
+      end
+
+      triggered_occurrences = triggered_occurrences.last(MAX_TRIGGERED_OCCURRENCES - 1)
+      data[TRIGGERED_OCCURRENCES_KEY] = triggered_occurrences + [occurrence_key]
+      data["last_triggered_at"] = scheduled_at.utc.iso8601
+      workflow.update_node_static_data!(node_id, data)
+      true
+    end
+
+    def recurrence_due?(recurrence_rule, last_value, current_value)
+      return true if last_value.nil?
+
+      last_value = last_value.to_i
+      interval_size = recurrence_rule[:interval_size]
+
+      case recurrence_rule[:type_interval]
+      when "hours"
+        (current_value - last_value + 24) % 24 >= interval_size
+      when "days"
+        (current_value - last_value + 365) % 365 >= interval_size
+      when "weeks"
+        (current_value - last_value + 52) % 52 >= interval_size || current_value == last_value
+      when "months"
+        (current_value - last_value + 12) % 12 >= interval_size
+      else
+        false
+      end
+    end
+
+    def recurrence_value(recurrence_rule, scheduled_at, timezone)
+      local_time = scheduled_at.in_time_zone(timezone)
+
+      case recurrence_rule[:type_interval]
+      when "hours"
+        local_time.hour
+      when "days"
+        local_time.yday
+      when "weeks"
+        local_time.to_date.strftime("%U").to_i + 1
+      when "months"
+        local_time.month - 1
+      end
+    end
+
+    def inactive_recurrence
+      { activated: false }
+    end
+
+    def recurrence_for(interval_size:, index:, type_interval:)
+      return inactive_recurrence if interval_size == 1
+
+      { activated: true, index:, interval_size:, type_interval: }
+    end
+
+    def stable_int(seed, label, min, max)
+      hash = Digest::SHA256.digest("#{seed}:#{label}")
+      min + (hash.unpack1("N") % (max - min))
+    end
+
+    def next_seconds_occurrence(now, interval)
+      now = now.utc.change(usec: 0)
+      matching_seconds = (0..59).select { |second| (second % interval).zero? }
+      next_second = matching_seconds.find { |second| second > now.sec }
+
+      return now.change(sec: next_second) if next_second
+
+      (now + 1.minute).change(sec: matching_seconds.first)
+    end
+
+    def timezone_for(published_trigger)
+      timezone =
+        published_trigger.workflow_version&.settings&.dig("timezone").presence ||
+          published_trigger.workflow&.settings&.dig("timezone").presence || default_timezone
+
+      valid_timezone?(timezone) ? timezone : default_timezone
+    end
+
+    def normalize_n8n_rule(rule)
+      rule = rule.with_indifferent_access
+      return rule if rule[:field].blank?
+
+      case rule[:field]
+      when "seconds"
+        { "interval" => "seconds", "seconds_between_triggers" => rule[:secondsInterval] }.compact
+      when "minutes"
+        { "interval" => "minutes", "minutes_between_triggers" => rule[:minutesInterval] }.compact
+      when "hours"
+        {
+          "interval" => "hours",
+          "hours_between_triggers" => rule[:hoursInterval],
+          "trigger_at_minute" => rule[:triggerAtMinute],
+        }.compact
+      when "days"
+        {
+          "interval" => "days",
+          "days_between_triggers" => rule[:daysInterval],
+          "trigger_at_hour" => rule[:triggerAtHour],
+          "trigger_at_minute" => rule[:triggerAtMinute],
+        }.compact
+      when "weeks"
+        {
+          "interval" => "weeks",
+          "weeks_between_triggers" => rule[:weeksInterval],
+          "trigger_on_weekdays" => rule[:triggerAtDay],
+          "trigger_at_hour" => rule[:triggerAtHour],
+          "trigger_at_minute" => rule[:triggerAtMinute],
+        }.compact
+      when "months"
+        {
+          "interval" => "months",
+          "months_between_triggers" => rule[:monthsInterval],
+          "trigger_at_day_of_month" => rule[:triggerAtDayOfMonth],
+          "trigger_at_hour" => rule[:triggerAtHour],
+          "trigger_at_minute" => rule[:triggerAtMinute],
+        }.compact
+      when "cronExpression"
+        { "interval" => "cronExpression", "cron" => rule[:expression] }.compact
+      else
+        rule
+      end
+    end
+
+    def default_timezone
+      timezone = Time.zone&.tzinfo&.name.presence
+      timezone == "Etc/UTC" ? DEFAULT_TIMEZONE : (timezone || DEFAULT_TIMEZONE)
+    end
+
+    def valid_timezone?(timezone)
+      return false if timezone.blank?
+
+      TZInfo::Timezone.get(timezone)
+      true
+    rescue TZInfo::InvalidTimezoneIdentifier
+      false
     end
   end
 end
