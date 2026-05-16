@@ -51,6 +51,7 @@ module DiscourseWorkflows
       @queue = []
       @waiting_inputs = {}
       @waiting_input_sources = {}
+      @waiting_input_targets = {}
       @input_wait_requirements = {}
       @sandbox = nil
       @waiting_node = nil
@@ -141,13 +142,17 @@ module DiscourseWorkflows
       iterations = 0
       queue_index = 0
 
-      while queue_index < @queue.length
-        iterations += 1
-        raise "Max iterations (#{MAX_ITERATIONS}) exceeded" if iterations > MAX_ITERATIONS
+      loop do
+        while queue_index < @queue.length
+          iterations += 1
+          raise "Max iterations (#{MAX_ITERATIONS}) exceeded" if iterations > MAX_ITERATIONS
 
-        node, input_groups, input_sources = @queue[queue_index]
-        queue_index += 1
-        execute_node(node, input_groups, input_sources || {})
+          node, input_groups, input_sources = @queue[queue_index]
+          queue_index += 1
+          execute_node(node, input_groups, input_sources || {})
+        end
+
+        break unless flush_partial_waiting_inputs
       end
     end
 
@@ -237,6 +242,7 @@ module DiscourseWorkflows
         if exec_ctx&.condition_details&.any?
           step.add_metadata("conditions", exec_ctx.condition_details)
         end
+        step.add_metadata("hints", exec_ctx.execution_hints) if exec_ctx&.execution_hints&.any?
       end
     end
 
@@ -402,6 +408,10 @@ module DiscourseWorkflows
       requirements = input_wait_requirements(target)
       inputs_to_wait_for = requirements[:inputs_to_wait_for]
 
+      if requirements[:minimum_input_count]
+        return enqueue_minimum_input_target(target, target_input_index, items, source, requirements)
+      end
+
       if inputs_to_wait_for.length <= 1
         return if items.empty?
 
@@ -411,6 +421,7 @@ module DiscourseWorkflows
 
       inputs = (@waiting_inputs[target.id] ||= {})
       sources = (@waiting_input_sources[target.id] ||= {})
+      @waiting_input_targets[target.id] = target
       inputs[target_input_index] = items
       sources[target_input_index] = source
 
@@ -418,7 +429,64 @@ module DiscourseWorkflows
 
       @waiting_inputs.delete(target.id)
       @waiting_input_sources.delete(target.id)
+      @waiting_input_targets.delete(target.id)
       @queue << [target, inputs, sources]
+    end
+
+    def enqueue_minimum_input_target(target, target_input_index, items, source, requirements)
+      inputs = (@waiting_inputs[target.id] ||= {})
+      sources = (@waiting_input_sources[target.id] ||= {})
+      @waiting_input_targets[target.id] = target
+      inputs[target_input_index] = items
+      sources[target_input_index] = source
+
+      connected_inputs = requirements[:connected_inputs]
+      if connected_inputs.length <= requirements[:minimum_input_count] ||
+           connected_inputs.all? { |index| inputs.key?(index) }
+        return enqueue_waiting_input_target(target)
+      end
+
+      return if available_input_count(inputs) >= requirements[:minimum_input_count]
+
+      @waiting_inputs.delete(target.id)
+      @waiting_input_sources.delete(target.id)
+      @waiting_input_targets.delete(target.id)
+    end
+
+    def enqueue_waiting_input_target(target)
+      inputs = @waiting_inputs.delete(target.id) || {}
+      sources = @waiting_input_sources.delete(target.id) || {}
+      @waiting_input_targets.delete(target.id)
+      return if available_input_count(inputs).zero?
+
+      @queue << [target, inputs, sources]
+    end
+
+    def flush_partial_waiting_inputs
+      queued_any = false
+      waiting_target_ids = @waiting_input_targets.keys
+      @waiting_input_targets.dup.each_value do |target|
+        requirements = input_wait_requirements(target)
+        next unless requirements[:minimum_input_count]
+        next if waiting_input_parent?(target, waiting_target_ids)
+
+        inputs = @waiting_inputs[target.id] || {}
+        next if available_input_count(inputs) < requirements[:minimum_input_count]
+
+        enqueue_waiting_input_target(target)
+        queued_any = true
+      end
+      queued_any
+    end
+
+    def available_input_count(inputs)
+      inputs.count { |_index, items| items.present? }
+    end
+
+    def waiting_input_parent?(target, waiting_target_ids)
+      @snapshot
+        .connections_to(target)
+        .any? { |conn| waiting_target_ids.include?(conn.source_node_id.to_s) }
     end
 
     def input_wait_requirements(target)
@@ -428,10 +496,27 @@ module DiscourseWorkflows
         input_ports =
           node_type_class&.input_ports(target.parameters) ||
             [{ key: "main", index: 0, required: true }]
+        explicit_required_inputs = node_type_class&.required_inputs(target.parameters)
         required_inputs = input_ports.select { |port| port[:required] }.map { |port| port[:index] }
-        connected_inputs = @snapshot.connections_to(target).map(&:target_input_index)
+        connected_inputs = @snapshot.connections_to(target).map(&:target_input_index).uniq
 
-        { inputs_to_wait_for: (required_inputs + connected_inputs).uniq }
+        if explicit_required_inputs.is_a?(Integer)
+          {
+            connected_inputs: connected_inputs,
+            inputs_to_wait_for: [],
+            minimum_input_count: explicit_required_inputs,
+          }
+        elsif explicit_required_inputs.present?
+          {
+            connected_inputs: connected_inputs,
+            inputs_to_wait_for: Array(explicit_required_inputs).map(&:to_i),
+          }
+        else
+          {
+            connected_inputs: connected_inputs,
+            inputs_to_wait_for: (required_inputs + connected_inputs).uniq,
+          }
+        end
       end
     end
 
@@ -512,6 +597,7 @@ module DiscourseWorkflows
       @queue = []
       @waiting_inputs = {}
       @waiting_input_sources = {}
+      @waiting_input_targets = {}
       @input_wait_requirements = {}
     end
 
@@ -522,6 +608,7 @@ module DiscourseWorkflows
       @queue = []
       @waiting_inputs = {}
       @waiting_input_sources = {}
+      @waiting_input_targets = {}
       @input_wait_requirements = {}
     end
 
@@ -549,6 +636,7 @@ module DiscourseWorkflows
           "__input_context" => DiscourseWorkflows::InputContext.from_node_context(node_context),
           "__current_node_id" => node.id.to_s,
           "__node_ids_by_name" => node_ids_by_name,
+          "__node_parameters_by_name" => node_parameters_by_name,
           "$itemIndex" => 0,
         )
       base["__input_sources"] = input_sources_for_storage(input_sources, input_groups)
@@ -564,6 +652,19 @@ module DiscourseWorkflows
             next if name.blank?
 
             by_name[name] = by_name.key?(name) ? nil : node.id.to_s
+          end
+          .compact
+    end
+
+    def node_parameters_by_name
+      @node_parameters_by_name ||=
+        @snapshot
+          .nodes
+          .each_with_object({}) do |node, by_name|
+            name = node.name.to_s
+            next if name.blank?
+
+            by_name[name] = by_name.key?(name) ? nil : node.parameters
           end
           .compact
     end

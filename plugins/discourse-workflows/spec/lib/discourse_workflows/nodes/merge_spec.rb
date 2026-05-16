@@ -17,11 +17,14 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
     ).first
   end
 
-  it "requires fixed merge inputs but not unwired append inputs" do
+  it "uses n8n v3 input wait semantics" do
     expect(described_class.input_ports("mode" => "append", "number_inputs" => 3)).to all(
       include(required: false),
     )
-    expect(described_class.input_ports("mode" => "combine")).to all(include(required: true))
+    expect(described_class.input_ports("mode" => "combine")).to all(include(required: false))
+    expect(described_class.required_inputs("mode" => "append")).to eq(1)
+    expect(described_class.required_inputs("mode" => "combine")).to eq(1)
+    expect(described_class.required_inputs("mode" => "choose_branch")).to eq([0, 1])
   end
 
   it "appends items from both inputs" do
@@ -124,5 +127,55 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
     expect(output.first["pairedItem"]).to eq(
       [{ "input" => 0, "item" => 0 }, { "input" => 1, "item" => 0 }],
     )
+  end
+
+  it "keeps everything from the available input when matching fields has an empty input" do
+    output =
+      execute_merge(
+        configuration: {
+          "mode" => "combine",
+          "combine_by" => "matching_fields",
+          "fields_to_match" => [{ "field_1" => "id", "field_2" => "topic_id" }],
+          "join_mode" => "keep_everything",
+        },
+        input_1: [item("id" => 1, "title" => "One")],
+        input_2: [],
+      )
+
+    expect(output).to eq([item("id" => 1, "title" => "One")])
+  end
+
+  it "honors the requested non-match input when matching fields has an empty input" do
+    output =
+      execute_merge(
+        configuration: {
+          "mode" => "combine",
+          "combine_by" => "matching_fields",
+          "fields_to_match" => [{ "field_1" => "id", "field_2" => "topic_id" }],
+          "join_mode" => "keep_non_matches",
+          "output_data_from" => "input_2",
+        },
+        input_1: [item("id" => 1, "title" => "One")],
+        input_2: [],
+      )
+
+    expect(output).to eq([])
+  end
+
+  it "treats missing match fields as non-matches" do
+    output =
+      execute_merge(
+        configuration: {
+          "mode" => "combine",
+          "combine_by" => "matching_fields",
+          "fields_to_match" => [{ "field_1" => "id", "field_2" => "topic_id" }],
+          "join_mode" => "keep_non_matches",
+          "output_data_from" => "input_1",
+        },
+        input_1: [item("id" => 1), item("title" => "Missing id")],
+        input_2: [item("topic_id" => 1)],
+      )
+
+    expect(output).to eq([item("title" => "Missing id")])
   end
 end

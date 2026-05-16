@@ -93,6 +93,10 @@ module DiscourseWorkflows
       normalize_ports(input_port_definitions(configuration), primary: false, required: true)
     end
 
+    def required_inputs(configuration = {})
+      description_value(:required_inputs, configuration: configuration)
+    end
+
     def branching?
       ports.length > 1
     end

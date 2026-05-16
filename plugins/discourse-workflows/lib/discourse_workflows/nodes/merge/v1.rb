@@ -18,8 +18,12 @@ module DiscourseWorkflows
                 count = [configuration.fetch("number_inputs") { 2 }.to_i, 2].max
                 count.times.map { |index| input_port(index, required: false) }
               else
-                [input_port(0), input_port(1)]
+                [input_port(0, required: false), input_port(1, required: false)]
               end
+            end,
+          required_inputs:
+            lambda do |configuration = {}|
+              configuration.fetch("mode") { "append" } == "choose_branch" ? [0, 1] : 1
             end,
           properties: {
             mode: {
@@ -268,14 +272,10 @@ module DiscourseWorkflows
           join_mode = config.fetch("join_mode") { "keep_matches" }
           output_data_from = config.fetch("output_data_from") { "both" }
           fields = match_fields(config)
-          validate_match_fields!(input_1, input_2, fields)
-          if input_2.blank? && %w[keep_non_matches enrich_input_1].include?(join_mode)
-            return input_1
+          validate_match_fields!(fields)
+          if input_1.blank? || input_2.blank?
+            return combine_by_fields_with_empty_input(input_1, input_2, join_mode, output_data_from)
           end
-          if input_1.blank? && %w[keep_non_matches enrich_input_2].include?(join_mode)
-            return input_2
-          end
-          return [] if input_1.blank? || input_2.blank?
 
           matches = find_matches(input_1, input_2, fields, config)
 
@@ -291,6 +291,28 @@ module DiscourseWorkflows
             merge_matched(matches[:matched], config, preferred_index: 1) + matches[:unmatched_2]
           else
             matched_output(matches, output_data_from, config)
+          end
+        end
+
+        def combine_by_fields_with_empty_input(input_1, input_2, join_mode, output_data_from)
+          case join_mode
+          when "keep_non_matches"
+            case output_data_from
+            when "input_1"
+              input_1
+            when "input_2"
+              input_2
+            else
+              input_1 + input_2
+            end
+          when "keep_everything"
+            input_1 + input_2
+          when "enrich_input_1"
+            input_1.presence || []
+          when "enrich_input_2"
+            input_2.presence || []
+          else
+            []
           end
         end
 
@@ -310,23 +332,11 @@ module DiscourseWorkflows
             end
         end
 
-        def validate_match_fields!(input_1, input_2, fields)
+        def validate_match_fields!(fields)
           if fields.blank?
             raise DiscourseWorkflows::NodeError,
                   'You need to define at least one pair of fields in "Fields to match"'
           end
-
-          fields.each do |field_1, field_2|
-            validate_field_present!(input_1, field_1, "Input 1")
-            validate_field_present!(input_2, field_2, "Input 2")
-          end
-        end
-
-        def validate_field_present!(input, field, input_label)
-          return if input.blank?
-          return if input.any? { |item| !field_value(item, field).nil? }
-
-          raise DiscourseWorkflows::NodeError, "Field '#{field}' is not present in #{input_label}"
         end
 
         def find_matches(input_1, input_2, fields, config)
@@ -363,11 +373,11 @@ module DiscourseWorkflows
 
         def fields_match?(entry_1, entry_2, fields, config)
           fields.all? do |field_1, field_2|
-            compare_values(
-              field_value(entry_1, field_1),
-              field_value(entry_2, field_2),
-              fuzzy: config["fuzzy_compare"],
-            )
+            present_1, value_1 = field_lookup(entry_1, field_1)
+            present_2, value_2 = field_lookup(entry_2, field_2)
+            next false if !present_1 || !present_2
+
+            compare_values(value_1, value_2, fuzzy: config["fuzzy_compare"])
           end
         end
 
@@ -514,15 +524,18 @@ module DiscourseWorkflows
             input_index(config.fetch("use_data_of_input") { "input_1" })
         end
 
-        def field_value(item, field)
+        def field_lookup(item, field)
+          value = item.fetch("json") { {} }
           field
             .to_s
             .split(".")
-            .reduce(item.fetch("json") { {} }) do |value, key|
-              break nil unless value.is_a?(Hash)
+            .each do |key|
+              return false, nil unless value.is_a?(Hash) && value.key?(key)
 
-              value[key]
+              value = value[key]
             end
+
+          [true, value]
         end
       end
     end

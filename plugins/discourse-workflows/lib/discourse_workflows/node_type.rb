@@ -9,6 +9,7 @@ module DiscourseWorkflows
       defaults: {
       },
       inputs: [:main],
+      required_inputs: nil,
       outputs: [:main],
       properties: {
       },
@@ -17,6 +18,7 @@ module DiscourseWorkflows
       credentials: [],
       webhooks: [],
       events: [],
+      max_nodes: nil,
       capabilities: {
       },
       palette_visible: true,
@@ -120,6 +122,10 @@ module DiscourseWorkflows
 
     def self.output_schema
       description_value(:output_schema)
+    end
+
+    def self.max_nodes
+      description_value(:max_nodes)
     end
 
     def self.output_exemplar
