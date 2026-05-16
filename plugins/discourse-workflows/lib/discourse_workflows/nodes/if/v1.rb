@@ -43,7 +43,7 @@ module DiscourseWorkflows
           true_items, false_items =
             exec_ctx.input_items.partition { |item| exec_ctx.get_parameter(:conditions, item) }
 
-          exec_ctx.branch("true" => true_items, "false" => false_items)
+          [true_items, false_items]
         end
       end
     end

@@ -21,18 +21,16 @@ RSpec.describe DiscourseWorkflows::Nodes::Filter::V1 do
 
     it "routes passing items to true" do
       items = [{ "json" => { "category_id" => 5 } }]
-      result = execute_node_result(configuration: category_id_equals_5_config, input_items: items)
-      output = result.output_arrays(ports: described_class.ports)
-      expect(output[0]).to eq(items)
-      expect(output[1]).to eq([])
+      result = execute_node_output(configuration: category_id_equals_5_config, input_items: items)
+      expect(result[0]).to eq(items)
+      expect(result[1]).to eq([])
     end
 
     it "routes failing items to false" do
       items = [{ "json" => { "category_id" => 10 } }]
-      result = execute_node_result(configuration: category_id_equals_5_config, input_items: items)
-      output = result.output_arrays(ports: described_class.ports)
-      expect(output[0]).to eq([])
-      expect(output[1]).to eq(items)
+      result = execute_node_output(configuration: category_id_equals_5_config, input_items: items)
+      expect(result[0]).to eq([])
+      expect(result[1]).to eq(items)
     end
 
     it "uses already-resolved string literals as values" do
@@ -51,9 +49,8 @@ RSpec.describe DiscourseWorkflows::Nodes::Filter::V1 do
         "combinator" => "and",
       }
       items = [{ "json" => { "category_id" => 5 } }]
-      result = execute_node_result(configuration: config, input_items: items)
-      output = result.output_arrays(ports: described_class.ports)
-      expect(output[0]).to eq(items)
+      result = execute_node_output(configuration: config, input_items: items)
+      expect(result[0]).to eq(items)
     end
 
     it "works with expression-resolved left values" do
@@ -72,9 +69,8 @@ RSpec.describe DiscourseWorkflows::Nodes::Filter::V1 do
         "combinator" => "and",
       }
       items = [{ "json" => {} }]
-      result = execute_node_result(configuration: config, input_items: items)
-      output = result.output_arrays(ports: described_class.ports)
-      expect(output[0]).to eq(items)
+      result = execute_node_output(configuration: config, input_items: items)
+      expect(result[0]).to eq(items)
     end
 
     it "filters out null array values for empty checks" do
@@ -93,10 +89,9 @@ RSpec.describe DiscourseWorkflows::Nodes::Filter::V1 do
         "combinator" => "and",
       }
       items = [{ "json" => { "tags" => nil } }]
-      result = execute_node_result(configuration: config, input_items: items)
-      output = result.output_arrays(ports: described_class.ports)
-      expect(output[0]).to eq([])
-      expect(output[1]).to eq(items)
+      result = execute_node_output(configuration: config, input_items: items)
+      expect(result[0]).to eq([])
+      expect(result[1]).to eq(items)
     end
   end
 end

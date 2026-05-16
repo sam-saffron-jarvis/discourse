@@ -28,14 +28,14 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
 
       it "emits on the empty port when the query returns no rows" do
         result =
-          execute_node_result(
+          execute_node_output(
             configuration: {
               "operation" => "raw",
               "query" => "SELECT username FROM users WHERE 1=0",
             },
           )
 
-        rows, empty = result.output_arrays(ports: described_class.ports)
+        rows, empty = result
         expect(rows).to be_empty
         expect(empty.size).to eq(1)
         expect(empty.first).to eq({ "json" => {} })
@@ -43,7 +43,7 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
 
       it "emits on the main port when the query returns rows" do
         result =
-          execute_node_result(
+          execute_node_output(
             configuration: {
               "operation" => "raw",
               "query" => "SELECT username FROM users WHERE id = :user_id",
@@ -53,7 +53,7 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
             },
           )
 
-        rows, empty = result.output_arrays(ports: described_class.ports)
+        rows, empty = result
         expect(empty).to be_empty
         expect(rows.size).to eq(1)
         expect(rows.first["json"]["username"]).to eq(user.username)

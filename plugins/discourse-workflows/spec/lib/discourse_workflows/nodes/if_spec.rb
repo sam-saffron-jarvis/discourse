@@ -38,12 +38,12 @@ RSpec.describe DiscourseWorkflows::Nodes::If::V1 do
           )
 
         items = wrap_items({ "status" => "closed", "enabled" => true })
-        result = execute_node_result(configuration: config, input_items: items)
-        expect(result.output_arrays(ports: described_class.ports)[0]).to eq(items)
+        result = execute_node_output(configuration: config, input_items: items)
+        expect(result[0]).to eq(items)
 
         items = wrap_items({ "status" => "closed", "enabled" => false })
-        result = execute_node_result(configuration: config, input_items: items)
-        expect(result.output_arrays(ports: described_class.ports)[1]).to eq(items)
+        result = execute_node_output(configuration: config, input_items: items)
+        expect(result[1]).to eq(items)
       end
 
       it "or: any condition passing is enough" do
@@ -73,12 +73,12 @@ RSpec.describe DiscourseWorkflows::Nodes::If::V1 do
           )
 
         items = wrap_items({ "status" => "archived" })
-        result = execute_node_result(configuration: config, input_items: items)
-        expect(result.output_arrays(ports: described_class.ports)[0]).to eq(items)
+        result = execute_node_output(configuration: config, input_items: items)
+        expect(result[0]).to eq(items)
 
         items = wrap_items({ "status" => "open" })
-        result = execute_node_result(configuration: config, input_items: items)
-        expect(result.output_arrays(ports: described_class.ports)[1]).to eq(items)
+        result = execute_node_output(configuration: config, input_items: items)
+        expect(result[1]).to eq(items)
       end
     end
 
@@ -100,12 +100,11 @@ RSpec.describe DiscourseWorkflows::Nodes::If::V1 do
           )
 
         items = wrap_items({ "status" => "closed", "id" => 1 }, { "status" => "open", "id" => 2 })
-        result = execute_node_result(configuration: config, input_items: items)
-        output = result.output_arrays(ports: described_class.ports)
-        expect(output[0].length).to eq(1)
-        expect(output[0].first["json"]["id"]).to eq(1)
-        expect(output[1].length).to eq(1)
-        expect(output[1].first["json"]["id"]).to eq(2)
+        result = execute_node_output(configuration: config, input_items: items)
+        expect(result[0].length).to eq(1)
+        expect(result[0].first["json"]["id"]).to eq(1)
+        expect(result[1].length).to eq(1)
+        expect(result[1].first["json"]["id"]).to eq(2)
       end
     end
 
@@ -127,8 +126,8 @@ RSpec.describe DiscourseWorkflows::Nodes::If::V1 do
           )
 
         items = wrap_items({ "status" => "closed" })
-        result = execute_node_result(configuration: config, input_items: items)
-        expect(result.output_arrays(ports: described_class.ports)[1]).to eq(items)
+        result = execute_node_output(configuration: config, input_items: items)
+        expect(result[1]).to eq(items)
       end
     end
   end

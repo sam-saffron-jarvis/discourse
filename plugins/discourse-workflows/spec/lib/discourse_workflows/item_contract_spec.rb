@@ -98,51 +98,15 @@ RSpec.describe DiscourseWorkflows::ItemContract do
         described_class.validate_output_arrays!([["not an item"]], source: "test")
       }.to raise_error(DiscourseWorkflows::ItemContract::Error)
     end
-  end
 
-  describe ".validate_node_result!" do
-    it "accepts a valid node result" do
-      result = DiscourseWorkflows::Executor::NodeResult.new("main" => [{ "json" => { "a" => 1 } }])
-
+    it "rejects more outputs than the node declares" do
       expect {
-        described_class.validate_node_result!(result, source: "test", ports: [{ key: "main" }])
-      }.not_to raise_error
-    end
-
-    it "rejects non-node-result values" do
-      expect {
-        described_class.validate_node_result!([], source: "test", ports: [{ key: "main" }])
-      }.to raise_error(DiscourseWorkflows::ItemContract::Error)
-    end
-
-    it "rejects unknown outputs" do
-      result =
-        DiscourseWorkflows::Executor::NodeResult.new("unexpected" => [{ "json" => { "a" => 1 } }])
-
-      expect {
-        described_class.validate_node_result!(result, source: "test", ports: [{ key: "main" }])
-      }.to raise_error(DiscourseWorkflows::ItemContract::Error, /unknown outputs/)
-    end
-
-    it "rejects multiple outputs without declared ports" do
-      result =
-        DiscourseWorkflows::Executor::NodeResult.new(
-          "true" => [{ "json" => { "a" => 1 } }],
-          "false" => [{ "json" => { "b" => 2 } }],
+        described_class.validate_output_arrays!(
+          [[{ "json" => { "a" => 1 } }], [{ "json" => { "b" => 2 } }]],
+          source: "test",
+          ports: [{ key: "main" }],
         )
-
-      expect {
-        described_class.validate_node_result!(result, source: "test", ports: [])
-      }.to raise_error(DiscourseWorkflows::ItemContract::Error, /multiple outputs/)
-    end
-
-    it "validates items within node result outputs" do
-      result =
-        DiscourseWorkflows::Executor::NodeResult.new("main" => [{ "json" => "not an object" }])
-
-      expect {
-        described_class.validate_node_result!(result, source: "test", ports: [{ key: "main" }])
-      }.to raise_error(DiscourseWorkflows::ItemContract::Error)
+      }.to raise_error(DiscourseWorkflows::ItemContract::Error, /returned 2 outputs/)
     end
   end
 end

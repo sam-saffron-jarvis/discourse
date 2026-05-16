@@ -3,9 +3,7 @@
 RSpec.describe DiscourseWorkflows::Nodes::Limit::V1 do
   def execute(input_items, configuration = {})
     config = { "max_items" => 10, "keep" => "first" }.merge(configuration)
-    execute_node_result(configuration: config, input_items: input_items).primary_items(
-      ports: described_class.ports,
-    )
+    execute_node_output(configuration: config, input_items: input_items).first
   end
 
   def make_indexed_items(count)

@@ -3,9 +3,7 @@
 RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
   def execute(input_items, configuration = {})
     config = { "field" => "items" }.merge(configuration)
-    execute_node_result(configuration: config, input_items: input_items).primary_items(
-      ports: described_class.ports,
-    )
+    execute_node_output(configuration: config, input_items: input_items).first
   end
 
   describe "basic array splitting" do

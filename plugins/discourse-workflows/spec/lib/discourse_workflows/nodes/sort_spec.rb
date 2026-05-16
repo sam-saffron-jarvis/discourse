@@ -3,9 +3,7 @@
 RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
   def execute(input_items, configuration = {})
     config = { "type" => "simple" }.merge(configuration)
-    execute_node_result(configuration: config, input_items: input_items).primary_items(
-      ports: described_class.ports,
-    )
+    execute_node_output(configuration: config, input_items: input_items).first
   end
 
   describe "simple mode" do
@@ -147,7 +145,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
         "type" => "code",
         "code" => 'console.log("comparing", a.json.n, b.json.n); return a.json.n - b.json.n;',
       }
-      execute_node_result(configuration: configuration, input_items: input) do |ctx|
+      execute_node_output(configuration: configuration, input_items: input) do |ctx|
         messages = ctx.log.entries.map { |e| e["message"] }
         expect(messages).to include(a_string_matching(/comparing/))
       end

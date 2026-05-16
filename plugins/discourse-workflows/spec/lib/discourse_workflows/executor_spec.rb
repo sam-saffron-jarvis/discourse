@@ -549,22 +549,26 @@ RSpec.describe DiscourseWorkflows::Executor do
         end
       end
 
-      let(:helper_node_class) do
+      let(:named_outputs_node_class) do
         Class.new(DiscourseWorkflows::NodeType) do
-          description(name: "action:helper_result_test", version: "1.0")
+          description(
+            name: "action:named_outputs_test",
+            version: "1.0",
+            outputs: [{ key: "true", label_key: "true" }, { key: "false", label_key: "false" }],
+          )
 
           def execute(exec_ctx)
-            exec_ctx.pass_through
+            { "true" => exec_ctx.input_items, "false" => [] }
           end
         end
       end
 
-      let(:malformed_helper_node_class) do
+      let(:malformed_array_node_class) do
         Class.new(DiscourseWorkflows::NodeType) do
-          description(name: "action:malformed_helper_result_test", version: "1.0")
+          description(name: "action:malformed_array_test", version: "1.0")
 
           def execute(exec_ctx)
-            exec_ctx.success(exec_ctx.input_items.first)
+            [exec_ctx.input_items.first]
           end
         end
       end
@@ -572,9 +576,9 @@ RSpec.describe DiscourseWorkflows::Executor do
       before do
         plugin = Plugin::Instance.new
         DiscoursePluginRegistry.register_discourse_workflows_node(raw_array_node_class, plugin)
-        DiscoursePluginRegistry.register_discourse_workflows_node(helper_node_class, plugin)
+        DiscoursePluginRegistry.register_discourse_workflows_node(named_outputs_node_class, plugin)
         DiscoursePluginRegistry.register_discourse_workflows_node(
-          malformed_helper_node_class,
+          malformed_array_node_class,
           plugin,
         )
         DiscourseWorkflows::Registry.reset_indexes!
@@ -582,14 +586,14 @@ RSpec.describe DiscourseWorkflows::Executor do
 
       after do
         DiscoursePluginRegistry._raw_discourse_workflows_nodes.reject! do |entry|
-          [raw_array_node_class, helper_node_class, malformed_helper_node_class].include?(
+          [raw_array_node_class, named_outputs_node_class, malformed_array_node_class].include?(
             entry[:value],
           )
         end
         DiscourseWorkflows::Registry.reset_indexes!
       end
 
-      it "normalizes legacy raw output arrays" do
+      it "accepts n8n-style positional output arrays" do
         graph =
           build_workflow_graph do |g|
             g.node "trigger-1", "trigger:topic_closed"
@@ -607,29 +611,27 @@ RSpec.describe DiscourseWorkflows::Executor do
         ).to eq(topic.id)
       end
 
-      it "accepts NodeResult helper returns as the explicit contract" do
+      it "rejects named output hashes" do
         graph =
           build_workflow_graph do |g|
             g.node "trigger-1", "trigger:topic_closed"
-            g.node "helper-1", "action:helper_result_test", name: "Helper Result"
-            g.chain "trigger-1", "helper-1"
+            g.node "named-1", "action:named_outputs_test"
+            g.chain "trigger-1", "named-1"
           end
         workflow =
           Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
         execution = described_class.new(workflow, "trigger-1", { topic_id: topic.id }).run
 
-        expect(execution.status).to eq("success")
-        expect(
-          execution.execution_data.context_data["Helper Result"].first.dig("json", "topic_id"),
-        ).to eq(topic.id)
+        expect(execution.status).to eq("error")
+        expect(execution.error).to include("execute must return Array<Array<Item>>, got Hash")
       end
 
-      it "reports contract errors for malformed NodeResult helper returns" do
+      it "reports contract errors for malformed positional output arrays" do
         graph =
           build_workflow_graph do |g|
             g.node "trigger-1", "trigger:topic_closed"
-            g.node "malformed-1", "action:malformed_helper_result_test"
+            g.node "malformed-1", "action:malformed_array_test"
             g.chain "trigger-1", "malformed-1"
           end
         workflow =
@@ -638,7 +640,7 @@ RSpec.describe DiscourseWorkflows::Executor do
         execution = described_class.new(workflow, "trigger-1", { topic_id: topic.id }).run
 
         expect(execution.status).to eq("error")
-        expect(execution.error).to include("output 'main' must contain an Array<Item>")
+        expect(execution.error).to include("execute must return Array<Array<Item>>")
       end
     end
   end

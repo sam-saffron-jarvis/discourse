@@ -13,13 +13,11 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
   end
 
   def execute_data_table(configuration)
-    execute_node_result(configuration: configuration).primary_items(ports: described_class.ports)
+    execute_node_output(configuration: configuration).first
   end
 
   def execute_data_table_with_item(configuration, item)
-    execute_node_result(configuration: configuration, item: item).primary_items(
-      ports: described_class.ports,
-    )
+    execute_node_output(configuration: configuration, item: item).first
   end
 
   describe ".load_options" do

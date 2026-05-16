@@ -6,13 +6,13 @@ RSpec.describe DiscourseWorkflows::Nodes::LoopOverItems::V1 do
   end
 
   def run_loop(items, node_context:, batch_size:)
-    execute_node_result(
+    execute_node_output(
       configuration: {
         "batch_size" => batch_size,
       },
       input_items: items,
       node_context: node_context,
-    ).output_arrays(ports: described_class.ports)
+    )
   end
 
   describe "#execute" do

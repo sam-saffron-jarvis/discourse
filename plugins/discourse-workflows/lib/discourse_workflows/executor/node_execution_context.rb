@@ -32,7 +32,6 @@ module DiscourseWorkflows
         node_id: nil,
         flow_context: nil,
         resolver_context: nil,
-        output_ports: nil,
         workflow_dependencies: nil
       )
         @input_groups = normalize_input_groups(input_groups, input_items)
@@ -58,7 +57,6 @@ module DiscourseWorkflows
         @node_id = node_id
         @flow_context = flow_context || {}
         @resolver_context = resolver_context || {}
-        @output_ports = output_ports || [{ key: "main" }]
         @expression_errors = []
         @condition_details = []
         @log = StepLog.new
@@ -87,34 +85,6 @@ module DiscourseWorkflows
       def inputs
         max_index = @input_groups.keys.max || 0
         Array.new(max_index + 1) { |index| @input_groups[index] || [] }
-      end
-
-      def success(items = input_items)
-        NodeResult.success(items)
-      end
-
-      def items(items)
-        success(items)
-      end
-
-      def branch(*output_arrays, **named_outputs)
-        if named_outputs.any?
-          if output_arrays.any?
-            raise ArgumentError, "Use either named outputs or ordered output arrays"
-          end
-
-          return NodeResult.branch(named_outputs)
-        end
-
-        if output_arrays.length == 1 && output_arrays.first.is_a?(Hash)
-          return NodeResult.branch(output_arrays.first)
-        end
-
-        NodeResult.from_output_arrays(output_arrays, ports: @output_ports)
-      end
-
-      def pass_through(input_key = nil)
-        success(input_items(input_key))
       end
 
       def with_sandbox(capture_logs: false)

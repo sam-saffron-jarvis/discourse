@@ -16,7 +16,7 @@ RSpec.describe DiscourseWorkflows::Nodes::ListTopics::V1 do
   fab!(:post_2) { Fabricate(:post, topic: topic_2, user: user) }
 
   def execute_list_topics(configuration:)
-    execute_node_result(configuration: configuration).primary_items(ports: described_class.ports)
+    execute_node_output(configuration: configuration).first
   end
 
   describe "#execute" do

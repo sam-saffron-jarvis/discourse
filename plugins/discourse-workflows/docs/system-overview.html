@@ -905,7 +905,7 @@
         </div>
         <div class="tl-step step-filter">
           <div class="tl-step-title">4. Route Output</div>
-          <div class="tl-step-desc">Node returns a <code>NodeResult</code> — a map of port_name → items. For each downstream connection, enqueue the destination node with the matching port's items.</div>
+          <div class="tl-step-desc">Node returns <code>Array&lt;Array&lt;Item&gt;&gt;</code> — one item array per output port by index. For each downstream connection, enqueue the destination node with the matching output index's items.</div>
         </div>
         <div class="tl-step step-wait">
           <div class="tl-step-title">5. Wait (optional)</div>
@@ -1375,10 +1375,7 @@ authentication: <span class="str">"bearer_token"</span>   <span class="cmt"># cr
            : false_items <span class="op"><<</span> item
   <span class="kw">end</span>
 
-  <span class="cls">NodeResult</span>.<span class="fn">new</span>(
-    <span class="str">"true"</span>  <span class="op">=></span> true_items,
-    <span class="str">"false"</span> <span class="op">=></span> false_items
-  )
+  [true_items, false_items]
 <span class="kw">end</span></pre>
 
       <div class="callout tip">

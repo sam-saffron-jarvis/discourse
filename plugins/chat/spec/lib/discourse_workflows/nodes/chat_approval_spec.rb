@@ -46,10 +46,11 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
       exec_ctx = build_exec_ctx(config)
 
       freeze_time do
-        instance.execute(exec_ctx)
+        result = instance.execute(exec_ctx)
 
         expect(exec_ctx.waiting?).to be true
         expect(exec_ctx.waiting_until).to eq(30.minutes.from_now)
+        expect(result).to eq([exec_ctx.input_items])
       end
     end
 

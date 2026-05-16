@@ -10,11 +10,11 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
   end
 
   def execute_merge(configuration:, input_1:, input_2:, input_groups: {})
-    execute_node_result(
+    execute_node_output(
       configuration: configuration,
       input_items: input_1,
       input_groups: { "input_1" => input_1, "input_2" => input_2 }.merge(input_groups),
-    ).primary_items(ports: described_class.ports)
+    ).first
   end
 
   it "requires fixed merge inputs but not unwired append inputs" do

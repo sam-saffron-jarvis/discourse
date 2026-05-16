@@ -3,10 +3,10 @@
 RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
   def execute(input_items, configuration = {})
     config = { "mapping_mode" => "manual", "columns" => [] }.merge(configuration)
-    execute_node_result(configuration: config, input_items: input_items)
-      .primary_items(ports: described_class.ports)
-      .first
-      &.dig("json", "markdown")
+    execute_node_output(configuration: config, input_items: input_items).first.first&.dig(
+      "json",
+      "markdown",
+    )
   end
 
   describe "#execute" do

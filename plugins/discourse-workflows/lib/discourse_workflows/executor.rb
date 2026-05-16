@@ -206,9 +206,9 @@ module DiscourseWorkflows
         end
 
         ports = node_type_class.ports(node.parameters)
-        normalized = normalize_result(result, node, ports, input_groups)
-        all_items = normalized.all_items(ports: ports)
-        primary_empty = normalized.primary_items(ports: ports).empty?
+        output_arrays = normalize_result(result, node, ports, input_groups)
+        all_items = output_arrays.flatten(1)
+        primary_empty = output_arrays.fetch(0) { [] }.empty?
 
         if node_type_class.branching? && primary_empty
           step.filter!(output: all_items)
@@ -220,10 +220,10 @@ module DiscourseWorkflows
         @context.store_node_run(
           node,
           inputs: input_groups_for_storage(input_groups),
-          outputs: normalized.output_arrays(ports: ports),
+          outputs: output_arrays,
           input_sources: input_sources_for_storage(input_sources, input_groups),
         )
-        route_downstream(node, ports, normalized)
+        route_downstream(node, output_arrays)
       rescue WaitRequested
         raise
       rescue => e
@@ -313,32 +313,23 @@ module DiscourseWorkflows
         node_id: node.id.to_s,
         flow_context: @context.context,
         resolver_context: resolver_ctx,
-        output_ports: node_type_class.ports(node.parameters),
         workflow_dependencies: preloaded_workflow_dependencies,
       )
     end
 
     def normalize_result(result, node, ports, input_groups)
       source = "#{node.name} (#{node.type})"
-      normalized =
-        if result.is_a?(NodeResult)
-          ItemContract.validate_node_result!(result, source: source, ports: ports)
-          result
-        else
-          ItemContract.validate_output_arrays!(result, source: source)
-          NodeResult.from_output_arrays(result, ports: ports)
-        end
+      ItemContract.validate_output_arrays!(result, source: source, ports: ports)
 
-      apply_item_linking_defaults!(normalized, ports:, input_groups:)
-      ItemContract.validate_node_result!(normalized, source: source, ports: ports)
-      normalized
+      apply_item_linking_defaults!(result, input_groups:)
+      ItemContract.validate_output_arrays!(result, source: source, ports: ports)
+      result
     end
 
-    def apply_item_linking_defaults!(result, ports:, input_groups:)
+    def apply_item_linking_defaults!(output_arrays, input_groups:)
       input_lookup = input_item_lookup(input_groups)
       sole_input_pair = sole_input_pair(input_groups)
       primary_items = primary_input_items(input_groups)
-      output_arrays = result.output_arrays(ports: ports)
       one_output = output_arrays.length == 1
 
       output_arrays.each do |items|
@@ -383,10 +374,8 @@ module DiscourseWorkflows
 
     # --- Routing ---
 
-    def route_downstream(node, ports, result)
-      result
-        .output_arrays(ports: ports)
-        .each_with_index { |items, index| enqueue_downstream(node, index, items) }
+    def route_downstream(node, output_arrays)
+      output_arrays.each_with_index { |items, index| enqueue_downstream(node, index, items) }
     end
 
     def enqueue_downstream(node, output_index, items)

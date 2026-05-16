@@ -95,6 +95,7 @@ if defined?(DiscourseWorkflows)
             send_chat_message(channel_id, message_text, blocks)
 
             exec_ctx.put_execution_to_wait(timeout_minutes&.minutes&.from_now)
+            [exec_ctx.input_items]
           end
 
           private

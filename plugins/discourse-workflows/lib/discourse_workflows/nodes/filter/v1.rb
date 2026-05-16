@@ -43,7 +43,7 @@ module DiscourseWorkflows
           kept, rejected =
             exec_ctx.input_items.partition { |item| exec_ctx.get_parameter(:conditions, item) }
 
-          exec_ctx.branch("true" => kept, "false" => rejected)
+          [kept, rejected]
         end
       end
     end

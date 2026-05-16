@@ -42,14 +42,14 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           raw_entries = CollectionParameters.rows(@configuration, "entries")
-          return exec_ctx.pass_through if raw_entries.empty?
+          return [exec_ctx.input_items] if raw_entries.empty?
 
           item = exec_ctx.input_items.first || { "json" => {} }
           config = exec_ctx.get_parameters(item)
           resolved_entries = CollectionParameters.rows(config, "entries")
           resolved_entries.each { |entry| exec_ctx.log.kv(entry["key"].to_s, entry["value"].to_s) }
 
-          exec_ctx.pass_through
+          [exec_ctx.input_items]
         end
       end
     end

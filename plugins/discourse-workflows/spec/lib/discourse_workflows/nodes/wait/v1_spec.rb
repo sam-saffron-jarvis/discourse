@@ -26,7 +26,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Wait::V1 do
 
         expect(exec_ctx).to be_waiting
         expect(exec_ctx.waiting_until).to eq(2.hours.from_now)
-        expect(result.primary_items(ports: described_class.ports)).to eq(exec_ctx.input_items)
+        expect(result.first).to eq(exec_ctx.input_items)
       end
     end
 

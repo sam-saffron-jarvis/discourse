@@ -50,7 +50,7 @@ module DiscourseWorkflows
           node_context["no_items_left"] = false
           node_context["done"] = false
 
-          exec_ctx.branch("done" => [], "loop" => batch)
+          [[], batch]
         end
 
         def execute_subsequent(exec_ctx, batch_size)
@@ -64,9 +64,9 @@ module DiscourseWorkflows
           if batch.empty?
             node_context["done"] = true
             node_context["no_items_left"] = true
-            exec_ctx.branch("done" => node_context["processed_items"], "loop" => [])
+            [node_context["processed_items"], []]
           else
-            exec_ctx.branch("done" => [], "loop" => batch)
+            [[], batch]
           end
         end
       end
