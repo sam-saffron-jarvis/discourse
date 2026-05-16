@@ -94,6 +94,10 @@ module DiscourseWorkflows
       description_value(:properties)
     end
 
+    def self.credentials
+      description_value(:credentials)
+    end
+
     def self.property_schema
       properties
     end

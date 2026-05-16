@@ -32,10 +32,15 @@ RSpec.describe DiscourseWorkflows::WorkflowDependencyIndexer do
         build_workflow_graph do |g|
           g.node "t1",
                  "trigger:webhook",
-                 configuration: {
+                 parameters: {
                    "path" => "hook1",
                    "authentication" => "basic_auth",
-                   "credential_id" => credential.id,
+                 },
+                 credentials: {
+                   "auth" => {
+                     "id" => credential.id,
+                     "credential_type" => "basic_auth",
+                   },
                  }
         end
       workflow = Fabricate(:discourse_workflows_workflow, created_by: admin, **graph)
@@ -44,6 +49,41 @@ RSpec.describe DiscourseWorkflows::WorkflowDependencyIndexer do
 
       creds = dependency_rows(workflow).of_type("credential_id").pluck(:dependency_key, :node_id)
       expect(creds).to contain_exactly([credential.id.to_s, "t1"])
+    end
+
+    it "ignores undeclared and hidden credential dependencies" do
+      credential = Fabricate(:discourse_workflows_credential)
+      graph =
+        build_workflow_graph do |g|
+          g.node "a1",
+                 "action:log",
+                 parameters: {
+                   "message" => "hello",
+                 },
+                 credentials: {
+                   "auth" => {
+                     "id" => credential.id,
+                     "credential_type" => "basic_auth",
+                   },
+                 }
+          g.node "t1",
+                 "trigger:webhook",
+                 parameters: {
+                   "path" => "hook1",
+                   "authentication" => "none",
+                 },
+                 credentials: {
+                   "auth" => {
+                     "id" => credential.id,
+                     "credential_type" => "basic_auth",
+                   },
+                 }
+        end
+      workflow = Fabricate(:discourse_workflows_workflow, created_by: admin, **graph)
+
+      index(workflow)
+
+      expect(dependency_rows(workflow).of_type("credential_id")).to be_empty
     end
 
     it "extracts data_table_id dependencies" do

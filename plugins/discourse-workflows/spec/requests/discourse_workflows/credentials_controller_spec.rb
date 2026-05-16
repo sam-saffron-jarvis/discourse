@@ -130,9 +130,14 @@ RSpec.describe DiscourseWorkflows::CredentialsController do
         build_workflow_graph do |g|
           g.node "webhook-1",
                  "trigger:webhook",
-                 configuration: {
+                 parameters: {
                    "authentication" => "basic_auth",
-                   "credential_id" => credential.id,
+                 },
+                 credentials: {
+                   "auth" => {
+                     "id" => credential.id,
+                     "credential_type" => "basic_auth",
+                   },
                  }
         end
       workflow =

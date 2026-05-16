@@ -349,7 +349,7 @@ en:
         authentication: "Authentication"
         authentication_none: "None"
         authentication_basic_auth: "Basic auth"
-        credential_id: "Credential"
+        credential: "Credential"
       stale_topic:
         hours: "Hours with no reply"
         description: "Fires when a topic has had no replies for the specified number of hours"
@@ -412,7 +412,7 @@ en:
         authentication_none: "None"
         authentication_basic_auth: "Basic auth"
         authentication_bearer_token: "Bearer token"
-        credential_id: "Credential"
+        credential: "Credential"
         method: "Method"
         url: "URL"
         headers: "Headers"

@@ -19,14 +19,7 @@ module DiscourseWorkflows
         options: %w[none basic_auth],
         default: "none",
         ui: {
-          expression: true,
-        },
-      },
-      credential_id: {
-        type: :credential,
-        credential_type: :basic_auth,
-        visible_if: {
-          authentication: %w[basic_auth],
+          expression: false,
         },
       },
       http_method: {

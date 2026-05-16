@@ -203,8 +203,13 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
                 "url" => "https://example.com",
                 "method" => "GET",
                 "authentication" => "basic_auth",
-                "credential_id" => 12,
                 "description" => "Fetches data",
+              },
+              credentials: {
+                "auth" => {
+                  "id" => 12,
+                  "credential_type" => "basic_auth",
+                },
               },
             },
           ],
@@ -220,7 +225,6 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
         expect(node["credentials"]).to eq(
           "auth" => {
             "id" => "12",
-            "field_name" => "credential_id",
             "credential_type" => "basic_auth",
           },
         )
@@ -243,7 +247,6 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
               credentials: {
                 "auth" => {
                   "id" => "12",
-                  "field_name" => "credential_id",
                   "credential_type" => "basic_auth",
                 },
               },

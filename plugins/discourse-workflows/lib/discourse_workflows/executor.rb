@@ -302,6 +302,7 @@ module DiscourseWorkflows
         settings: node.settings,
         webhook_id: node.webhook_id,
         property_schema: node_type_class.property_schema,
+        credential_schema: node_type_class.credentials,
         node_context: node_context,
         user: @options.user,
         resolver: resolver,
@@ -607,12 +608,18 @@ module DiscourseWorkflows
 
     def node_dependencies(node)
       parameters = NodeData.parameters(node)
+      credentials =
+        NodeData.split(
+          parameters: parameters,
+          credentials: NodeData.credentials(node),
+          node_type: node.type,
+        )[
+          "credentials"
+        ]
       dependencies = []
-      NodeData
-        .credentials(node)
-        .each_value do |credential|
-          dependencies << ["credential_id", credential["id"]] if credential["id"].present?
-        end
+      credentials.each_value do |credential|
+        dependencies << ["credential_id", credential["id"]] if credential["id"].present?
+      end
       if parameters["data_table_id"].present?
         dependencies << ["data_table_id", parameters["data_table_id"]]
       end

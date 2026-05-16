@@ -3,8 +3,6 @@
 module DiscourseWorkflows
   module NodeData
     SETTINGS_PARAMETER_KEYS = %w[description].freeze
-    CREDENTIAL_PARAMETER_KEYS = %w[credential_id].freeze
-    AUTH_CREDENTIAL_TYPES = %w[basic_auth bearer_token].freeze
 
     module_function
 
@@ -17,16 +15,7 @@ module DiscourseWorkflows
     end
 
     def resolved_parameters(node)
-      parameters(node).deep_dup.merge(credential_parameters(credentials(node)))
-    end
-
-    def credential_parameters(credentials_hash)
-      normalize_credentials(credentials_hash).each_with_object({}) do |(_slot, credential), result|
-        field_name = credential["field_name"].presence
-        next if field_name.blank?
-
-        result[field_name] = credential["id"]
-      end
+      parameters(node).deep_dup
     end
 
     def split(parameters:, credentials: {}, settings: {}, webhook_id: nil, node_type: nil)
@@ -39,12 +28,8 @@ module DiscourseWorkflows
         settings[key] = parameters.delete(key) if parameters.key?(key)
       end
 
-      if parameters.key?("authentication")
-        sync_auth_credential_type(parameters, credentials)
-      else
-        credentials.delete("auth")
-      end
-      extract_credentials(parameters, credentials)
+      remove_undeclared_credential_parameters(parameters, node_type)
+      credentials = filter_declared_credentials(credentials, node_type, parameters)
 
       {
         "parameters" => parameters,
@@ -61,7 +46,10 @@ module DiscourseWorkflows
         credential = credential.deep_stringify_keys
         next if credential["id"].blank?
 
-        result[slot.to_s] = credential.merge("id" => credential["id"].to_s)
+        credential["credential_type"] ||= credential.delete("type")
+        result[slot.to_s] = credential.slice("id", "credential_type").merge(
+          "id" => credential["id"].to_s,
+        )
       end
     end
 
@@ -71,49 +59,69 @@ module DiscourseWorkflows
       node[key] || node[key.to_sym]
     end
 
-    def extract_credentials(parameters, credentials)
-      CREDENTIAL_PARAMETER_KEYS.each do |field_name|
-        next unless parameters.key?(field_name)
+    def filter_declared_credentials(credentials, node_type, parameters)
+      definitions = credential_definitions_for(node_type)
+      return credentials if node_type.blank?
+      return {} if definitions.blank?
 
-        value = parameters.delete(field_name)
-        if value.blank?
-          credentials.delete("auth")
-          next
-        end
+      definitions.each_with_object({}) do |definition, result|
+        slot = definition["name"]
+        credential = credentials[slot]
+        next if credential.blank? || !credential_slot_visible?(definition, parameters)
 
-        credential_type = credential_type_for(parameters)
-        if credential_type.blank?
-          credentials.delete("auth")
-          next
-        end
+        credential_type = credential["credential_type"].presence
+        credential_types = credential_types_for(definition)
+        credential_type ||= credential_types.first if credential_types.one?
+        next if credential_type.blank? || credential_types.exclude?(credential_type)
 
-        credentials["auth"] = {
-          "id" => value.to_s,
-          "field_name" => field_name,
-          "credential_type" => credential_type,
-        }.compact
+        result[slot] = credential.merge("credential_type" => credential_type)
       end
     end
 
-    def credential_type_for(parameters)
-      authentication = parameters["authentication"].to_s
-      authentication if AUTH_CREDENTIAL_TYPES.include?(authentication)
+    def credential_definitions_for(node_type)
+      return [] if node_type.blank?
+
+      klass = Registry.find_node_type(node_type)
+      normalize_credential_definitions(klass&.credentials)
     end
 
-    def sync_auth_credential_type(parameters, credentials)
-      return unless parameters.key?("authentication")
+    def remove_undeclared_credential_parameters(parameters, node_type)
+      return if node_type.blank? || !parameters.key?("credential_id")
 
-      credential_type = credential_type_for(parameters)
-      if credential_type.blank?
-        credentials.delete("auth")
-      elsif credentials["auth"].present?
-        if credentials["auth"]["field_name"].blank? || credentials["auth"]["credential_type"].blank?
-          credentials.delete("auth")
-          return
-        end
+      klass = Registry.find_node_type(node_type)
+      parameters.delete("credential_id") unless klass&.property_schema&.key?(:credential_id)
+    end
 
-        credentials["auth"]["credential_type"] = credential_type
+    def normalize_credential_definitions(definitions)
+      Array(definitions).filter_map do |definition|
+        definition = definition.deep_stringify_keys
+        name = definition["name"].presence
+        next if name.blank?
+
+        definition.merge("name" => name)
       end
+    end
+
+    def credential_types_for(definition)
+      Array(definition["credential_types"] || definition["credential_type"]).map(&:to_s)
+    end
+
+    def credential_slot_visible?(definition, parameters)
+      display_options = definition["displayOptions"] || definition["display_options"]
+      return visible_for_conditions?(definition["visible_if"], parameters) if display_options.blank?
+
+      visible_for_conditions?(display_options["show"], parameters) &&
+        !hidden_by_conditions?(display_options["hide"], parameters)
+    end
+
+    def visible_for_conditions?(conditions, parameters)
+      return true if conditions.blank?
+
+      conditions.all? { |key, expected| Array(expected).map(&:to_s).include?(parameters[key].to_s) }
+    end
+
+    def hidden_by_conditions?(conditions, parameters)
+      conditions.present? && visible_for_conditions?(conditions, parameters)
     end
 
     def extract_webhook_id(parameters, webhook_id, node_type)

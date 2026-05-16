@@ -21,6 +21,7 @@ module DiscourseWorkflows
         settings: {},
         webhook_id: nil,
         property_schema: {},
+        credential_schema: [],
         node_context: {},
         user: nil,
         resolver: nil,
@@ -45,6 +46,7 @@ module DiscourseWorkflows
         @parameters = split["parameters"]
         @credentials = split["credentials"]
         @property_schema = property_schema
+        @credential_schema = NodeData.normalize_credential_definitions(credential_schema)
         @node_context = node_context
         @user = user
         @resolver = resolver
@@ -119,13 +121,20 @@ module DiscourseWorkflows
         )
       end
 
-      def get_credential(credential_id_or_slot)
-        raise ArgumentError, "credential_id is required" if credential_id_or_slot.blank?
+      def credential_reference?(slot)
+        declared_credential_slot?(slot) && credential_id_for(slot).present?
+      end
 
-        credential_id = credential_id_for(credential_id_or_slot) || credential_id_or_slot.to_s
-        ensure_credential_access!(credential_id)
+      def get_credential(slot)
+        raise ArgumentError, "credential slot is required" if slot.blank?
+
+        credential_id = credential_id_for(slot)
+        ensure_credential_access!(slot, credential_id)
         credential = DiscourseWorkflows::Credential.find_by(id: credential_id)
         raise Discourse::InvalidAccess if credential.nil?
+        unless credential_type_allowed?(slot, credential.credential_type)
+          raise Discourse::InvalidAccess
+        end
 
         @resolver.resolve_hash(credential.decrypted_data)
       end
@@ -186,11 +195,12 @@ module DiscourseWorkflows
         raise Discourse::InvalidAccess
       end
 
-      def ensure_credential_access!(credential_id)
-        expected_credential_id = credential_id_for("auth")
+      def ensure_credential_access!(slot, credential_id)
+        raise Discourse::InvalidAccess if credential_id.blank? || !declared_credential_slot?(slot)
+
         if @workflow && @node_id
           return if workflow_references_dependency?("credential_id", credential_id)
-        elsif expected_credential_id == credential_id
+        elsif credential_id_for(slot) == credential_id
           return
         end
 
@@ -257,20 +267,30 @@ module DiscourseWorkflows
           @condition_details.concat(result["details"])
           result["passed"]
         else
-          credential_parameters = NodeData.credential_parameters(@credentials)
-          return credential_parameters[name] if credential_parameters.key?(name)
-
           @resolver.resolve(@parameters[name])
         end
       end
 
       def resolve_all_parameters
-        @resolver.resolve_hash(@parameters).merge(NodeData.credential_parameters(@credentials))
+        @resolver.resolve_hash(@parameters)
       end
 
       def credential_id_for(slot)
         credential = @credentials[slot.to_s]
         credential["id"].to_s if credential
+      end
+
+      def declared_credential_slot?(slot)
+        credential_definition(slot).present?
+      end
+
+      def credential_type_allowed?(slot, credential_type)
+        credential_types = NodeData.credential_types_for(credential_definition(slot))
+        credential_types.include?(credential_type.to_s)
+      end
+
+      def credential_definition(slot)
+        @credential_schema.find { |definition| definition["name"] == slot.to_s }
       end
     end
   end

@@ -171,8 +171,9 @@ module DiscourseWorkflows
         webhook_nodes.filter_map do |published_trigger|
           node = published_trigger.trigger_node
           parameters = NodeData.resolved_parameters(node)
+          credential_ref = NodeData.credentials(node)["auth"]
           if (parameters["authentication"] || "none") == "basic_auth"
-            parameters["credential_id"].to_i
+            credential_ref["id"].to_i if credential_ref
           end
         end
 

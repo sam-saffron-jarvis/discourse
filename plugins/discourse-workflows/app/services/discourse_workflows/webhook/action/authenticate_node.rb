@@ -22,11 +22,10 @@ module DiscourseWorkflows
     private
 
     def authenticate_basic_auth(config)
-      credential = credentials[config["credential_id"].to_i]
+      credential_ref = NodeData.credentials(node)["auth"]
+      credential = credentials[credential_ref["id"].to_i] if credential_ref
       unless credential
-        Rails.logger.warn(
-          "Workflow credential not found (id=#{config["credential_id"]}) for node #{node["id"]}",
-        )
+        Rails.logger.warn("Workflow credential not found for node #{node["id"]}")
         return false
       end
 
@@ -34,9 +33,7 @@ module DiscourseWorkflows
         begin
           credential.decrypted_data
         rescue ActiveSupport::MessageEncryptor::InvalidMessage, ArgumentError
-          Rails.logger.warn(
-            "Workflow credential decryption failed (id=#{config["credential_id"]}) for node #{node["id"]}",
-          )
+          Rails.logger.warn("Workflow credential decryption failed for node #{node["id"]}")
           return false
         end
 

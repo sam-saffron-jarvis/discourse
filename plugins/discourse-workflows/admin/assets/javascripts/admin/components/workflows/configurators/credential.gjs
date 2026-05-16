@@ -22,7 +22,8 @@ export default class Credential extends Component {
 
   async #loadCredentials() {
     try {
-      const credentialType = this.args.schema.credential_type;
+      const credentialType =
+        this.credentialTypes.length === 1 ? this.credentialTypes[0] : null;
       const url = credentialType
         ? `/admin/plugins/discourse-workflows/credentials.json?type=${credentialType}`
         : "/admin/plugins/discourse-workflows/credentials.json";
@@ -33,16 +34,52 @@ export default class Credential extends Component {
     }
   }
 
+  get credentialTypes() {
+    return [
+      this.args.credentialTypes ||
+        this.args.schema?.credential_types ||
+        this.args.schema?.credential_type,
+    ]
+      .flat()
+      .filter(Boolean);
+  }
+
+  get value() {
+    return this.args.value?.id || this.args.field?.value || null;
+  }
+
   get options() {
-    return (this.credentials || []).map((c) => ({
-      id: c.id,
-      name: c.name,
-    }));
+    return (this.credentials || [])
+      .filter(
+        (c) =>
+          this.credentialTypes.length === 0 ||
+          this.credentialTypes.includes(c.credential_type)
+      )
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        credential_type: c.credential_type,
+      }));
   }
 
   @action
   handleChange(value) {
-    this.args.field.set(value ? parseInt(value, 10) : null);
+    if (this.args.onChange) {
+      const selected = this.options.find(
+        (c) => c.id.toString() === value?.toString()
+      );
+      this.args.onChange(
+        value
+          ? {
+              id: value.toString(),
+              credential_type:
+                selected?.credential_type || this.credentialTypes[0] || null,
+            }
+          : null
+      );
+    } else {
+      this.args.field.set(value ? parseInt(value, 10) : null);
+    }
   }
 
   @action
@@ -56,7 +93,7 @@ export default class Credential extends Component {
             { type: "POST", data }
           );
           await this.#loadCredentials();
-          this.args.field.set(result.credential.id);
+          this.handleChange(result.credential.id);
         },
       },
     });
@@ -64,20 +101,23 @@ export default class Credential extends Component {
 
   <template>
     <ExpressionWrapper
-      @field={{@field}}
+      @field={{if @field @field (hash value=this.value)}}
       @supportsExpression={{@supportsExpression}}
       @placeholder={{@placeholder}}
     >
+      {{#if @label}}
+        <label class="workflows-property-engine__label">{{@label}}</label>
+      {{/if}}
       <div class="workflows-property-engine__select-with-action">
         <ComboBox
           @content={{this.options}}
-          @value={{@field.value}}
+          @value={{this.value}}
           @nameProperty="name"
           @valueProperty="id"
           @onChange={{this.handleChange}}
           @options={{hash none="discourse_workflows.credentials.select_type"}}
         />
-        {{#unless @field.value}}
+        {{#unless this.value}}
           <DButton
             @action={{this.setupCredential}}
             @label="discourse_workflows.credentials.set_up_credential"

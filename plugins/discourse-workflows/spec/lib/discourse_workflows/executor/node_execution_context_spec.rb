@@ -53,17 +53,15 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
           credentials: {
             "auth" => {
               "id" => credential.id,
-              "field_name" => "credential_id",
               "credential_type" => "basic_auth",
             },
           },
+          credential_schema: DiscourseWorkflows::Nodes::HttpRequest::V1.credentials,
           resolver: resolver,
         )
 
       resolved =
-        ctx.with_item({ "json" => { "username" => "item-user" } }) do
-          ctx.get_credential(credential.id)
-        end
+        ctx.with_item({ "json" => { "username" => "item-user" } }) { ctx.get_credential("auth") }
 
       expect(resolved).to eq("user" => "item-user", "password" => "static-password")
     ensure
@@ -77,7 +75,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
 
       resolved =
         ctx.with_item({ "json" => { "username" => "dependency-user" } }) do
-          ctx.get_credential(credential.id)
+          ctx.get_credential("auth")
         end
 
       expect(resolved).to eq("user" => "dependency-user", "password" => "static-password")
@@ -91,23 +89,24 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       DiscourseWorkflows::WorkflowDependency.where(workflow_id: workflow.id).delete_all
       ctx, resolver, sandbox = build_credential_context(workflow: workflow)
 
-      expect { ctx.get_credential(credential.id) }.to raise_error(Discourse::InvalidAccess)
+      expect { ctx.get_credential("auth") }.to raise_error(Discourse::InvalidAccess)
     ensure
       resolver&.dispose
       sandbox&.dispose
     end
 
-    it "does not reveal whether an unauthorized credential id exists" do
+    it "rejects undeclared credential slots" do
       ctx, resolver, sandbox =
         build_credential_context(
-          configuration: {
-            "authentication" => "basic_auth",
-            "credential_id" => credential.id + 1,
+          credentials: {
+            "other" => {
+              "id" => credential.id,
+              "credential_type" => "basic_auth",
+            },
           },
         )
 
-      expect { ctx.get_credential(credential.id) }.to raise_error(Discourse::InvalidAccess)
-      expect { ctx.get_credential(credential.id + 1000) }.to raise_error(Discourse::InvalidAccess)
+      expect { ctx.get_credential("other") }.to raise_error(Discourse::InvalidAccess)
     ensure
       resolver&.dispose
       sandbox&.dispose
@@ -126,14 +125,14 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
           credentials: {
             "auth" => {
               "id" => credential.id + 1,
-              "field_name" => "credential_id",
               "credential_type" => "basic_auth",
             },
           },
+          credential_schema: DiscourseWorkflows::Nodes::HttpRequest::V1.credentials,
           resolver: resolver,
         )
 
-      expect { ctx.get_credential(credential.id) }.to raise_error(Discourse::InvalidAccess)
+      expect { ctx.get_credential("auth") }.to raise_error(Discourse::InvalidAccess)
     ensure
       resolver&.dispose
       sandbox&.dispose
@@ -371,9 +370,14 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       build_workflow_graph do |g|
         g.node "http-1",
                "action:http_request",
-               configuration: {
+               parameters: {
                  "authentication" => "basic_auth",
-                 "credential_id" => credential.id,
+               },
+               credentials: {
+                 "auth" => {
+                   "id" => credential.id,
+                   "credential_type" => "basic_auth",
+                 },
                }
       end
     Fabricate(:discourse_workflows_workflow, created_by: admin, **graph)
@@ -381,7 +385,8 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
 
   def build_credential_context(
     workflow: nil,
-    configuration: { "authentication" => "basic_auth", "credential_id" => credential.id }
+    configuration: { "authentication" => "basic_auth" },
+    credentials: { "auth" => { "id" => credential.id, "credential_type" => "basic_auth" } }
   )
     resolver_context = { "$json" => {} }
     sandbox = DiscourseWorkflows::JsSandbox.new(resolver_context)
@@ -390,6 +395,8 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       described_class.new(
         input_items: [],
         parameters: configuration,
+        credentials: credentials,
+        credential_schema: DiscourseWorkflows::Nodes::HttpRequest::V1.credentials,
         resolver: resolver,
         workflow: workflow,
         node_id: workflow ? "http-1" : nil,

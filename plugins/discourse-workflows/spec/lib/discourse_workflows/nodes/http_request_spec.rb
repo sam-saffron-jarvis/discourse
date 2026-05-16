@@ -189,7 +189,12 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
           "method" => "GET",
           "url" => "https://api.example.com/data",
           "authentication" => "basic_auth",
-          "credential_id" => credential.id,
+          "credentials" => {
+            "auth" => {
+              "id" => credential.id,
+              "credential_type" => "basic_auth",
+            },
+          },
         }
 
         result = execute_node(configuration: config, item: item)
@@ -223,7 +228,12 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
           "method" => "GET",
           "url" => "https://api.example.com/data",
           "authentication" => "bearer_token",
-          "credential_id" => credential.id,
+          "credentials" => {
+            "auth" => {
+              "id" => credential.id,
+              "credential_type" => "bearer_token",
+            },
+          },
         }
 
         result = execute_node(configuration: config, item: item)

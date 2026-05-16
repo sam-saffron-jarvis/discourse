@@ -1,55 +1,20 @@
 const SETTINGS_PARAMETER_KEYS = ["description"];
 
-function credentialTypeFor(configuration) {
-  return ["basic_auth", "bearer_token"].includes(configuration.authentication)
-    ? configuration.authentication
-    : null;
-}
-
-function validCredentialType(credential) {
-  return ["basic_auth", "bearer_token"].includes(credential?.credential_type);
-}
-
 function splitConfiguration(type, configuration = {}, existing = {}) {
   const parameters = structuredClone(configuration || {});
   const settings = structuredClone(existing.settings || {});
-  const credentials = structuredClone(existing.credentials || {});
+  const credentials = Object.hasOwn(parameters, "credentials")
+    ? structuredClone(parameters.credentials || {})
+    : structuredClone(existing.credentials || {});
   let webhookId = existing.webhook_id || null;
+
+  delete parameters.credentials;
 
   for (const key of SETTINGS_PARAMETER_KEYS) {
     if (Object.hasOwn(parameters, key)) {
       settings[key] = parameters[key];
       delete parameters[key];
     }
-  }
-
-  if (Object.hasOwn(parameters, "credential_id")) {
-    const id = parameters.credential_id;
-    const credentialType = credentialTypeFor(parameters);
-    if (id && credentialType) {
-      credentials.auth = {
-        id: id.toString(),
-        field_name: "credential_id",
-        credential_type: credentialType,
-      };
-    } else {
-      delete credentials.auth;
-    }
-    delete parameters.credential_id;
-  } else if (Object.hasOwn(parameters, "authentication")) {
-    const credentialType = credentialTypeFor(parameters);
-    if (
-      credentialType &&
-      credentials.auth?.id &&
-      credentials.auth?.field_name &&
-      validCredentialType(credentials.auth)
-    ) {
-      credentials.auth.credential_type = credentialType;
-    } else {
-      delete credentials.auth;
-    }
-  } else {
-    delete credentials.auth;
   }
 
   if (type === "trigger:form" && Object.hasOwn(parameters, "uuid")) {
@@ -72,13 +37,8 @@ function configurationFromNodeData({
     ...structuredClone(settings || {}),
   };
 
-  const authCredential = credentials?.auth;
-  if (
-    authCredential?.id &&
-    authCredential.field_name &&
-    validCredentialType(authCredential)
-  ) {
-    configuration[authCredential.field_name] = authCredential.id;
+  if (credentials && Object.keys(credentials).length > 0) {
+    configuration.credentials = structuredClone(credentials);
   }
 
   if (type === "trigger:form" && webhookId) {

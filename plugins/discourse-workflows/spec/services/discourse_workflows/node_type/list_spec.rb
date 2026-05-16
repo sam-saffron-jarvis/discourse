@@ -176,6 +176,24 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
           ),
         )
       end
+
+      it "exposes first-class credential slots on credential-consuming node types" do
+        http_request = result[:node_types].find { |nt| nt[:identifier] == "action:http_request" }
+
+        expect(http_request[:credentials]).to contain_exactly(
+          a_hash_including(
+            name: "auth",
+            credential_types: %w[basic_auth bearer_token],
+            required: false,
+            displayOptions: {
+              show: {
+                authentication: %w[basic_auth bearer_token],
+              },
+            },
+          ),
+        )
+        expect(http_request[:properties]).not_to have_key(:credential_id)
+      end
     end
   end
 

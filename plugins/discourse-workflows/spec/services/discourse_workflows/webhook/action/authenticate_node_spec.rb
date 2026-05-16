@@ -26,7 +26,6 @@ RSpec.describe DiscourseWorkflows::Webhook::Action::AuthenticateNode do
       "credentials" => {
         "auth" => {
           "id" => credential.id.to_s,
-          "field_name" => "credential_id",
           "credential_type" => "basic_auth",
         },
       },

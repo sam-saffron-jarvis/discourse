@@ -8,7 +8,7 @@ module DiscourseWorkflows
           auth_mode = config.fetch("authentication") { "none" }
           return if auth_mode == "none"
 
-          cred_data = fetch_credential_data(exec_ctx, config["credential_id"], auth_mode)
+          cred_data = fetch_credential_data(exec_ctx, auth_mode)
 
           case auth_mode
           when "basic_auth"
@@ -18,14 +18,7 @@ module DiscourseWorkflows
           end
         end
 
-        def self.fetch_credential_data(exec_ctx, credential_id, auth_mode)
-          if credential_id.blank?
-            raise ArgumentError,
-                  I18n.t(
-                    "discourse_workflows.errors.http_request.credential_required",
-                    mode: auth_mode,
-                  )
-          end
+        def self.fetch_credential_data(exec_ctx, auth_mode)
           if exec_ctx.nil?
             raise ArgumentError,
                   I18n.t(
@@ -33,8 +26,15 @@ module DiscourseWorkflows
                     mode: auth_mode,
                   )
           end
+          if !exec_ctx.credential_reference?("auth")
+            raise ArgumentError,
+                  I18n.t(
+                    "discourse_workflows.errors.http_request.credential_required",
+                    mode: auth_mode,
+                  )
+          end
 
-          exec_ctx.get_credential(credential_id)
+          exec_ctx.get_credential("auth")
         end
 
         def self.apply_basic_auth(headers, cred_data)

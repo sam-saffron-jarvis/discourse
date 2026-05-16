@@ -32,13 +32,7 @@ module DiscourseWorkflows
               options: %w[none basic_auth bearer_token],
               default: "none",
               ui: {
-                expression: true,
-              },
-            },
-            credential_id: {
-              type: :credential,
-              visible_if: {
-                authentication: %w[basic_auth bearer_token],
+                expression: false,
               },
             },
             headers: {
@@ -165,7 +159,19 @@ module DiscourseWorkflows
             headers: :object,
             body: :object,
           },
-          credentials: [{ name: "auth", field_name: "credential_id", required: false }],
+          credentials: [
+            {
+              name: "auth",
+              credential_types: %w[basic_auth bearer_token],
+              required: false,
+              displayOptions: {
+                show: {
+                  authentication: %w[basic_auth bearer_token],
+                },
+              },
+              label_key: "discourse_workflows.http_request.credential",
+            },
+          ],
         )
 
         def execute(exec_ctx)
@@ -219,13 +225,7 @@ module DiscourseWorkflows
         end
 
         def request_options(config)
-          config.slice(
-            "authentication",
-            "credential_id",
-            "never_error",
-            "query_params",
-            "max_response_size_kb",
-          )
+          config.slice("authentication", "never_error", "query_params", "max_response_size_kb")
         end
       end
     end

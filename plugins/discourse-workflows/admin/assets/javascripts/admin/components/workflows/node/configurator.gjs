@@ -25,6 +25,7 @@ import {
   findNodeType,
   getPropertySchema,
 } from "../../../lib/workflows/property-engine";
+import CredentialControl from "../configurators/credential";
 import PropertyEngineConfigurator from "../configurators/property-engine";
 import InputContext from "../context/input";
 import OutputContext from "../context/output";
@@ -45,6 +46,44 @@ function inferFieldType(value) {
   return "string";
 }
 
+function credentialTypesForSlot(slot) {
+  return slot.credential_types || [slot.credential_type].filter(Boolean);
+}
+
+function conditionsMatch(conditions, configuration) {
+  if (!conditions) {
+    return true;
+  }
+
+  return Object.entries(conditions).every(([key, expected]) =>
+    [expected].flat().map(String).includes(configuration?.[key]?.toString())
+  );
+}
+
+function credentialSlotVisible(slot, configuration) {
+  const displayOptions = slot.displayOptions || slot.display_options;
+  if (!displayOptions) {
+    return conditionsMatch(slot.visible_if, configuration);
+  }
+
+  return (
+    conditionsMatch(displayOptions.show, configuration) &&
+    !(
+      displayOptions.hide && conditionsMatch(displayOptions.hide, configuration)
+    )
+  );
+}
+
+function credentialSlotLabel(slot) {
+  return i18n(slot.label_key || "discourse_workflows.credentials.type");
+}
+
+function normalizeCredentials(credentials = {}) {
+  return Object.fromEntries(
+    Object.entries(credentials || {}).filter(([, value]) => value?.id)
+  );
+}
+
 export default class NodeConfigurator extends Component {
   @service workflowsNodeTypes;
 
@@ -57,9 +96,16 @@ export default class NodeConfigurator extends Component {
     description: this.args.model.node.configuration?.description || "",
   };
 
+  @tracked credentialConfig = structuredClone(
+    normalizeCredentials(
+      this.args.model.node.configuration?.credentials ||
+        this.args.model.node.credentials
+    )
+  );
   initialConfiguration = structuredClone(
     this.args.model.node.configuration || {}
   );
+
   parametersApi = null;
 
   focusNameInput = modifier((element) => {
@@ -166,7 +212,14 @@ export default class NodeConfigurator extends Component {
   }
 
   get hasConfiguration() {
-    return Object.keys(this.propertySchema).length > 0;
+    return (
+      Object.keys(this.propertySchema).length > 0 ||
+      this.credentialSlots.length > 0
+    );
+  }
+
+  get credentialSlots() {
+    return this.resolvedNodeType?.credentials || [];
   }
 
   get isUnavailable() {
@@ -197,6 +250,21 @@ export default class NodeConfigurator extends Component {
   handleDescriptionSet(value, { set, name }) {
     set(name, value);
     this.parametersApi?.set("description", value);
+  }
+
+  @action
+  handleCredentialSet(slotName, value) {
+    const credentials = { ...this.credentialConfig };
+    if (value?.id) {
+      credentials[slotName] = value;
+    } else {
+      delete credentials[slotName];
+    }
+    this.credentialConfig = credentials;
+  }
+
+  credentialValue(slotName) {
+    return this.credentialConfig[slotName];
   }
 
   @action
@@ -240,13 +308,18 @@ export default class NodeConfigurator extends Component {
       config.output_fields = executionFields;
     }
 
+    config.credentials = this.credentialConfig;
+
     return config;
   }
 
   get isDirty() {
     const formDirty = this.parametersApi?.isDirty ?? false;
     const nameDirty = this.nodeName !== (this.args.model.node.name || "");
-    return formDirty || nameDirty;
+    const credentialsDirty =
+      JSON.stringify(normalizeCredentials(this.args.model.node.credentials)) !==
+      JSON.stringify(this.credentialConfig);
+    return formDirty || nameDirty || credentialsDirty;
   }
 
   @action
@@ -366,12 +439,24 @@ export default class NodeConfigurator extends Component {
                     @configuration={{transientData}}
                     @nodeType={{@model.node.type}}
                     @schema={{this.propertySchema}}
+                    @credentials={{this.credentialConfig}}
                     @triggerType={{@model.triggerType}}
                     @node={{@model.node}}
+                    @nodeParameters={{transientData}}
                     @nodes={{@model.nodes}}
                     @connections={{@model.connections}}
                     @nodeTypes={{this.nodeTypes}}
                   />
+                  {{#each this.credentialSlots as |slot|}}
+                    {{#if (credentialSlotVisible slot transientData)}}
+                      <CredentialControl
+                        @credentialTypes={{credentialTypesForSlot slot}}
+                        @label={{credentialSlotLabel slot}}
+                        @onChange={{fn this.handleCredentialSet slot.name}}
+                        @value={{this.credentialValue slot.name}}
+                      />
+                    {{/if}}
+                  {{/each}}
                 </Form>
               {{else if (eq this.activeTab "parameters")}}
                 <p>{{i18n

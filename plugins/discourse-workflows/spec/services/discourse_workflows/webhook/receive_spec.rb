@@ -229,7 +229,12 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
                   "path" => "my-hook",
                   "http_method" => "POST",
                   "authentication" => "basic_auth",
-                  "credential_id" => credential.id,
+                },
+                credentials: {
+                  "auth" => {
+                    "id" => credential.id,
+                    "credential_type" => "basic_auth",
+                  },
                 },
                 node_type: node["type"],
               ),
@@ -319,7 +324,12 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
                   "path" => "my-hook",
                   "http_method" => "POST",
                   "authentication" => "basic_auth",
-                  "credential_id" => credential.id,
+                },
+                credentials: {
+                  "auth" => {
+                    "id" => credential.id,
+                    "credential_type" => "basic_auth",
+                  },
                 },
                 node_type: node["type"],
               ),

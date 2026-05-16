@@ -90,7 +90,12 @@ module("Unit | lib | discourse-workflows | node-factory", function (hooks) {
         uuid: "form-uuid",
         form_title: "Signup",
         authentication: "basic_auth",
-        credential_id: 42,
+        credentials: {
+          auth: {
+            id: "42",
+            credential_type: "basic_auth",
+          },
+        },
         description: "Shown on canvas",
       },
     });
@@ -104,7 +109,6 @@ module("Unit | lib | discourse-workflows | node-factory", function (hooks) {
     assert.deepEqual(serialized.credentials, {
       auth: {
         id: "42",
-        field_name: "credential_id",
         credential_type: "basic_auth",
       },
     });
@@ -112,7 +116,7 @@ module("Unit | lib | discourse-workflows | node-factory", function (hooks) {
     assert.strictEqual(serialized.webhook_id, "form-uuid");
   });
 
-  test("WorkflowNode.serialize removes stale auth credentials", function (assert) {
+  test("WorkflowNode.serialize can explicitly clear credentials", function (assert) {
     const node = WorkflowNode.create({
       type: "trigger:webhook",
       type_version: "1.0",
@@ -125,14 +129,13 @@ module("Unit | lib | discourse-workflows | node-factory", function (hooks) {
       credentials: {
         auth: {
           id: "42",
-          field_name: "credential_id",
           credential_type: "basic_auth",
         },
       },
     });
 
     node.configuration.authentication = "none";
-    delete node.configuration.credential_id;
+    node.configuration.credentials = {};
 
     const serialized = WorkflowNode.serialize(node);
 
@@ -142,5 +145,27 @@ module("Unit | lib | discourse-workflows | node-factory", function (hooks) {
       authentication: "none",
     });
     assert.deepEqual(serialized.credentials, {});
+  });
+
+  test("WorkflowNode exposes saved credential slots in configuration", function (assert) {
+    const node = WorkflowNode.create({
+      type: "action:http_request",
+      parameters: {
+        authentication: "basic_auth",
+      },
+      credentials: {
+        auth: {
+          id: "42",
+          credential_type: "basic_auth",
+        },
+      },
+    });
+
+    assert.deepEqual(node.configuration.credentials, {
+      auth: {
+        id: "42",
+        credential_type: "basic_auth",
+      },
+    });
   });
 });

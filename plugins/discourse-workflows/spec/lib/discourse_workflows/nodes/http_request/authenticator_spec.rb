@@ -16,9 +16,15 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::Authenticator do
       expect(headers).not_to have_key("Authorization")
     end
 
-    it "raises when credential_id is missing for auth modes" do
+    it "raises when the auth credential slot is missing for auth modes" do
+      exec_ctx =
+        instance_double(
+          DiscourseWorkflows::Executor::NodeExecutionContext,
+          credential_reference?: false,
+        )
+
       expect {
-        described_class.apply({ "authentication" => "basic_auth" }, {}, nil)
+        described_class.apply({ "authentication" => "basic_auth" }, {}, exec_ctx)
       }.to raise_error(ArgumentError, /Credential is required/)
     end
 
@@ -28,21 +34,18 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::Authenticator do
         exec_ctx =
           instance_double(
             DiscourseWorkflows::Executor::NodeExecutionContext,
+            credential_reference?: true,
             get_credential: {
               "user" => "api_user",
               "password" => "api_pass",
             },
           )
 
-        described_class.apply(
-          { "authentication" => "basic_auth", "credential_id" => 1 },
-          headers,
-          exec_ctx,
-        )
+        described_class.apply({ "authentication" => "basic_auth" }, headers, exec_ctx)
 
         expected = "Basic #{Base64.strict_encode64("api_user:api_pass")}"
         expect(headers["Authorization"]).to eq(expected)
-        expect(exec_ctx).to have_received(:get_credential).with(1)
+        expect(exec_ctx).to have_received(:get_credential).with("auth")
       end
     end
 
@@ -52,19 +55,16 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::Authenticator do
         exec_ctx =
           instance_double(
             DiscourseWorkflows::Executor::NodeExecutionContext,
+            credential_reference?: true,
             get_credential: {
               "token" => "my-secret-token",
             },
           )
 
-        described_class.apply(
-          { "authentication" => "bearer_token", "credential_id" => 1 },
-          headers,
-          exec_ctx,
-        )
+        described_class.apply({ "authentication" => "bearer_token" }, headers, exec_ctx)
 
         expect(headers["Authorization"]).to eq("Bearer my-secret-token")
-        expect(exec_ctx).to have_received(:get_credential).with(1)
+        expect(exec_ctx).to have_received(:get_credential).with("auth")
       end
     end
   end
