@@ -86,6 +86,11 @@ module("Unit | lib | discourse-workflows | buildScope", function () {
 
     const ref = scope.$("Fetch data");
     assert.strictEqual(ref.item.json.name, "");
+    assert.strictEqual(ref.first().json.name, "");
+    assert.strictEqual(ref.last().json.name, "");
+    assert.strictEqual(ref.itemMatching(0).json.name, "");
+    assert.strictEqual(ref.pairedItem().json.name, "");
+    assert.strictEqual(ref.all()[0].json.name, "");
   });
 
   test("$() returns empty structure for unknown nodes", function (assert) {
@@ -218,6 +223,28 @@ module("Unit | lib | discourse-workflows | walkScope", function () {
       walkScope(scope, "$('MyNode').item.json.name"),
       "node-MyNode"
     );
+  });
+
+  test("resolves node reference method calls via $() path", function (assert) {
+    const scope = {
+      $: (name) => ({
+        first: () => ({ json: { name: `node-${name}` } }),
+        itemMatching: (index) => ({ json: { index } }),
+        all: (branchIndex, runIndex) => [{ json: { branchIndex, runIndex } }],
+      }),
+    };
+
+    assert.strictEqual(
+      walkScope(scope, "$('MyNode').first().json.name"),
+      "node-MyNode"
+    );
+    assert.strictEqual(
+      walkScope(scope, "$('MyNode').itemMatching(2).json.index"),
+      2
+    );
+    assert.deepEqual(walkScope(scope, "$('MyNode').all(1, 0)"), [
+      { json: { branchIndex: 1, runIndex: 0 } },
+    ]);
   });
 
   test("resolves node reference with double quotes", function (assert) {

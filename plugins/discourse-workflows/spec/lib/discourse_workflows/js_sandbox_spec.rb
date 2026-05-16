@@ -59,8 +59,8 @@ RSpec.describe DiscourseWorkflows::JsSandbox do
       context = { "_internal" => [{ "json" => { "secret" => "data" } }] }
       private_sandbox = described_class.new(context, vars: {})
 
-      result = private_sandbox.eval("$('_internal')")
-      expect(result).to eq({ "item" => { "json" => {} } })
+      result = private_sandbox.eval("$('_internal').item")
+      expect(result).to eq({ "json" => {} })
     ensure
       private_sandbox&.dispose
     end
@@ -69,8 +69,8 @@ RSpec.describe DiscourseWorkflows::JsSandbox do
       context = { "My Node" => [{ "json" => { "value" => 123 } }] }
       named_sandbox = described_class.new(context, vars: {})
 
-      result = named_sandbox.eval("$('My Node')")
-      expect(result).to eq({ "item" => { "json" => { "value" => 123 } } })
+      result = named_sandbox.eval("$('My Node').first()")
+      expect(result).to eq({ "json" => { "value" => 123 } })
     ensure
       named_sandbox&.dispose
     end

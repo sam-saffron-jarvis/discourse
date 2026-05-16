@@ -37,6 +37,14 @@ RSpec.describe DiscourseWorkflows::Item do
       )
     end
 
+    it "normalizes n8n shorthand pairedItem metadata" do
+      expect(described_class.wrap({ "name" => "A" }, paired_item: 1)).to include(
+        "pairedItem" => {
+          "item" => 1,
+        },
+      )
+    end
+
     it "raises when given something other than a Hash or Array" do
       expect { described_class.wrap(nil) }.to raise_error(ArgumentError)
       expect { described_class.wrap("string") }.to raise_error(ArgumentError)

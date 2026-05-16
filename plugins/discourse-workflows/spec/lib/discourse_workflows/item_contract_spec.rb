@@ -29,6 +29,12 @@ RSpec.describe DiscourseWorkflows::ItemContract do
       expect { described_class.validate_items!(items, source: "test") }.not_to raise_error
     end
 
+    it "accepts n8n shorthand pairedItem metadata" do
+      items = [{ "json" => {}, "pairedItem" => 0 }]
+
+      expect { described_class.validate_items!(items, source: "test") }.not_to raise_error
+    end
+
     it "rejects nil" do
       expect { described_class.validate_items!(nil, source: "test") }.to raise_error(
         DiscourseWorkflows::ItemContract::Error,

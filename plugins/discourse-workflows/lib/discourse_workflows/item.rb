@@ -33,6 +33,8 @@ module DiscourseWorkflows
         paired_item.map { |entry| normalize_paired_item_entry(entry) }
       when Hash
         normalize_paired_item_entry(paired_item)
+      when Integer
+        { "item" => paired_item }
       else
         paired_item
       end

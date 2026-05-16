@@ -29,7 +29,7 @@ RSpec.describe DiscourseWorkflows::ExpressionContextSchema do
       expect(field[:visible_if]).to eq(
         node_present: {
           type: "flow:wait",
-          configuration: {
+          parameters: {
             resume: "webhook",
           },
         },
@@ -82,7 +82,7 @@ RSpec.describe DiscourseWorkflows::ExpressionContextSchema do
       sandbox&.dispose
     end
 
-    it "ExpressionResolver $() returns shape matching node_reference_shape" do
+    it "ExpressionResolver $() returns node output and context accessors" do
       context = {
         "$trigger" => {
         },
@@ -99,7 +99,7 @@ RSpec.describe DiscourseWorkflows::ExpressionContextSchema do
       sandbox = DiscourseWorkflows::JsSandbox.new(context, user: user)
       resolver = DiscourseWorkflows::ExpressionResolver.new(context, user: user, sandbox: sandbox)
 
-      item_json = resolver.resolve("={{ $('Test Node').item.json.data }}")
+      item_json = resolver.resolve("={{ $('Test Node').first().json.data }}")
       expect(item_json).to eq(1)
 
       node_context = resolver.resolve('={{ $("Test Node").context.approved }}')

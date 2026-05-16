@@ -77,7 +77,7 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
 
       node_resolver = build_resolver(node_context.merge("$json" => context["$trigger"]))
 
-      expect(node_resolver.resolve("={{ $('Previous Step').item.json.topic_id }}")).to eq(99)
+      expect(node_resolver.resolve("={{ $('Previous Step').first().json.topic_id }}")).to eq(99)
     end
 
     it "resolves node output references through pairedItem lineage" do
@@ -129,6 +129,71 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
       node_resolver = build_resolver(node_context)
 
       expect(node_resolver.resolve("={{ $('Split').item.json.label }}")).to eq("second")
+    end
+
+    it "does not guess an item when pairedItem lineage data is unavailable" do
+      node_context = {
+        "$json" => {
+          "id" => 2,
+        },
+        "$itemIndex" => 0,
+        "__current_node_id" => "set",
+        "__input_sources" => [{ "node_id" => "code", "output_index" => 0 }],
+        "__node_ids_by_name" => {
+          "Split" => "split",
+        },
+        "Split" => [{ "json" => { "label" => "first" } }, { "json" => { "label" => "second" } }],
+        "__node_runs" => {
+          "split" => [
+            {
+              "outputs" => [
+                [{ "json" => { "label" => "first" } }, { "json" => { "label" => "second" } }],
+              ],
+              "input_sources" => [{ "node_id" => "source", "output_index" => 0 }],
+            },
+          ],
+          "code" => [
+            {
+              "outputs" => [[{ "json" => { "id" => 2 } }]],
+              "input_sources" => [{ "node_id" => "split", "output_index" => 0 }],
+            },
+          ],
+        },
+      }
+      node_resolver = build_resolver(node_context)
+
+      expect(node_resolver.resolve("={{ $('Split').item.json.label }}")).to be_nil
+      expect(node_resolver.expression_errors.last[:error]).to include(
+        "Info for expression missing from previous node",
+      )
+    end
+
+    it "defaults $().all() to the connected output branch" do
+      node_context = {
+        "$json" => {
+        },
+        "__current_node_id" => "set",
+        "__input_sources" => [{ "node_id" => "if", "output_index" => 1 }],
+        "__node_ids_by_name" => {
+          "If" => "if",
+        },
+        "If" => [{ "json" => { "branch" => "true" } }, { "json" => { "branch" => "false" } }],
+        "__node_runs" => {
+          "if" => [
+            {
+              "outputs" => [
+                [{ "json" => { "branch" => "true" } }],
+                [{ "json" => { "branch" => "false" } }],
+              ],
+            },
+          ],
+        },
+      }
+      node_resolver = build_resolver(node_context)
+
+      expect(node_resolver.resolve("={{ $('If').all()[0].json.branch }}")).to eq("false")
+      expect(node_resolver.resolve("={{ $('If').all(0)[0].json.branch }}")).to eq("true")
+      expect(node_resolver.resolve("={{ $('If').all(2).length }}")).to eq(0)
     end
 
     it "uses the active resolver context when a shared sandbox is reused" do
@@ -365,7 +430,7 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
     it "evaluates node output references with JS methods" do
       node_context = { "Previous Step" => [{ "json" => { "items" => %w[a b c] } }] }
       r = build_resolver(node_context.merge("$json" => context["$trigger"]))
-      expect(r.resolve("={{ $('Previous Step').item.json.items.join('-') }}")).to eq("a-b-c")
+      expect(r.resolve("={{ $('Previous Step').first().json.items.join('-') }}")).to eq("a-b-c")
     end
   end
 

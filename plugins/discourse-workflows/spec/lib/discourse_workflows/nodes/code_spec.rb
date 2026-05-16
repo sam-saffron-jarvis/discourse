@@ -16,18 +16,35 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
   end
 
   def execute_code(code, items: [{ "json" => {} }], **kwargs)
-    action = described_class.new(parameters: { "code" => code })
+    action = described_class.new(parameters: { "code" => code, "mode" => "run_once_for_each_item" })
+    action.execute(build_exec_ctx(items, **kwargs))[0]
+  end
+
+  def execute_all(code, items:, **kwargs)
+    action = described_class.new(parameters: { "code" => code, "mode" => "run_once_for_all_items" })
     action.execute(build_exec_ctx(items, **kwargs))[0]
   end
 
   def execute_code_with_log(code, items: [{ "json" => {} }], **kwargs)
-    action = described_class.new(parameters: kwargs.delete(:configuration) || { "code" => code })
+    action =
+      described_class.new(
+        parameters:
+          kwargs.delete(:configuration) || { "code" => code, "mode" => "run_once_for_each_item" },
+      )
     exec_ctx = build_exec_ctx(items, **kwargs)
     action.execute(exec_ctx)
     exec_ctx.log
   end
 
   describe "#execute" do
+    it "defaults to run_once_for_all_items like n8n" do
+      action = described_class.new(parameters: { "code" => "return $input.all();" })
+      result =
+        action.execute(build_exec_ctx([{ "json" => { "n" => 1 } }, { "json" => { "n" => 2 } }]))[0]
+
+      expect(result.map { |item| item["json"]["n"] }).to eq([1, 2])
+    end
+
     it "executes JavaScript and returns the result" do
       result =
         execute_code('return { greeting: "hello" };', items: [{ "json" => { "name" => "world" } }])
@@ -86,17 +103,49 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
       expect(result.map { |r| r["json"]["doubled"] }).to eq([6, 10])
     end
 
-    it "wraps non-hash return values" do
-      result = execute_code('return "just a string";')
-
-      expect(result.first["json"]["result"]).to eq("just a string")
+    it "raises when returning non-object values per item" do
+      expect { execute_code('return "just a string";') }.to raise_error(
+        DiscourseWorkflows::NodeError,
+        /Code doesn't return an object/,
+      )
     end
 
-    it "provides $input.all() to access all items" do
-      items = [{ "json" => { "a" => 1 } }, { "json" => { "b" => 2 } }]
-      result = execute_code("return { count: $input.all().length };", items: items)
+    it "raises when returning arrays per item" do
+      expect { execute_code("return [{ json: { n: 1 } }];") }.to raise_error(
+        DiscourseWorkflows::NodeError,
+        /Code doesn't return a single object/,
+      )
+    end
 
-      expect(result.first["json"]["count"]).to eq(2)
+    it "drops items when returning null per item" do
+      items = [{ "json" => { "n" => 1 } }, { "json" => { "n" => 2 } }]
+      result = execute_code("return $json.n === 1 ? { kept: $json.n } : null;", items: items)
+
+      expect(result.map { |item| item["json"]["kept"] }).to eq([1])
+      expect(result.first["pairedItem"]).to eq("item" => 0)
+    end
+
+    it "preserves n8n item-shaped return values" do
+      result =
+        execute_code(
+          "return { json: { name: $json.name }, pairedItem: 0 };",
+          items: [{ "json" => { "name" => "Alice" } }],
+        )
+
+      expect(result.first).to eq("json" => { "name" => "Alice" }, "pairedItem" => { "item" => 0 })
+    end
+
+    it "allows returning the current input item" do
+      result = execute_code("return $input.item;", items: [{ "json" => { "name" => "Alice" } }])
+
+      expect(result.first["json"]["name"]).to eq("Alice")
+    end
+
+    it "rejects $input.all() in per-item mode" do
+      expect { execute_code("return { count: $input.all().length };") }.to raise_error(
+        DiscourseWorkflows::NodeError,
+        /Can't use \.all\(\) here/,
+      )
     end
 
     it "keeps $json aliased to $input.item.json" do
@@ -108,17 +157,6 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
         JS
 
       expect(result.first["json"]).to include("sameRef" => true, "foo" => 1, "bar" => 2)
-    end
-
-    it "provides $input.first() and $input.last()" do
-      items = [{ "json" => { "a" => 1 } }, { "json" => { "b" => 2 } }]
-      result =
-        execute_code(
-          "return { first: $input.first().json.a, last: $input.last().json.b };",
-          items: items,
-        )
-
-      expect(result.first["json"]).to include("first" => 1, "last" => 2)
     end
 
     it "allows returning $input without cloning function properties" do
@@ -153,9 +191,36 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
         { "json" => { "data" => "x" * DiscourseWorkflows::JsSandbox::MAX_INJECTED_JSON_BYTES } },
       ]
 
+      expect { execute_all("return { count: $input.all().length };", items: items) }.to raise_error(
+        DiscourseWorkflows::JsSandbox::PayloadTooLargeError,
+        /__allInputItems/,
+      )
+    end
+
+    it "raises when $().item exceeds the sandbox payload limit" do
+      large_item = {
+        "json" => {
+          "data" => "x" * DiscourseWorkflows::JsSandbox::MAX_INJECTED_JSON_BYTES,
+        },
+      }
+
       expect {
-        execute_code("return { count: $input.all().length };", items: items)
-      }.to raise_error(DiscourseWorkflows::JsSandbox::PayloadTooLargeError, /__allInputItems/)
+        execute_code(
+          'return $("Source").item;',
+          resolver_context: {
+            "$json" => {
+            },
+            "__current_node_id" => "code",
+            "__input_sources" => [{ "node_id" => "source", "output_index" => 0 }],
+            "__node_ids_by_name" => {
+              "Source" => "source",
+            },
+            "__node_runs" => {
+              "source" => [{ "outputs" => [[large_item]] }],
+            },
+          },
+        )
+      }.to raise_error(DiscourseWorkflows::JsSandbox::PayloadTooLargeError, /\$\(\)\.item/)
     end
 
     context "with workflow variables" do
@@ -183,9 +248,9 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
     end
 
     it "filters internal context keys from $() node output accessor" do
-      result = execute_code('return $("__resume_token");')
+      result = execute_code('return $("__resume_token").item;')
 
-      expect(result.first["json"]["item"]["json"]).to eq({})
+      expect(result.first["json"]).to eq({})
     end
 
     it "exposes $execution variables" do
@@ -209,7 +274,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
     it "allows accessing normal node outputs via $()" do
       result =
         execute_code(
-          'return $("MyNode").item.json;',
+          'return $("MyNode").first().json;',
           resolver_context: {
             "$json" => {
             },
@@ -220,9 +285,100 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
       expect(result.first["json"]["data"]).to eq("visible")
     end
 
+    it "resolves $().item through pairedItem lineage" do
+      result =
+        execute_code(
+          'return $("Split").item.json;',
+          items: [{ "json" => { "id" => 2 } }],
+          resolver_context: {
+            "$json" => {
+              "id" => 2,
+            },
+            "__current_node_id" => "code",
+            "__input_sources" => [{ "node_id" => "filter", "output_index" => 0 }],
+            "__node_ids_by_name" => {
+              "Split" => "split",
+            },
+            "Split" => [
+              { "json" => { "id" => 1, "label" => "first" } },
+              { "json" => { "id" => 2, "label" => "second" } },
+            ],
+            "__node_runs" => {
+              "split" => [
+                {
+                  "outputs" => [
+                    [
+                      { "json" => { "id" => 1, "label" => "first" } },
+                      { "json" => { "id" => 2, "label" => "second" } },
+                    ],
+                  ],
+                  "input_sources" => [{ "node_id" => "source", "output_index" => 0 }],
+                },
+              ],
+              "filter" => [
+                {
+                  "outputs" => [[{ "json" => { "id" => 2 }, "pairedItem" => { "item" => 1 } }]],
+                  "input_sources" => [{ "node_id" => "split", "output_index" => 0 }],
+                },
+              ],
+            },
+          },
+        )
+
+      expect(result.first["json"]["label"]).to eq("second")
+    end
+
+    it "raises when $().item cannot determine pairedItem lineage" do
+      expect {
+        execute_code(
+          'return $("Split").item.json;',
+          items: [{ "json" => { "id" => 2 } }],
+          resolver_context: {
+            "$json" => {
+              "id" => 2,
+            },
+            "__current_node_id" => "code",
+            "__input_sources" => [{ "node_id" => "filter", "output_index" => 0 }],
+            "__node_ids_by_name" => {
+              "Split" => "split",
+            },
+            "Split" => [
+              { "json" => { "label" => "first" } },
+              { "json" => { "label" => "second" } },
+            ],
+            "__node_runs" => {
+              "split" => [
+                {
+                  "outputs" => [
+                    [{ "json" => { "label" => "first" } }, { "json" => { "label" => "second" } }],
+                  ],
+                  "input_sources" => [{ "node_id" => "source", "output_index" => 0 }],
+                },
+              ],
+              "filter" => [
+                {
+                  "outputs" => [[{ "json" => { "id" => 2 } }]],
+                  "input_sources" => [{ "node_id" => "split", "output_index" => 0 }],
+                },
+              ],
+            },
+          },
+        )
+      }.to raise_error(
+        DiscourseWorkflows::JsSandbox::SandboxError,
+        /Info for expression missing from previous node/,
+      )
+    end
+
     it "uses a single sandbox for all input items" do
       items = (1..5).map { |i| { "json" => { "x" => i } } }
-      action = described_class.new(parameters: { "code" => "return { val: $json.x * 2 };" })
+      action =
+        described_class.new(
+          parameters: {
+            "code" => "return { val: $json.x * 2 };",
+            "mode" => "run_once_for_each_item",
+          },
+        )
       exec_ctx = build_exec_ctx(items)
       sandbox_calls = 0
       original_with_sandbox = exec_ctx.method(:with_sandbox)
@@ -245,12 +401,6 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
     end
 
     context "with mode run_once_for_all_items" do
-      def execute_all(code, items:, **kwargs)
-        action =
-          described_class.new(parameters: { "code" => code, "mode" => "run_once_for_all_items" })
-        action.execute(build_exec_ctx(items, **kwargs))[0]
-      end
-
       it "runs the code once and returns array results as items" do
         items = [{ "json" => { "n" => 1 } }, { "json" => { "n" => 2 } }, { "json" => { "n" => 3 } }]
         result =
@@ -260,6 +410,119 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
           )
 
         expect(result.map { |r| r["json"]["doubled"] }).to eq([2, 4, 6])
+      end
+
+      it "exposes n8n all-items input aliases" do
+        items = [{ "json" => { "a" => 1 } }, { "json" => { "b" => 2 } }]
+        result =
+          execute_all(
+            "return { all: $input.all().length, first: $input.first().json.a, last: $input.last().json.b, legacy: items.length };",
+            items: items,
+          )
+
+        expect(result.first["json"]).to include(
+          "all" => 2,
+          "first" => 1,
+          "last" => 2,
+          "legacy" => 2,
+        )
+      end
+
+      it "returns no items when code returns null" do
+        result = execute_all("return null;", items: [{ "json" => { "n" => 1 } }])
+
+        expect(result).to eq([])
+      end
+
+      it "raises when all-items code returns a primitive" do
+        expect { execute_all("return 1;", items: [{ "json" => {} }]) }.to raise_error(
+          DiscourseWorkflows::NodeError,
+          /Code doesn't return items properly/,
+        )
+      end
+
+      it "raises when an all-items array contains a primitive" do
+        expect { execute_all("return [1];", items: [{ "json" => {} }]) }.to raise_error(
+          DiscourseWorkflows::NodeError,
+          /Code doesn't return items properly/,
+        )
+      end
+
+      it "exposes node output data proxy helpers" do
+        result =
+          execute_all(
+            <<~JS,
+              return {
+                count: $("Source").all().length,
+                first: $("Source").first().json.id,
+                last: $("Source").last().json.id,
+                params: $("Source").params.mode,
+                context: $("Source").context.done,
+                executed: $("Source").isExecuted
+              };
+            JS
+            items: [{ "json" => {} }],
+            resolver_context: {
+              "$json" => {
+              },
+              "__node_ids_by_name" => {
+                "Source" => "source",
+              },
+              "__node_parameters_by_name" => {
+                "Source" => {
+                  "mode" => "manual",
+                },
+              },
+              "__node_contexts" => {
+                "Source" => {
+                  "done" => true,
+                },
+              },
+              "__node_runs" => {
+                "source" => [
+                  { "outputs" => [[{ "json" => { "id" => 1 } }, { "json" => { "id" => 2 } }]] },
+                ],
+              },
+            },
+          )
+
+        expect(result.first["json"]).to include(
+          "count" => 2,
+          "first" => 1,
+          "last" => 2,
+          "params" => "manual",
+          "context" => true,
+          "executed" => true,
+        )
+      end
+
+      it "defaults node output helpers to the connected source branch" do
+        result =
+          execute_all(
+            'return $("Source").first().json;',
+            items: [{ "json" => {} }],
+            resolver_context: {
+              "$json" => {
+              },
+              "__current_node_id" => "code",
+              "__input_sources" => [{ "node_id" => "source", "output_index" => 1 }],
+              "__node_ids_by_name" => {
+                "Source" => "source",
+              },
+              "__node_runs" => {
+                "source" => [
+                  {
+                    "outputs" => [
+                      [{ "json" => { "branch" => 0 } }],
+                      [{ "json" => { "branch" => 1 } }],
+                    ],
+                  },
+                ],
+              },
+            },
+          )
+
+        expect(result.first["json"]["branch"]).to eq(1)
       end
 
       it "wraps a single object return into one item" do

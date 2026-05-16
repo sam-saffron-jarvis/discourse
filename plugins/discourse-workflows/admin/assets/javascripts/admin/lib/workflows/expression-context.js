@@ -27,6 +27,7 @@ export function resolveVariableId(variable, itemPrefix = "$json") {
 
 // Matches paths like $('Node Name').rest or $("Node Name").rest
 const NODE_REF_RE = /^\$\((['"])(.*?)\1\)/;
+const METHOD_CALL_RE = /^([A-Za-z_$][\w$]*)\((.*)\)$/;
 
 export function walkScope(scope, path) {
   if (!path) {
@@ -48,7 +49,7 @@ export function walkScope(scope, path) {
       if (target == null) {
         return undefined;
       }
-      target = target[part];
+      target = resolvePathPart(target, part);
     }
     return target;
   }
@@ -59,9 +60,41 @@ export function walkScope(scope, path) {
     if (target == null) {
       return undefined;
     }
-    target = target[parts[i]];
+    target = resolvePathPart(target, parts[i]);
   }
   return target;
+}
+
+function resolvePathPart(target, part) {
+  const methodCall = METHOD_CALL_RE.exec(part);
+  if (methodCall && typeof target[methodCall[1]] === "function") {
+    return target[methodCall[1]](...parseMethodArgs(methodCall[2]));
+  }
+
+  return target[part];
+}
+
+function parseMethodArgs(source) {
+  const args = source.trim();
+  if (!args) {
+    return [];
+  }
+
+  return args.split(",").map((arg) => {
+    const value = arg.trim();
+    if (/^-?\d+(\.\d+)?$/.test(value)) {
+      return Number(value);
+    }
+
+    if (
+      (value.startsWith("'") && value.endsWith("'")) ||
+      (value.startsWith('"') && value.endsWith('"'))
+    ) {
+      return value.slice(1, -1);
+    }
+
+    return undefined;
+  });
 }
 
 const TYPE_EXEMPLARS = {
@@ -86,7 +119,19 @@ function buildItem(json) {
 }
 
 function buildNodeOutput(json) {
-  return cleanObject({ item: buildItem(json) });
+  const item = buildItem(json);
+  const items = [item];
+
+  return cleanObject({
+    item,
+    all: () => items,
+    first: () => item,
+    last: () => item,
+    itemMatching: () => item,
+    pairedItem: () => item,
+    context: Object.create(null),
+    params: Object.create(null),
+  });
 }
 
 const EMPTY_NODE_OUTPUT = buildNodeOutput(Object.create(null));

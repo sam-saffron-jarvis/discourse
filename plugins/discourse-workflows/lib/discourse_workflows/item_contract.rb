@@ -35,11 +35,12 @@ module DiscourseWorkflows
       entries = paired_item.is_a?(Array) ? paired_item : [paired_item]
       unless entries.all? { |entry| valid_paired_item_entry?(entry) }
         raise Error,
-              "Invalid pairedItem from #{source}: expected { 'item' => Integer, 'input' => Integer? }, got #{paired_item.inspect.truncate(200)}"
+              "Invalid pairedItem from #{source}: expected Integer or { 'item' => Integer, 'input' => Integer? }, got #{paired_item.inspect.truncate(200)}"
       end
     end
 
     def self.valid_paired_item_entry?(entry)
+      return true if entry.is_a?(Integer)
       return false unless entry.is_a?(Hash)
 
       item_index = entry["item"]

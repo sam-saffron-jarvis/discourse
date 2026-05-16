@@ -36,6 +36,10 @@ module DiscourseWorkflows
       raise BudgetExceededError, "JavaScript evaluation exceeded #{EVAL_TIMEOUT_MS}ms time limit"
     rescue MiniRacer::Error => e
       raise SandboxError, "Sandbox execution failed: #{e.message}"
+    rescue SandboxError, PayloadTooLargeError
+      raise
+    rescue StandardError => e
+      raise SandboxError, "Sandbox execution failed: #{e.message}"
     ensure
       finish_eval!(started_at)
     end
@@ -119,7 +123,11 @@ module DiscourseWorkflows
 
     def setup_core_environment!
       @js_context.attach("__getSiteSetting", method(:fetch_site_setting))
-      @js_context.attach("__getNodeOutput", method(:fetch_node_output))
+      @js_context.attach("__getNodeItem", method(:fetch_node_item))
+      @js_context.attach("__getNodeItems", method(:fetch_node_items))
+      @js_context.attach("__getNodeContext", method(:fetch_node_context))
+      @js_context.attach("__getNodeParams", method(:fetch_node_params))
+      @js_context.attach("__isNodeExecuted", method(:node_executed?))
 
       execution = @workflow_context.fetch("__execution") { {} }
       declare_json("__vars", @vars)
@@ -146,10 +154,75 @@ module DiscourseWorkflows
             set: function() { return false; }
           })
         });
+        function __WorkflowNodeOutput(name) {
+          this.name = name;
+        }
+
+        function __workflowItemIndex() {
+          return typeof __itemIndex === "undefined" ? 0 : __itemIndex;
+        }
+
+        Object.defineProperty(__WorkflowNodeOutput.prototype, 'item', {
+          get: function() {
+            return JSON.parse(__getNodeItem(this.name, __workflowItemIndex()));
+          },
+          configurable: true
+        });
+
+        Object.defineProperty(__WorkflowNodeOutput.prototype, 'context', {
+          get: function() {
+            return JSON.parse(__getNodeContext(this.name));
+          },
+          configurable: true
+        });
+
+        Object.defineProperty(__WorkflowNodeOutput.prototype, 'params', {
+          get: function() {
+            return JSON.parse(__getNodeParams(this.name));
+          },
+          configurable: true
+        });
+
+        Object.defineProperty(__WorkflowNodeOutput.prototype, 'isExecuted', {
+          get: function() {
+            return __isNodeExecuted(this.name);
+          },
+          configurable: true
+        });
+
+        __WorkflowNodeOutput.prototype.itemMatching = function(itemIndex) {
+          if (itemIndex === undefined) {
+            throw new Error("Missing item index for .itemMatching()");
+          }
+          return JSON.parse(__getNodeItem(this.name, itemIndex));
+        };
+
+        __WorkflowNodeOutput.prototype.pairedItem = function(itemIndex) {
+          return JSON.parse(
+            __getNodeItem(
+              this.name,
+              itemIndex === undefined ? __workflowItemIndex() : itemIndex
+            )
+          );
+        };
+
+        __WorkflowNodeOutput.prototype.all = function(branchIndex, runIndex) {
+          return JSON.parse(__getNodeItems(this.name, branchIndex, runIndex));
+        };
+
+        __WorkflowNodeOutput.prototype.first = function(branchIndex, runIndex) {
+          var items = this.all(branchIndex, runIndex);
+          return items[0] || { json: {} };
+        };
+
+        __WorkflowNodeOutput.prototype.last = function(branchIndex, runIndex) {
+          var items = this.all(branchIndex, runIndex);
+          return items[items.length - 1] || { json: {} };
+        };
+
         Object.defineProperty(this, '$', {
           value: function(name) {
-            var data = JSON.parse(__getNodeOutput(name));
-            return { item: { json: data } };
+            return new __WorkflowNodeOutput(name);
           },
           configurable: true,
           writable: false
@@ -163,9 +236,34 @@ module DiscourseWorkflows
       nil
     end
 
-    def fetch_node_output(name)
-      return {}.to_json if name.to_s.start_with?("_")
-      self.class.extract_item_json(@workflow_context[name]).to_json
+    def fetch_node_item(name, item_index = nil)
+      serialize_json_payload(
+        node_output_proxy.item(name, item_index: item_index),
+        label: "$().item",
+      )
+    end
+
+    def fetch_node_items(name, branch_index = nil, run_index = nil)
+      serialize_json_payload(
+        node_output_proxy.all(name, branch_index:, run_index:),
+        label: "$().all()",
+      )
+    end
+
+    def fetch_node_context(name)
+      serialize_json_payload(node_output_proxy.context(name), label: "$().context")
+    end
+
+    def fetch_node_params(name)
+      serialize_json_payload(node_output_proxy.params(name), label: "$().params")
+    end
+
+    def node_executed?(name)
+      node_output_proxy.executed?(name)
+    end
+
+    def node_output_proxy
+      @node_output_proxy ||= NodeOutputProxy.new(@workflow_context)
     end
 
     def build_current_user
