@@ -13,8 +13,11 @@ module DiscourseWorkflows
         __execution
         __input_item
         __input_items
+        __input_sources
         __input_params
         __input_context
+        __current_node_id
+        __node_ids_by_name
         $json
         $itemIndex
       ].freeze
@@ -76,10 +79,14 @@ module DiscourseWorkflows
         store_context(node.name, value)
       end
 
-      def store_node_run(node, inputs:, outputs:)
+      def store_node_run(node, inputs:, outputs:, input_sources: [])
         @context["__node_runs"] ||= {}
         @context["__node_runs"][node.id.to_s] ||= []
-        @context["__node_runs"][node.id.to_s] << { "inputs" => inputs, "outputs" => outputs }
+        @context["__node_runs"][node.id.to_s] << {
+          "inputs" => inputs,
+          "outputs" => outputs,
+          "input_sources" => input_sources,
+        }
       end
 
       def resolver_context(extra_context = {})

@@ -54,7 +54,14 @@ module DiscourseWorkflows
 
           items =
             exec_ctx.input_items.flat_map do |item|
-              split_item(item, field_names, include_mode, dest_names, fields_to_include)
+              split_item(
+                item,
+                field_names,
+                include_mode,
+                dest_names,
+                fields_to_include,
+                exec_ctx.paired_item_for(item),
+              )
             end
           [items]
         end
@@ -96,7 +103,7 @@ module DiscourseWorkflows
           Array(value)
         end
 
-        def split_item(item, field_names, include_mode, dest_names, fields_to_include)
+        def split_item(item, field_names, include_mode, dest_names, fields_to_include, paired_item)
           item_json = item.fetch("json") { {} }
           arrays = field_names.map { |f| coerce_to_array(dig_field(item_json, f)) }
 
@@ -118,7 +125,7 @@ module DiscourseWorkflows
             entry = build_split_entry(i, field_names, arrays, dest_names)
             entry =
               apply_include_mode(entry, item_json, include_mode, field_names, fields_to_include)
-            wrap(entry)
+            wrap(entry, paired_item:)
           end
         end
 

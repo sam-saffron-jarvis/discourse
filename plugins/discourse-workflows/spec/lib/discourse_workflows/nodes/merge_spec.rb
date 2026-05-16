@@ -121,7 +121,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
     expect(json_items(output)).to eq(
       [item("id" => 1, "title" => "One", "topic_id" => 1, "tag" => "bug")],
     )
-    expect(output.first["paired_item"]).to eq(
+    expect(output.first["pairedItem"]).to eq(
       [{ "input" => 0, "item" => 0 }, { "input" => 1, "item" => 0 }],
     )
   end

@@ -167,6 +167,13 @@ module DiscourseWorkflows
         @resolver.with_item(item, item_index: item_index_for(item)) { yield }
       end
 
+      def paired_item_for(item, input: 0)
+        input_index = input_index(input)
+        paired_item = { "item" => item_index_for(item, input_index:) }
+        paired_item["input"] = input_index if input_index != 0
+        paired_item
+      end
+
       private
 
       def ensure_data_table_access!(data_table_id)
@@ -207,10 +214,14 @@ module DiscourseWorkflows
         @sandbox_budget_tracker ||= DiscourseWorkflows::SandboxBudget.new(@flow_context)
       end
 
-      def item_index_for(item)
-        @item_indexes_by_object_id ||=
-          input_items.each_with_index.to_h { |entry, index| [entry.object_id, index] }
-        @item_indexes_by_object_id.fetch(item.object_id, 0)
+      def item_index_for(item, input_index: 0)
+        @item_indexes_by_input_object_id ||=
+          @input_groups.each_with_object({}) do |(index, items), result|
+            result[index] = items.each_with_index.to_h do |entry, item_index|
+              [entry.object_id, item_index]
+            end
+          end
+        @item_indexes_by_input_object_id.fetch(input_index) { {} }.fetch(item.object_id, 0)
       end
 
       def normalize_input_groups(input_groups, input_items)

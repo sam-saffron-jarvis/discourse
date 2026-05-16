@@ -16,6 +16,19 @@ RSpec.describe DiscourseWorkflows::ItemContract do
       expect { described_class.validate_items!(items, source: "test") }.not_to raise_error
     end
 
+    it "accepts n8n-compatible pairedItem metadata" do
+      items = [
+        {
+          "json" => {
+            "a" => 1,
+          },
+          "pairedItem" => [{ "input" => 0, "item" => 0 }, { "input" => 1, "item" => 2 }],
+        },
+      ]
+
+      expect { described_class.validate_items!(items, source: "test") }.not_to raise_error
+    end
+
     it "rejects nil" do
       expect { described_class.validate_items!(nil, source: "test") }.to raise_error(
         DiscourseWorkflows::ItemContract::Error,
@@ -44,6 +57,15 @@ RSpec.describe DiscourseWorkflows::ItemContract do
     it "rejects items that are not hashes" do
       expect { described_class.validate_items!(["string"], source: "test") }.to raise_error(
         DiscourseWorkflows::ItemContract::Error,
+      )
+    end
+
+    it "rejects invalid pairedItem metadata" do
+      items = [{ "json" => {}, "pairedItem" => { "item" => "0" } }]
+
+      expect { described_class.validate_items!(items, source: "test") }.to raise_error(
+        DiscourseWorkflows::ItemContract::Error,
+        /Invalid pairedItem/,
       )
     end
   end

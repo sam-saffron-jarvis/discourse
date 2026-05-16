@@ -26,6 +26,17 @@ RSpec.describe DiscourseWorkflows::Item do
       )
     end
 
+    it "adds n8n-compatible pairedItem metadata" do
+      expect(described_class.wrap({ "name" => "A" }, paired_item: { item: 1 })).to eq(
+        "json" => {
+          "name" => "A",
+        },
+        "pairedItem" => {
+          "item" => 1,
+        },
+      )
+    end
+
     it "raises when given something other than a Hash or Array" do
       expect { described_class.wrap(nil) }.to raise_error(ArgumentError)
       expect { described_class.wrap("string") }.to raise_error(ArgumentError)

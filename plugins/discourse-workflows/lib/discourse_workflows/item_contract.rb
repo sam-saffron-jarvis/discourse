@@ -11,6 +11,8 @@ module DiscourseWorkflows
         raise Error,
               "Invalid items from #{source}: expected Array<{ 'json' => Hash }>, got #{items.inspect.truncate(200)}"
       end
+
+      items.each { |item| validate_paired_item!(item, source:) }
     end
 
     def self.validate_output_arrays!(result, source:)
@@ -43,6 +45,25 @@ module DiscourseWorkflows
         end
         validate_items!(items, source: "#{source}:#{output_name}")
       end
+    end
+
+    def self.validate_paired_item!(item, source:)
+      paired_item = Item.paired_item(item)
+      return if paired_item.nil?
+
+      entries = paired_item.is_a?(Array) ? paired_item : [paired_item]
+      unless entries.all? { |entry| valid_paired_item_entry?(entry) }
+        raise Error,
+              "Invalid pairedItem from #{source}: expected { 'item' => Integer, 'input' => Integer? }, got #{paired_item.inspect.truncate(200)}"
+      end
+    end
+
+    def self.valid_paired_item_entry?(entry)
+      return false unless entry.is_a?(Hash)
+
+      item_index = entry["item"]
+      input_index = entry["input"]
+      item_index.is_a?(Integer) && (input_index.nil? || input_index.is_a?(Integer))
     end
   end
 end

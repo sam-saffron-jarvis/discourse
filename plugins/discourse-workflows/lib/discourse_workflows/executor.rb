@@ -50,6 +50,7 @@ module DiscourseWorkflows
       @steps = []
       @queue = []
       @waiting_inputs = {}
+      @waiting_input_sources = {}
       @input_wait_requirements = {}
       @sandbox = nil
       @waiting_node = nil
@@ -144,15 +145,15 @@ module DiscourseWorkflows
         iterations += 1
         raise "Max iterations (#{MAX_ITERATIONS}) exceeded" if iterations > MAX_ITERATIONS
 
-        node, input_groups = @queue[queue_index]
+        node, input_groups, input_sources = @queue[queue_index]
         queue_index += 1
-        execute_node(node, input_groups)
+        execute_node(node, input_groups, input_sources || {})
       end
     end
 
     # --- Node execution ---
 
-    def execute_node(node, input_groups)
+    def execute_node(node, input_groups, input_sources = {})
       input_items = primary_input_items(input_groups)
       node_type_class =
         DiscourseWorkflows::Registry.find_node_type(node.type, version: node.type_version)
@@ -168,7 +169,7 @@ module DiscourseWorkflows
       step = record_step(node, input_items)
       js_elapsed_before = sandbox_budget_tracker.current_elapsed_ms
       node_context = @context.node_context_for(node)
-      resolver_ctx = build_resolver_context(node, input_items, node_context)
+      resolver_ctx = build_resolver_context(node, input_groups, node_context, input_sources)
       resolver = build_resolver(resolver_ctx)
 
       exec_ctx = nil
@@ -205,7 +206,7 @@ module DiscourseWorkflows
         end
 
         ports = node_type_class.ports(node.parameters)
-        normalized = normalize_result(result, node, ports)
+        normalized = normalize_result(result, node, ports, input_groups)
         all_items = normalized.all_items(ports: ports)
         primary_empty = normalized.primary_items(ports: ports).empty?
 
@@ -220,6 +221,7 @@ module DiscourseWorkflows
           node,
           inputs: input_groups_for_storage(input_groups),
           outputs: normalized.output_arrays(ports: ports),
+          input_sources: input_sources_for_storage(input_sources, input_groups),
         )
         route_downstream(node, ports, normalized)
       rescue WaitRequested
@@ -314,7 +316,7 @@ module DiscourseWorkflows
       )
     end
 
-    def normalize_result(result, node, ports)
+    def normalize_result(result, node, ports, input_groups)
       source = "#{node.name} (#{node.type})"
       normalized =
         if result.is_a?(NodeResult)
@@ -324,8 +326,56 @@ module DiscourseWorkflows
           NodeResult.from_output_arrays(result, ports: ports)
         end
 
+      apply_item_linking_defaults!(normalized, ports:, input_groups:)
       ItemContract.validate_node_result!(normalized, source: source, ports: ports)
       normalized
+    end
+
+    def apply_item_linking_defaults!(result, ports:, input_groups:)
+      input_lookup = input_item_lookup(input_groups)
+      sole_input_pair = sole_input_pair(input_groups)
+      primary_items = primary_input_items(input_groups)
+      output_arrays = result.output_arrays(ports: ports)
+      one_output = output_arrays.length == 1
+
+      output_arrays.each do |items|
+        items.each_with_index do |item, index|
+          pair =
+            if input_lookup.key?(item.object_id)
+              input_lookup[item.object_id]
+            elsif Item.paired_item(item).present?
+              Item.paired_item(item)
+            elsif sole_input_pair
+              sole_input_pair
+            elsif one_output && index < primary_items.length && items.length == primary_items.length
+              pair_for(input: 0, item: index)
+            end
+
+          items[index] = Item.with_paired_item(item, pair) if pair.present?
+        end
+      end
+    end
+
+    def input_item_lookup(input_groups)
+      input_groups.each_with_object({}) do |(input_index, items), lookup|
+        items.each_with_index do |item, item_index|
+          lookup[item.object_id] = pair_for(input: input_index, item: item_index)
+        end
+      end
+    end
+
+    def sole_input_pair(input_groups)
+      pairs =
+        input_groups.flat_map do |input_index, items|
+          items.each_index.map { |item_index| pair_for(input: input_index, item: item_index) }
+        end
+      pairs.one? ? pairs.first : nil
+    end
+
+    def pair_for(input:, item:)
+      pair = { "item" => item }
+      pair["input"] = input if input != 0
+      pair
     end
 
     # --- Routing ---
@@ -341,11 +391,21 @@ module DiscourseWorkflows
         .connections_from_output_index(node, output_index)
         .each do |conn|
           target = @snapshot.target_node(conn)
-          enqueue_target(target, conn.target_input_index, items) if target
+          if target
+            enqueue_target(
+              target,
+              conn.target_input_index,
+              items,
+              source: {
+                "node_id" => node.id.to_s,
+                "output_index" => output_index,
+              },
+            )
+          end
         end
     end
 
-    def enqueue_target(target, target_input_index, items)
+    def enqueue_target(target, target_input_index, items, source:)
       target_input_index = target_input_index.to_i
       requirements = input_wait_requirements(target)
       inputs_to_wait_for = requirements[:inputs_to_wait_for]
@@ -353,17 +413,20 @@ module DiscourseWorkflows
       if inputs_to_wait_for.length <= 1
         return if items.empty?
 
-        @queue << [target, { 0 => items }]
+        @queue << [target, { 0 => items }, { 0 => source }]
         return
       end
 
       inputs = (@waiting_inputs[target.id] ||= {})
+      sources = (@waiting_input_sources[target.id] ||= {})
       inputs[target_input_index] = items
+      sources[target_input_index] = source
 
       return unless inputs_to_wait_for.all? { |index| inputs.key?(index) }
 
       @waiting_inputs.delete(target.id)
-      @queue << [target, inputs]
+      @waiting_input_sources.delete(target.id)
+      @queue << [target, inputs, sources]
     end
 
     def input_wait_requirements(target)
@@ -387,6 +450,11 @@ module DiscourseWorkflows
     def input_groups_for_storage(input_groups)
       max_index = input_groups.keys.max || 0
       Array.new(max_index + 1) { |index| input_groups[index] || [] }
+    end
+
+    def input_sources_for_storage(input_sources, input_groups)
+      max_index = [input_groups.keys.max || 0, input_sources.keys.max || 0].max
+      Array.new(max_index + 1) { |index| input_sources[index] || {} }
     end
 
     # --- Steps ---
@@ -451,6 +519,7 @@ module DiscourseWorkflows
       @steps = []
       @queue = []
       @waiting_inputs = {}
+      @waiting_input_sources = {}
       @input_wait_requirements = {}
     end
 
@@ -460,6 +529,7 @@ module DiscourseWorkflows
       @steps = restore_steps_from(execution)
       @queue = []
       @waiting_inputs = {}
+      @waiting_input_sources = {}
       @input_wait_requirements = {}
     end
 
@@ -476,7 +546,8 @@ module DiscourseWorkflows
 
     # --- Helpers ---
 
-    def build_resolver_context(node, input_items, node_context)
+    def build_resolver_context(node, input_groups, node_context, input_sources)
+      input_items = primary_input_items(input_groups)
       current_item = input_items.first || { "json" => {} }
       base =
         @context.resolver_context(
@@ -484,9 +555,25 @@ module DiscourseWorkflows
           "__input_items" => input_items,
           "__input_params" => node.parameters,
           "__input_context" => DiscourseWorkflows::InputContext.from_node_context(node_context),
+          "__current_node_id" => node.id.to_s,
+          "__node_ids_by_name" => node_ids_by_name,
           "$itemIndex" => 0,
         )
+      base["__input_sources"] = input_sources_for_storage(input_sources, input_groups)
       base.merge("$json" => current_item.fetch("json") { {} })
+    end
+
+    def node_ids_by_name
+      @node_ids_by_name ||=
+        @snapshot
+          .nodes
+          .each_with_object({}) do |node, by_name|
+            name = node.name.to_s
+            next if name.blank?
+
+            by_name[name] = by_name.key?(name) ? nil : node.id.to_s
+          end
+          .compact
     end
 
     def build_resolver(resolver_ctx)

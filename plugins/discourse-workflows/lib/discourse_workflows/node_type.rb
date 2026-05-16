@@ -188,8 +188,8 @@ module DiscourseWorkflows
 
     private
 
-    def wrap(data)
-      Item.wrap(data)
+    def wrap(data, paired_item: nil)
+      Item.wrap(data, paired_item:)
     end
 
     def skip_workflows?(opts)

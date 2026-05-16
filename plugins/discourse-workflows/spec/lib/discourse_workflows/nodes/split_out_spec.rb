@@ -56,6 +56,15 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
 
       expect(result.length).to eq(3)
     end
+
+    it "links split output items to their source input item" do
+      input = [{ "json" => { "items" => [1, 2] } }, { "json" => { "items" => [3] } }]
+      result = execute(input)
+
+      expect(result.map { |item| item["pairedItem"] }).to eq(
+        [{ "item" => 0 }, { "item" => 0 }, { "item" => 1 }],
+      )
+    end
   end
 
   describe "include modes" do

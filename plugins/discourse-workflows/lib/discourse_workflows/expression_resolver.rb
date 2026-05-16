@@ -235,6 +235,7 @@ module DiscourseWorkflows
         @sandbox = sandbox
         @initialized = false
         @expression_errors = []
+        @callback_prefix = "__dwExpr#{object_id.abs}"
       end
 
       attr_reader :expression_errors
@@ -277,10 +278,23 @@ module DiscourseWorkflows
 
       def inject_expression_data!
         data = build_expression_data
-        @sandbox.attach("__fetchExprNode", method(:fetch_node_for_expression))
-        @sandbox.attach("__fetchInputItems", method(:fetch_input_items))
+        @sandbox.attach(fetch_node_item_callback, method(:fetch_node_item_for_expression))
+        @sandbox.attach(fetch_node_items_callback, method(:fetch_node_items_for_expression))
+        @sandbox.attach(fetch_input_items_callback, method(:fetch_input_items))
         @sandbox.declare_json("__data", data)
         @sandbox.eval(expression_setup_js)
+      end
+
+      def fetch_node_item_callback
+        "#{@callback_prefix}FetchNodeItem"
+      end
+
+      def fetch_node_items_callback
+        "#{@callback_prefix}FetchNodeItems"
+      end
+
+      def fetch_input_items_callback
+        "#{@callback_prefix}FetchInputItems"
       end
 
       def build_expression_data
@@ -297,10 +311,18 @@ module DiscourseWorkflows
         }
       end
 
-      def fetch_node_for_expression(name)
+      def fetch_node_item_for_expression(name)
         name_str = name.to_s
         return {}.to_json if name_str.start_with?("_") || BLOCKED_NODE_NAMES.include?(name_str)
-        JsSandbox.extract_item_json(@context[name_str]).to_json
+
+        linked_item_for_expression(name_str).to_json
+      end
+
+      def fetch_node_items_for_expression(name)
+        name_str = name.to_s
+        return [].to_json if name_str.start_with?("_") || BLOCKED_NODE_NAMES.include?(name_str)
+
+        JsSandbox.serialize_json_payload(node_items_for_expression(name_str), label: "$().all()")
       end
 
       def fetch_input_items
@@ -319,7 +341,7 @@ module DiscourseWorkflows
           }
 
           __WorkflowExpressionInput.prototype.all = function() {
-            return JSON.parse(__fetchInputItems());
+            return JSON.parse(#{fetch_input_items_callback}());
           };
 
           __WorkflowExpressionInput.prototype.first = function() {
@@ -348,21 +370,147 @@ module DiscourseWorkflows
           });
           var $trigger = __data["$trigger"];
           var $execution = __data["$execution"];
-          var __nodeCache = {};
+          function __WorkflowExpressionNode(name) {
+            this.name = name;
+            this.context = __data.__node_contexts[name] || {};
+          }
+
+          Object.defineProperty(__WorkflowExpressionNode.prototype, 'item', {
+            get: function() {
+              return JSON.parse(#{fetch_node_item_callback}(this.name));
+            },
+            configurable: true
+          });
+
+          __WorkflowExpressionNode.prototype.all = function() {
+            return JSON.parse(#{fetch_node_items_callback}(this.name));
+          };
+
+          __WorkflowExpressionNode.prototype.first = function() {
+            var items = this.all();
+            return items[0] || { json: {} };
+          };
+
+          __WorkflowExpressionNode.prototype.last = function() {
+            var items = this.all();
+            return items[items.length - 1] || { json: {} };
+          };
+
           Object.defineProperty(this, '$', {
             value: function(name) {
-              if (!(name in __nodeCache)) {
-                __nodeCache[name] = JSON.parse(__fetchExprNode(name));
-              }
-              return {
-                item: { json: __nodeCache[name] },
-                context: __data.__node_contexts[name] || {}
-              };
+              return new __WorkflowExpressionNode(name);
             },
             configurable: true,
             writable: false
           });
         JS
+      end
+
+      def linked_item_for_expression(name)
+        target_node_id = node_id_for_expression_name(name)
+        target_items = node_items_for_expression(name)
+        return { "json" => {} } if target_items.blank?
+
+        unless target_node_id && @context["__current_node_id"] && @context["__node_runs"]
+          return target_items.first
+        end
+
+        input_source = current_input_source
+        return target_items.first if input_source.blank?
+
+        matches =
+          trace_linked_items(
+            input_source["node_id"],
+            input_source["output_index"].to_i,
+            @context.fetch("$itemIndex") { 0 }.to_i,
+            target_node_id,
+            Set.new,
+          )
+
+        raise "Info for expression missing from previous node" if matches.blank?
+
+        distinct_matches =
+          matches.uniq { |match| [match[:node_id], match[:output_index], match[:item_index]] }
+        raise "Multiple matching items for expression" if distinct_matches.length > 1
+
+        distinct_matches.first[:item]
+      end
+
+      def node_items_for_expression(name)
+        items = @context[name]
+        return items if items.is_a?(Array)
+        return [{ "json" => items }] if items.is_a?(Hash)
+
+        []
+      end
+
+      def trace_linked_items(node_id, output_index, item_index, target_node_id, visited)
+        key = [node_id.to_s, output_index.to_i, item_index.to_i]
+        return [] if visited.include?(key)
+
+        visited.add(key)
+        output_item = output_item_for(node_id, output_index, item_index)
+        return [] unless output_item
+
+        if node_id.to_s == target_node_id.to_s
+          return [
+            {
+              node_id: node_id.to_s,
+              output_index: output_index.to_i,
+              item_index: item_index.to_i,
+              item: output_item,
+            },
+          ]
+        end
+
+        paired_items = normalized_paired_items(output_item)
+        raise "Info for expression missing from previous node" if paired_items.blank?
+
+        paired_items.flat_map do |paired_item|
+          source = input_source_for(node_id, paired_item.fetch("input") { 0 })
+          next [] if source.blank?
+
+          trace_linked_items(
+            source["node_id"],
+            source["output_index"].to_i,
+            paired_item.fetch("item").to_i,
+            target_node_id,
+            visited.dup,
+          )
+        end
+      end
+
+      def output_item_for(node_id, output_index, item_index)
+        node_run(node_id)&.dig("outputs", output_index.to_i, item_index.to_i)
+      end
+
+      def input_source_for(node_id, input_index)
+        node_run(node_id)&.dig("input_sources", input_index.to_i)
+      end
+
+      def node_run(node_id)
+        Array(@context.dig("__node_runs", node_id.to_s)).last
+      end
+
+      def normalized_paired_items(item)
+        paired_item = Item.paired_item(item)
+        return [] if paired_item.blank?
+
+        paired_items = paired_item.is_a?(Array) ? paired_item : [paired_item]
+        paired_items.filter_map do |entry|
+          next unless entry.is_a?(Hash) && entry["item"].is_a?(Integer)
+
+          { "item" => entry["item"], "input" => entry["input"] || 0 }
+        end
+      end
+
+      def current_input_source
+        input_index = @context.fetch("__current_input_index") { 0 }.to_i
+        Array(@context["__input_sources"] || @context[:__input_sources])[input_index]
+      end
+
+      def node_id_for_expression_name(name)
+        @context.dig("__node_ids_by_name", name) || (@context.dig("__node_runs", name) && name)
       end
     end
   end

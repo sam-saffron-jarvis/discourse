@@ -80,6 +80,182 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
       expect(node_resolver.resolve("={{ $('Previous Step').item.json.topic_id }}")).to eq(99)
     end
 
+    it "resolves node output references through pairedItem lineage" do
+      node_context = {
+        "$json" => {
+          "id" => 2,
+        },
+        "$itemIndex" => 0,
+        "__current_node_id" => "set",
+        "__input_item" => {
+          "json" => {
+            "id" => 2,
+          },
+          "pairedItem" => {
+            "item" => 1,
+          },
+        },
+        "__input_items" => [{ "json" => { "id" => 2 }, "pairedItem" => { "item" => 1 } }],
+        "__input_sources" => [{ "node_id" => "filter", "output_index" => 0 }],
+        "__node_ids_by_name" => {
+          "Split" => "split",
+          "Filter" => "filter",
+          "Set" => "set",
+        },
+        "Split" => [
+          { "json" => { "id" => 1, "label" => "first" }, "pairedItem" => { "item" => 0 } },
+          { "json" => { "id" => 2, "label" => "second" }, "pairedItem" => { "item" => 0 } },
+        ],
+        "__node_runs" => {
+          "split" => [
+            {
+              "outputs" => [
+                [
+                  { "json" => { "id" => 1, "label" => "first" }, "pairedItem" => { "item" => 0 } },
+                  { "json" => { "id" => 2, "label" => "second" }, "pairedItem" => { "item" => 0 } },
+                ],
+              ],
+              "input_sources" => [{ "node_id" => "source", "output_index" => 0 }],
+            },
+          ],
+          "filter" => [
+            {
+              "outputs" => [[{ "json" => { "id" => 2 }, "pairedItem" => { "item" => 1 } }]],
+              "input_sources" => [{ "node_id" => "split", "output_index" => 0 }],
+            },
+          ],
+        },
+      }
+      node_resolver = build_resolver(node_context)
+
+      expect(node_resolver.resolve("={{ $('Split').item.json.label }}")).to eq("second")
+    end
+
+    it "uses the active resolver context when a shared sandbox is reused" do
+      sandbox = DiscourseWorkflows::JsSandbox.new({})
+      stale_resolver = described_class.new({ "$json" => { "id" => 1 } }, sandbox: sandbox)
+      stale_resolver.resolve("={{ $json.id }}")
+      stale_resolver.dispose
+
+      active_context = {
+        "$json" => {
+          "id" => 2,
+        },
+        "$itemIndex" => 0,
+        "__current_node_id" => "set",
+        "__input_item" => {
+          "json" => {
+            "id" => 2,
+          },
+          "pairedItem" => {
+            "item" => 1,
+          },
+        },
+        "__input_items" => [{ "json" => { "id" => 2 }, "pairedItem" => { "item" => 1 } }],
+        "__input_sources" => [{ "node_id" => "filter", "output_index" => 0 }],
+        "__node_ids_by_name" => {
+          "Split" => "split",
+        },
+        "Split" => [{ "json" => { "label" => "first" } }, { "json" => { "label" => "second" } }],
+        "__node_runs" => {
+          "split" => [
+            {
+              "outputs" => [
+                [{ "json" => { "label" => "first" } }, { "json" => { "label" => "second" } }],
+              ],
+              "input_sources" => [{ "node_id" => "source", "output_index" => 0 }],
+            },
+          ],
+          "filter" => [
+            {
+              "outputs" => [[{ "json" => { "id" => 2 }, "pairedItem" => { "item" => 1 } }]],
+              "input_sources" => [{ "node_id" => "split", "output_index" => 0 }],
+            },
+          ],
+        },
+      }
+      active_resolver = described_class.new(active_context, sandbox: sandbox)
+
+      expect(active_resolver.resolve("={{ $('Split').item.json.label }}")).to eq("second")
+    ensure
+      active_resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "does not guess when pairedItem lineage matches multiple previous items" do
+      node_context = {
+        "$json" => {
+          "merged" => true,
+        },
+        "$itemIndex" => 0,
+        "__current_node_id" => "set",
+        "__input_item" => {
+          "json" => {
+            "merged" => true,
+          },
+          "pairedItem" => {
+            "item" => 0,
+          },
+        },
+        "__input_items" => [{ "json" => { "merged" => true }, "pairedItem" => { "item" => 0 } }],
+        "__input_sources" => [{ "node_id" => "merge", "output_index" => 0 }],
+        "__node_ids_by_name" => {
+          "Split" => "split",
+        },
+        "Split" => [{ "json" => { "label" => "first" } }, { "json" => { "label" => "second" } }],
+        "__node_runs" => {
+          "split" => [
+            {
+              "outputs" => [
+                [{ "json" => { "label" => "first" } }, { "json" => { "label" => "second" } }],
+              ],
+              "input_sources" => [{ "node_id" => "source", "output_index" => 0 }],
+            },
+          ],
+          "filter_1" => [
+            {
+              "outputs" => [
+                [{ "json" => { "label" => "first" }, "pairedItem" => { "item" => 0 } }],
+              ],
+              "input_sources" => [{ "node_id" => "split", "output_index" => 0 }],
+            },
+          ],
+          "filter_2" => [
+            {
+              "outputs" => [
+                [{ "json" => { "label" => "second" }, "pairedItem" => { "item" => 1 } }],
+              ],
+              "input_sources" => [{ "node_id" => "split", "output_index" => 0 }],
+            },
+          ],
+          "merge" => [
+            {
+              "outputs" => [
+                [
+                  {
+                    "json" => {
+                      "merged" => true,
+                    },
+                    "pairedItem" => [{ "input" => 0, "item" => 0 }, { "input" => 1, "item" => 0 }],
+                  },
+                ],
+              ],
+              "input_sources" => [
+                { "node_id" => "filter_1", "output_index" => 0 },
+                { "node_id" => "filter_2", "output_index" => 0 },
+              ],
+            },
+          ],
+        },
+      }
+      node_resolver = build_resolver(node_context)
+
+      expect { node_resolver.resolve("={{ $('Split').item.json.label }}") }.to raise_error(
+        RuntimeError,
+        "Multiple matching items for expression",
+      )
+    end
+
     it "resolves node context references preserving type" do
       node_context = { "__node_contexts" => { "Approval" => { "approved" => true } } }
       node_resolver = build_resolver(context.merge(node_context, "$json" => context["$trigger"]))

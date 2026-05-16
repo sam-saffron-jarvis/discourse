@@ -180,6 +180,7 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           config = exec_ctx.get_parameters({ "json" => {} })
+          @input_item_indexes = item_indexes_by_input(exec_ctx.inputs)
 
           items =
             case config.fetch("mode") { "append" }
@@ -257,9 +258,9 @@ module DiscourseWorkflows
           return [] if input_1.blank? || input_2.blank?
 
           preferred_index = preferred_input_index(config, inputs.length)
-          input_1
-            .product(input_2)
-            .map { |entries| merge_entries(entries, config, preferred_index:) }
+          input_1.flat_map do |entry_1|
+            input_2.map { |entry_2| merge_entries([entry_1, entry_2], config, preferred_index:) }
+          end
         end
 
         def combine_by_fields(inputs, config)
@@ -405,6 +406,7 @@ module DiscourseWorkflows
         end
 
         def merge_entries(entries, config, preferred_index:)
+          paired_items = paired_items(entries)
           entries = suffix_entries(entries) if config["resolve_clash"] == "add_suffix"
           ordered_entries = entries.dup
           preferred = ordered_entries.delete_at(preferred_index) || { "json" => {} }
@@ -412,7 +414,7 @@ module DiscourseWorkflows
 
           wrap(
             merge_hashes(ordered_entries.map { |entry| entry.fetch("json") { {} } }, config),
-          ).merge("paired_item" => paired_items(entries))
+          ).merge("pairedItem" => paired_items)
         end
 
         def merge_hashes(hashes, config)
@@ -459,20 +461,37 @@ module DiscourseWorkflows
                 .each_with_object({}) do |(key, value), result|
                   result["#{key}_#{index + 1}"] = value
                 end
-            { "json" => json }
+            entry.merge("json" => json)
           end
         end
 
         def add_source(item, source)
           wrap(item.fetch("json") { {} }.merge("_source" => source)).merge(
-            "paired_item" => item["paired_item"],
+            "pairedItem" => paired_item_for_entry(item, input_index(source)),
           ).compact
         end
 
         def paired_items(entries)
-          entries.each_with_index.map do |entry, input_index|
-            entry["paired_item"] || { "input" => input_index, "item" => 0 }
+          entries.each_with_index.filter_map do |entry, input_index|
+            paired_item_for_entry(entry, input_index)
           end
+        end
+
+        def paired_item_for_entry(entry, input_index)
+          item_index = @input_item_indexes&.dig(input_index, entry.object_id)
+          return unless item_index
+
+          { "input" => input_index, "item" => item_index }
+        end
+
+        def item_indexes_by_input(inputs)
+          inputs
+            .each_with_index
+            .each_with_object({}) do |(items, input_index), indexes|
+              indexes[input_index] = items.each_with_index.to_h do |item, item_index|
+                [item.object_id, item_index]
+              end
+            end
         end
 
         def preferred_input_index(config, input_count)
