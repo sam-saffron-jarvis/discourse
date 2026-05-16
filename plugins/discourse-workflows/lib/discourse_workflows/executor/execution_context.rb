@@ -18,6 +18,7 @@ module DiscourseWorkflows
         __input_context
         __current_node_id
         __node_ids_by_name
+        __node_parameters_by_name
         $json
         $itemIndex
       ].freeze
