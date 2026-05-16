@@ -537,5 +537,109 @@ RSpec.describe DiscourseWorkflows::Executor do
         )
       end
     end
+
+    context "with node result contracts" do
+      let(:raw_array_node_class) do
+        Class.new(DiscourseWorkflows::NodeType) do
+          description(name: "action:raw_result_test", version: "1.0")
+
+          def execute(exec_ctx)
+            [exec_ctx.input_items]
+          end
+        end
+      end
+
+      let(:helper_node_class) do
+        Class.new(DiscourseWorkflows::NodeType) do
+          description(name: "action:helper_result_test", version: "1.0")
+
+          def execute(exec_ctx)
+            exec_ctx.pass_through
+          end
+        end
+      end
+
+      let(:malformed_helper_node_class) do
+        Class.new(DiscourseWorkflows::NodeType) do
+          description(name: "action:malformed_helper_result_test", version: "1.0")
+
+          def execute(exec_ctx)
+            exec_ctx.success(exec_ctx.input_items.first)
+          end
+        end
+      end
+
+      before do
+        plugin = Plugin::Instance.new
+        DiscoursePluginRegistry.register_discourse_workflows_node(raw_array_node_class, plugin)
+        DiscoursePluginRegistry.register_discourse_workflows_node(helper_node_class, plugin)
+        DiscoursePluginRegistry.register_discourse_workflows_node(
+          malformed_helper_node_class,
+          plugin,
+        )
+        DiscourseWorkflows::Registry.reset_indexes!
+      end
+
+      after do
+        DiscoursePluginRegistry._raw_discourse_workflows_nodes.reject! do |entry|
+          [raw_array_node_class, helper_node_class, malformed_helper_node_class].include?(
+            entry[:value],
+          )
+        end
+        DiscourseWorkflows::Registry.reset_indexes!
+      end
+
+      it "normalizes legacy raw output arrays" do
+        graph =
+          build_workflow_graph do |g|
+            g.node "trigger-1", "trigger:topic_closed"
+            g.node "raw-1", "action:raw_result_test", name: "Raw Result"
+            g.chain "trigger-1", "raw-1"
+          end
+        workflow =
+          Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
+
+        execution = described_class.new(workflow, "trigger-1", { topic_id: topic.id }).run
+
+        expect(execution.status).to eq("success")
+        expect(
+          execution.execution_data.context_data["Raw Result"].first.dig("json", "topic_id"),
+        ).to eq(topic.id)
+      end
+
+      it "accepts NodeResult helper returns as the explicit contract" do
+        graph =
+          build_workflow_graph do |g|
+            g.node "trigger-1", "trigger:topic_closed"
+            g.node "helper-1", "action:helper_result_test", name: "Helper Result"
+            g.chain "trigger-1", "helper-1"
+          end
+        workflow =
+          Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
+
+        execution = described_class.new(workflow, "trigger-1", { topic_id: topic.id }).run
+
+        expect(execution.status).to eq("success")
+        expect(
+          execution.execution_data.context_data["Helper Result"].first.dig("json", "topic_id"),
+        ).to eq(topic.id)
+      end
+
+      it "reports contract errors for malformed NodeResult helper returns" do
+        graph =
+          build_workflow_graph do |g|
+            g.node "trigger-1", "trigger:topic_closed"
+            g.node "malformed-1", "action:malformed_helper_result_test"
+            g.chain "trigger-1", "malformed-1"
+          end
+        workflow =
+          Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
+
+        execution = described_class.new(workflow, "trigger-1", { topic_id: topic.id }).run
+
+        expect(execution.status).to eq("error")
+        expect(execution.error).to include("output 'main' must contain an Array<Item>")
+      end
+    end
   end
 end

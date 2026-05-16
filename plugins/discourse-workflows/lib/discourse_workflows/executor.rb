@@ -313,6 +313,7 @@ module DiscourseWorkflows
         node_id: node.id.to_s,
         flow_context: @context.context,
         resolver_context: resolver_ctx,
+        output_ports: node_type_class.ports(node.parameters),
         workflow_dependencies: preloaded_workflow_dependencies,
       )
     end
@@ -321,6 +322,7 @@ module DiscourseWorkflows
       source = "#{node.name} (#{node.type})"
       normalized =
         if result.is_a?(NodeResult)
+          ItemContract.validate_node_result!(result, source: source, ports: ports)
           result
         else
           ItemContract.validate_output_arrays!(result, source: source)

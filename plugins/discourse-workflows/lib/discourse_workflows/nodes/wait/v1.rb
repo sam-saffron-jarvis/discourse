@@ -114,7 +114,7 @@ module DiscourseWorkflows
           end
 
           exec_ctx.put_execution_to_wait(waiting_until)
-          [exec_ctx.input_items]
+          exec_ctx.pass_through
         end
 
         private

@@ -30,16 +30,17 @@ module DiscourseWorkflows
           batch_size = 1 if batch_size < 1
 
           if exec_ctx.get_context(:node)["items"].nil?
-            execute_first(exec_ctx.input_items, exec_ctx.get_context(:node), batch_size)
+            execute_first(exec_ctx, batch_size)
           else
-            execute_subsequent(exec_ctx.input_items, exec_ctx.get_context(:node), batch_size)
+            execute_subsequent(exec_ctx, batch_size)
           end
         end
 
         private
 
-        def execute_first(input_items, node_context, batch_size)
-          all_items = input_items.dup
+        def execute_first(exec_ctx, batch_size)
+          node_context = exec_ctx.get_context(:node)
+          all_items = exec_ctx.input_items.dup
           node_context["current_run_index"] = 0
           node_context["max_run_index"] = (all_items.length.to_f / batch_size).ceil
           node_context["processed_items"] = []
@@ -49,11 +50,12 @@ module DiscourseWorkflows
           node_context["no_items_left"] = false
           node_context["done"] = false
 
-          [[], batch]
+          exec_ctx.branch("done" => [], "loop" => batch)
         end
 
-        def execute_subsequent(input_items, node_context, batch_size)
-          node_context["processed_items"].concat(input_items)
+        def execute_subsequent(exec_ctx, batch_size)
+          node_context = exec_ctx.get_context(:node)
+          node_context["processed_items"].concat(exec_ctx.input_items)
           node_context["current_run_index"] += 1
 
           remaining = node_context["items"]
@@ -62,9 +64,9 @@ module DiscourseWorkflows
           if batch.empty?
             node_context["done"] = true
             node_context["no_items_left"] = true
-            [node_context["processed_items"], []]
+            exec_ctx.branch("done" => node_context["processed_items"], "loop" => [])
           else
-            [[], batch]
+            exec_ctx.branch("done" => [], "loop" => batch)
           end
         end
       end

@@ -95,7 +95,7 @@ module DiscourseWorkflows
               result = process(item, config)
               wrap(result)
             end
-          [items]
+          exec_ctx.success(items)
         end
 
         private

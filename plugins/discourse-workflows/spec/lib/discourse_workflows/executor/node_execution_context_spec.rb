@@ -1,6 +1,58 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
+  describe "result helpers" do
+    it "returns successful main output items" do
+      item = { "json" => { "id" => 1 } }
+      ctx = described_class.new(input_items: [item], resolver: nil)
+
+      result = ctx.success([item])
+
+      expect(result).to be_a(DiscourseWorkflows::Executor::NodeResult)
+      expect(result.output_arrays(ports: [{ key: "main" }])).to eq([[item]])
+    end
+
+    it "aliases items to success for item-transforming nodes" do
+      item = { "json" => { "id" => 1 } }
+      ctx = described_class.new(input_items: [], resolver: nil)
+
+      result = ctx.items([item])
+
+      expect(result.primary_items(ports: [{ key: "main" }])).to eq([item])
+    end
+
+    it "returns named branch outputs" do
+      kept = [{ "json" => { "kept" => true } }]
+      rejected = [{ "json" => { "kept" => false } }]
+      ports = [{ key: "true" }, { key: "false" }]
+      ctx = described_class.new(input_items: [], resolver: nil, output_ports: ports)
+
+      result = ctx.branch("true" => kept, "false" => rejected)
+
+      expect(result.output_arrays(ports: ports)).to eq([kept, rejected])
+    end
+
+    it "maps ordered branch outputs to declared ports" do
+      done = [{ "json" => { "done" => true } }]
+      loop_items = [{ "json" => { "done" => false } }]
+      ports = [{ key: "done" }, { key: "loop" }]
+      ctx = described_class.new(input_items: [], resolver: nil, output_ports: ports)
+
+      result = ctx.branch(done, loop_items)
+
+      expect(result.output_arrays(ports: ports)).to eq([done, loop_items])
+    end
+
+    it "passes through the current input items" do
+      items = [{ "json" => { "id" => 1 } }]
+      ctx = described_class.new(input_items: items, resolver: nil)
+
+      result = ctx.pass_through
+
+      expect(result.primary_items(ports: [{ key: "main" }])).to eq(items)
+    end
+  end
+
   describe "#get_parameters" do
     it "resolves $json expressions against the item passed in, not a cached first item" do
       config = { "value" => "={{ $json.x }}" }

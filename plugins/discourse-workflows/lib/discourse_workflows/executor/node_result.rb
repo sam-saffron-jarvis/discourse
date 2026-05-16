@@ -9,6 +9,14 @@ module DiscourseWorkflows
         new("main" => items)
       end
 
+      def self.success(items)
+        main(items)
+      end
+
+      def self.branch(outputs)
+        new(outputs)
+      end
+
       def self.from_output_arrays(output_arrays, ports:)
         names = output_names_for(output_arrays.length, ports: ports)
         new(names.zip(output_arrays).to_h)

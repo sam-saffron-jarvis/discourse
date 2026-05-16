@@ -13,6 +13,7 @@ module NodeExecutionHelpers
     input_items = input_items || [item]
     node_credentials = configuration.fetch("credentials") { {} }
     node_parameters = configuration.except("credentials")
+    ports = described_class.ports(node_parameters)
     action = described_class.new(parameters: node_parameters, credentials: node_credentials)
     resolver_context = { "$json" => input_items.first&.dig("json") || {} }
     sandbox = DiscourseWorkflows::JsSandbox.new(resolver_context)
@@ -26,6 +27,7 @@ module NodeExecutionHelpers
       property_schema: described_class.property_schema,
       credential_schema: described_class.credentials,
       resolver_context: resolver_context,
+      output_ports: ports,
     }
     kwargs[:node_context] = node_context if node_context
 
@@ -34,7 +36,7 @@ module NodeExecutionHelpers
     block&.call(ctx)
     return raw if raw.is_a?(DiscourseWorkflows::Executor::NodeResult)
 
-    DiscourseWorkflows::Executor::NodeResult.from_output_arrays(raw, ports: described_class.ports)
+    DiscourseWorkflows::Executor::NodeResult.from_output_arrays(raw, ports: ports)
   ensure
     resolver&.dispose
     sandbox&.dispose

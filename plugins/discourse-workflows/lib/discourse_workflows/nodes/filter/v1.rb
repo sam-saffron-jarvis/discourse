@@ -40,7 +40,10 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          exec_ctx.input_items.partition { |item| exec_ctx.get_parameter(:conditions, item) }
+          kept, rejected =
+            exec_ctx.input_items.partition { |item| exec_ctx.get_parameter(:conditions, item) }
+
+          exec_ctx.branch("true" => kept, "false" => rejected)
         end
       end
     end
