@@ -49,6 +49,32 @@ RSpec.describe DiscourseWorkflows::Workflow::ManualExecute do
       it "delegates execution to Workflow::Execute" do
         expect { result }.to change { DiscourseWorkflows::Execution.count }.by(1)
       end
+
+      it "records a manual execution mode" do
+        result
+        expect(result[:execution]).to be_manual
+      end
+
+      context "when manually testing an Error trigger" do
+        fab!(:workflow) do
+          graph = build_workflow_graph { |g| g.node "trigger-1", "trigger:error" }
+          Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
+        end
+
+        it "uses n8n-style mock error data" do
+          result
+
+          expect(result[:execution].trigger_data).to include(
+            "execution" =>
+              include(
+                "error" => include("message" => "Example Error Message"),
+                "lastNodeExecuted" => "Node With Error",
+                "mode" => "manual",
+              ),
+            "workflow" => include("id" => workflow.id.to_s, "name" => workflow.name),
+          )
+        end
+      end
     end
   end
 end

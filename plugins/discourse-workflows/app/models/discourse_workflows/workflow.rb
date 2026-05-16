@@ -216,9 +216,7 @@ module DiscourseWorkflows
 
     def error_workflow_must_exist
       return if error_workflow_id.nil?
-      if error_workflow_id == id || !Workflow.exists?(error_workflow_id)
-        errors.add(:error_workflow_id, :invalid)
-      end
+      errors.add(:error_workflow_id, :invalid) unless Workflow.exists?(error_workflow_id)
     end
   end
 end

@@ -12,7 +12,6 @@ module Jobs
               :trigger_node_id,
               :trigger_data,
               :execution_mode,
-              :error_depth,
               :user_id,
             ).compact,
         )

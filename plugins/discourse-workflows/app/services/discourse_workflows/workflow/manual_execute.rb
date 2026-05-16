@@ -28,20 +28,26 @@ module DiscourseWorkflows
       workflow.find_node(params.trigger_node_id)
     end
 
-    def run_workflow(workflow:, params:, guardian:)
+    def run_workflow(workflow:, trigger_node:, params:, guardian:)
       options =
         DiscourseWorkflows::Executor::ExecutionOptions.new(
           user: guardian.user,
-          execution_mode: :normal,
-          error_depth: 0,
+          execution_mode: :manual,
           draft_execution: true,
         )
       DiscourseWorkflows::Executor.new(
         workflow,
         params.trigger_node_id,
-        params.trigger_data,
+        trigger_data(workflow:, trigger_node:, params:),
         options,
       ).run
+    end
+
+    def trigger_data(workflow:, trigger_node:, params:)
+      return params.trigger_data unless trigger_node["type"] == "trigger:error"
+      return params.trigger_data if params.trigger_data.present?
+
+      DiscourseWorkflows::Nodes::Error::V1.manual_mock_data(workflow)
     end
   end
 end

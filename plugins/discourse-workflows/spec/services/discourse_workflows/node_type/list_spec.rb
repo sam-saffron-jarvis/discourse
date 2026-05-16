@@ -159,11 +159,13 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
         manual = result[:node_types].find { |nt| nt[:identifier] == "trigger:manual" }
         schedule = result[:node_types].find { |nt| nt[:identifier] == "trigger:schedule" }
         form = result[:node_types].find { |nt| nt[:identifier] == "trigger:form" }
+        error = result[:node_types].find { |nt| nt[:identifier] == "trigger:error" }
         topic_closed = result[:node_types].find { |nt| nt[:identifier] == "trigger:topic_closed" }
 
         expect(manual[:manually_triggerable]).to be(true)
         expect(schedule[:manually_triggerable]).to be(true)
         expect(form[:manually_triggerable]).to be(true)
+        expect(error[:manually_triggerable]).to be(true)
         expect(topic_closed[:manually_triggerable]).to be(false)
       end
 

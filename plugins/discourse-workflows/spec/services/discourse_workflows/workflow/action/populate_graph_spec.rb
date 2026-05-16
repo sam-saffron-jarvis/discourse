@@ -34,6 +34,48 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
       end
     end
 
+    context "when a node type exceeds its per-workflow limit" do
+      it "returns false and adds an error to the workflow" do
+        result =
+          described_class.call(
+            workflow: workflow,
+            nodes_data: [
+              { client_id: "error-1", type: "trigger:error", name: "Error one" },
+              { client_id: "error-2", type: "trigger:error", name: "Error two" },
+            ],
+            connections_data: [],
+          )
+
+        expect(result).to eq(false)
+        expect(workflow.errors.full_messages).to include(
+          I18n.t(
+            "discourse_workflows.errors.max_nodes_of_type_exceeded",
+            max: 1,
+            type: "trigger:error",
+          ),
+        )
+      end
+    end
+
+    context "when a connection targets a node without input ports" do
+      it "returns false and adds an error to the workflow" do
+        result =
+          described_class.call(
+            workflow: workflow,
+            nodes_data: [
+              { client_id: "manual-1", type: "trigger:manual", name: "Manual" },
+              { client_id: "error-1", type: "trigger:error", name: "Error trigger" },
+            ],
+            connections_data: [{ source_client_id: "manual-1", target_client_id: "error-1" }],
+          )
+
+        expect(result).to eq(false)
+        expect(workflow.errors.full_messages).to include(
+          I18n.t("discourse_workflows.errors.node_does_not_accept_inputs", node: "Error trigger"),
+        )
+      end
+    end
+
     context "when nodes have invalid versions" do
       it "returns false and adds errors to the workflow" do
         result =

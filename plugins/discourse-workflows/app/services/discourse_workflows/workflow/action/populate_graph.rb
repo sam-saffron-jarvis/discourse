@@ -10,7 +10,11 @@ module DiscourseWorkflows
 
     def call
       return false unless validate_nodes
-      persist_graph(build_node_map)
+
+      node_map = build_node_map
+      return false unless validate_connections(node_map)
+
+      persist_graph(node_map)
     end
 
     private
@@ -59,6 +63,7 @@ module DiscourseWorkflows
 
     def validate_nodes
       validate_node_count
+      validate_node_type_limits
       return false if workflow.errors.any?
 
       existing_nodes_index = workflow.nodes.index_by { |n| n["id"] }
@@ -80,6 +85,43 @@ module DiscourseWorkflows
           I18n.t("discourse_workflows.errors.max_nodes_exceeded", max: MAX_NODES),
         )
       end
+    end
+
+    def validate_node_type_limits
+      normalized_nodes_data
+        .group_by { |node_data| node_data[:type] }
+        .each do |type, nodes|
+          node_type_class = DiscourseWorkflows::Registry.find_node_type(type)
+          max_nodes = node_type_class&.max_nodes
+          next if max_nodes.blank? || nodes.size <= max_nodes
+
+          workflow.errors.add(
+            :base,
+            I18n.t("discourse_workflows.errors.max_nodes_of_type_exceeded", max: max_nodes, type:),
+          )
+        end
+    end
+
+    def validate_connections(node_map)
+      connections_data.each do |connection_data|
+        connection_data = connection_data.symbolize_keys
+        target = node_map[connection_data[:target_client_id]]
+        next if target.nil?
+
+        target_type =
+          DiscourseWorkflows::Registry.find_node_type(
+            target["type"],
+            version: target["type_version"],
+          )
+        next if target_type&.inputs(target["parameters"]).present?
+
+        workflow.errors.add(
+          :base,
+          I18n.t("discourse_workflows.errors.node_does_not_accept_inputs", node: target["name"]),
+        )
+      end
+
+      workflow.errors.empty?
     end
 
     def validate_node_type(node_data, type_version)

@@ -297,7 +297,7 @@ module DiscourseWorkflows
         ErrorWorkflowTrigger.new(
           workflow,
           steps,
-          error_depth: @options.error_depth,
+          execution: execution,
           execution_mode: @options.execution_mode,
         ).trigger_error_workflow(error)
       end

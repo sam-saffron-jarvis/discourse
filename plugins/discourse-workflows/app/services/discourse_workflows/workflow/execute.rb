@@ -10,7 +10,6 @@ module DiscourseWorkflows
       attribute :trigger_node_id, :string
       attribute :trigger_data, default: -> { {} }
       attribute :execution_mode, :string, default: "normal"
-      attribute :error_depth, :integer, default: 0
       attribute :user_id, :integer
 
       validates :trigger_node_id, presence: true
@@ -63,7 +62,6 @@ module DiscourseWorkflows
         DiscourseWorkflows::Executor::ExecutionOptions.new(
           user: user,
           execution_mode: params.execution_mode.to_sym,
-          error_depth: params.error_depth,
           workflow_version: workflow_version,
         )
       executor =

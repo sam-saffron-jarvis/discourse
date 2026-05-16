@@ -3,24 +3,22 @@
 module DiscourseWorkflows
   class Executor
     class ErrorWorkflowTrigger
-      MAX_ERROR_DEPTH = 3
-
-      def initialize(workflow, steps, error_depth:, execution_mode:)
+      def initialize(workflow, steps, execution: nil, execution_mode:)
         @workflow = workflow
         @steps = steps
-        @error_depth = error_depth
+        @execution = execution
         @execution_mode = execution_mode
       end
 
       def trigger_error_workflow(error)
-        return if @error_depth >= MAX_ERROR_DEPTH
-        return unless @execution_mode == :normal
+        return if @execution_mode == :manual
 
-        error_workflow = @workflow.error_workflow
+        error_workflow = error_workflow_for_failure
         return unless eligible?(error_workflow)
+        return if self_retriggering?(error_workflow)
 
         workflow_version = error_workflow.published_version
-        trigger_node = workflow_version.nodes.find { |n| n["type"] == "trigger:error" }
+        trigger_node = trigger_node_for(workflow_version)
         unless trigger_node
           Rails.logger.warn(
             "discourse-workflows: error workflow #{error_workflow.id} has no trigger:error node, skipping error handling",
@@ -35,21 +33,79 @@ module DiscourseWorkflows
           trigger_node_id: trigger_node["id"],
           trigger_data: build_error_data(error),
           execution_mode: "error_mode",
-          error_depth: @error_depth + 1,
         )
       end
 
       private
 
+      def error_workflow_for_failure
+        return @workflow.error_workflow if @workflow.error_workflow_id.present?
+        @workflow if trigger_node_for(@workflow.published_version)
+      end
+
       def eligible?(error_workflow)
-        error_workflow&.published? && error_workflow.id != @workflow.id
+        error_workflow&.published?
+      end
+
+      def self_retriggering?(error_workflow)
+        @execution_mode == :error_mode && error_workflow.id == @workflow.id
+      end
+
+      def trigger_node_for(workflow_version)
+        workflow_version&.nodes&.find { |n| n["type"] == "trigger:error" }
       end
 
       def build_error_data(error)
-        {
-          error_message: error.message.to_s.truncate(1000),
-          failed_node_name: last_failed_step_node_name,
-        }
+        data = { "workflow" => { "id" => @workflow.id.to_s, "name" => @workflow.name } }
+
+        if @execution
+          data["execution"] = {
+            "id" => @execution.id.to_s,
+            "url" => execution_url,
+            "retryOf" => nil,
+            "error" => serialized_error(error),
+            "lastNodeExecuted" => last_failed_step_node_name,
+            "mode" => n8n_execution_mode,
+          }
+        else
+          data["trigger"] = { "error" => serialized_error(error), "mode" => n8n_execution_mode }
+        end
+
+        data
+      end
+
+      def execution_url
+        "#{Discourse.base_url}/admin/plugins/discourse-workflows/workflows/" \
+          "#{@workflow.id}/executions/#{@execution.id}"
+      end
+
+      def serialized_error(error)
+        serialized = { "message" => error.message.to_s.truncate(1000), "name" => error.class.name }
+
+        stack = Array(error.backtrace).first(50).join("\n")
+        serialized["stack"] = stack.truncate(10_000) if stack.present?
+
+        serialized
+      end
+
+      def n8n_execution_mode
+        return "error" if @execution_mode == :error_mode
+        return "manual" if @execution_mode == :manual
+        return "webhook" if webhook_trigger?
+
+        "trigger"
+      end
+
+      def webhook_trigger?
+        %w[trigger:form trigger:webhook].include?(trigger_node_type)
+      end
+
+      def trigger_node_type
+        @trigger_node_type ||=
+          begin
+            trigger_node = @execution&.workflow_node(@execution.trigger_node_id)
+            trigger_node&.dig("type")
+          end
       end
 
       def last_failed_step_node_name

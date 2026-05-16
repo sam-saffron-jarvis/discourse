@@ -215,6 +215,22 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
       expect(workflow.reload.error_workflow_id).to eq(error_wf.id)
     end
 
+    it "allows a workflow to use itself as its error workflow" do
+      workflow = Fabricate(:discourse_workflows_workflow, created_by: admin)
+
+      put "/admin/plugins/discourse-workflows/workflows/#{workflow.id}.json",
+          params: {
+            workflow: {
+              name: workflow.name,
+              error_workflow_id: workflow.id,
+            },
+          }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["workflow"]["error_workflow_id"]).to eq(workflow.id)
+      expect(workflow.reload.error_workflow_id).to eq(workflow.id)
+    end
+
     it "clears error_workflow_id" do
       error_wf = Fabricate(:discourse_workflows_workflow, created_by: admin)
       workflow =
