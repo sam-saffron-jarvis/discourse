@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
-  def execute(input_items, configuration = {})
+  def execute(input_items, configuration = {}, &block)
     config = { "field" => "items" }.merge(configuration)
-    execute_node_output(configuration: config, input_items: input_items).first
+    execute_node_output(configuration: config, input_items: input_items, &block).first
   end
 
   describe "basic array splitting" do
@@ -16,13 +16,13 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       expect(result[1]["json"]).to include("a" => 2)
     end
 
-    it "wraps non-object array elements in a value key" do
+    it "keeps the original field name for non-object array elements" do
       input = [{ "json" => { "tags" => %w[foo bar baz] } }]
       result = execute(input, "field" => "tags")
 
       expect(result.length).to eq(3)
-      expect(result[0]["json"]).to eq({ "value" => "foo" })
-      expect(result[1]["json"]).to eq({ "value" => "bar" })
+      expect(result[0]["json"]).to eq({ "tags" => "foo" })
+      expect(result[1]["json"]).to eq({ "tags" => "bar" })
     end
 
     it "wraps non-array values in an array (type coercion)" do
@@ -30,7 +30,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       result = execute(input)
 
       expect(result.length).to eq(1)
-      expect(result[0]["json"]).to eq({ "value" => "single" })
+      expect(result[0]["json"]).to eq({ "items" => "single" })
     end
 
     it "converts non-array objects using values" do
@@ -38,14 +38,63 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       result = execute(input)
 
       expect(result.length).to eq(2)
+      expect(result.map { |item| item["json"] }).to eq([{ "items" => 1 }, { "items" => 2 }])
     end
 
-    it "passes item through unchanged when field is missing" do
+    it "emits no items when field is missing" do
       input = [{ "json" => { "name" => "test" } }]
-      result = execute(input)
+      hints = nil
+      result = execute(input) { |ctx| hints = ctx.execution_hints }
 
-      expect(result.length).to eq(1)
-      expect(result[0]["json"]["name"]).to eq("test")
+      expect(result).to eq([])
+      expect(hints).to eq(
+        [
+          {
+            "message" => "The field 'items' wasn't found in any input item.",
+            "location" => "outputPane",
+          },
+        ],
+      )
+    end
+
+    it "emits no items when field is empty" do
+      input = [{ "json" => { "items" => [] } }]
+      hints = nil
+      result = execute(input) { |ctx| hints = ctx.execution_hints }
+
+      expect(result).to eq([])
+      expect(hints).to eq([])
+    end
+
+    it "does not add a missing field hint when any input item has the field" do
+      input = [{ "json" => { "name" => "test" } }, { "json" => { "items" => [1] } }]
+      hints = nil
+      result = execute(input) { |ctx| hints = ctx.execution_hints }
+
+      expect(result.map { |item| item["json"] }).to eq([{ "items" => 1 }])
+      expect(hints).to eq([])
+    end
+
+    it "falls back to n8n field names when local fields are blank" do
+      input = [{ "json" => { "items" => [1] } }]
+      result = execute(input, "field" => "", "fieldToSplitOut" => "items")
+
+      expect(result.first["json"]).to eq("items" => 1)
+    end
+
+    it "resolves split field and destination expressions for each input item" do
+      input = [
+        { "json" => { "field" => "items", "destination" => "item", "items" => [1] } },
+        { "json" => { "field" => "values", "destination" => "value", "values" => [2] } },
+      ]
+      result =
+        execute(
+          input,
+          "field" => "={{ $json.field }}",
+          "destination_field_name" => "={{ $json.destination }}",
+        )
+
+      expect(result.map { |item| item["json"] }).to eq([{ "item" => 1 }, { "value" => 2 }])
     end
 
     it "handles multiple input items" do
@@ -71,7 +120,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       result = execute(input, "include" => "all_other_fields")
 
       expect(result.length).to eq(1)
-      expect(result[0]["json"]).to include("company" => "Acme", "n" => 1)
+      expect(result[0]["json"]).to include("company" => "Acme", "items" => { "n" => 1 })
     end
 
     it "includes selected other fields" do
@@ -80,7 +129,43 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
         execute(input, "include" => "selected_other_fields", "fields_to_include" => "company")
 
       expect(result[0]["json"]["company"]).to eq("Acme")
+      expect(result[0]["json"]["items"]).to eq("n" => 1)
       expect(result[0]["json"]).not_to have_key("country")
+    end
+
+    it "resolves include mode expressions" do
+      input = [{ "json" => { "company" => "Acme", "items" => [1] } }]
+      result = execute(input, "include" => "={{ 'all_other_fields' }}")
+
+      expect(result.first["json"]).to eq("company" => "Acme", "items" => 1)
+    end
+
+    it "falls back to n8n fields to include when local fields are blank" do
+      input = [{ "json" => { "company" => "Acme", "items" => [1] } }]
+      result =
+        execute(
+          input,
+          "include" => "selected_other_fields",
+          "fields_to_include" => "",
+          "fieldsToInclude" => "company",
+        )
+
+      expect(result.first["json"]).to eq("items" => 1, "company" => "Acme")
+    end
+
+    it "raises ArgumentError when selected fields are blank" do
+      input = [{ "json" => { "items" => [{ "n" => 1 }] } }]
+
+      expect { execute(input, "include" => "selected_other_fields") }.to raise_error(
+        ArgumentError,
+        /No fields specified/,
+      )
+    end
+
+    it "does not validate selected fields when there are no split items" do
+      input = [{ "json" => { "items" => [] } }]
+
+      expect(execute(input, "include" => "selected_other_fields")).to eq([])
     end
   end
 
@@ -90,6 +175,22 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       result = execute(input, "field" => "data.items")
 
       expect(result.length).to eq(2)
+      expect(result.first["json"]).to eq("data.items" => 1)
+    end
+
+    it "strips a leading $json prefix from field names" do
+      input = [{ "json" => { "items" => [1] } }]
+      result = execute(input, "field" => "$json.items")
+
+      expect(result.first["json"]).to eq("items" => 1)
+    end
+
+    it "can disable dot notation for literal field names" do
+      input = [{ "json" => { "data.items" => [1] } }]
+      result =
+        execute(input, "field" => "data.items", "options" => { "disableDotNotation" => true })
+
+      expect(result.first["json"]).to eq("data.items" => 1)
     end
   end
 
@@ -101,6 +202,15 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       expect(result.length).to eq(2)
       expect(result[0]["json"]).to include("names" => "a", "ages" => 1)
     end
+
+    it "omits fields that have no element at the split index" do
+      input = [{ "json" => { "names" => %w[a b], "ages" => [1] } }]
+      result = execute(input, "field" => "names, ages")
+
+      expect(result.map { |item| item["json"] }).to eq(
+        [{ "names" => "a", "ages" => 1 }, { "names" => "b" }],
+      )
+    end
   end
 
   describe "destination field name" do
@@ -109,6 +219,59 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       result = execute(input, "destination_field_name" => "result")
 
       expect(result[0]["json"]).to have_key("result")
+    end
+
+    it "falls back to n8n destination field names when local destination is blank" do
+      input = [{ "json" => { "items" => [1] } }]
+      result =
+        execute(
+          input,
+          "destination_field_name" => "",
+          "options" => {
+            "destinationFieldName" => "result",
+          },
+        )
+
+      expect(result.first["json"]).to eq("result" => 1)
+    end
+  end
+
+  describe "binary data" do
+    it "splits binary fields" do
+      input = [
+        {
+          "json" => {
+          },
+          "binary" => {
+            "data" => {
+              "fileName" => "a.txt",
+            },
+            "other" => {
+              "fileName" => "b.txt",
+            },
+          },
+        },
+      ]
+      result = execute(input, "field" => "$binary")
+
+      expect(result.map { |item| item["json"] }).to eq([{}, {}])
+      expect(result.map { |item| item["binary"].keys }).to eq([["data"], ["other"]])
+    end
+
+    it "includes binary data when requested" do
+      binary = { "data" => { "fileName" => "a.txt" } }
+      input = [{ "json" => { "items" => [1, 2] }, "binary" => binary }]
+      result = execute(input, "options" => { "includeBinary" => true })
+
+      expect(result.map { |item| item["binary"] }).to eq([binary, binary])
+    end
+
+    it "resolves include binary expressions" do
+      binary = { "data" => { "fileName" => "a.txt" } }
+      input = [{ "json" => { "items" => [1], "include_binary" => true }, "binary" => binary }]
+      result = execute(input, "options" => { "includeBinary" => "={{ $json.include_binary }}" })
+
+      expect(result.first["binary"]).to eq(binary)
     end
   end
 

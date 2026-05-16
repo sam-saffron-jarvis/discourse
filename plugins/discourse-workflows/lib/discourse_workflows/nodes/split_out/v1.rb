@@ -5,6 +5,13 @@ module DiscourseWorkflows
     module SplitOut
       class V1 < NodeType
         MAX_SPLIT_ITEMS = 1_000
+        INCLUDE_MODE_ALIASES = {
+          "noOtherFields" => "no_other_fields",
+          "allOtherFields" => "all_other_fields",
+          "selectedOtherFields" => "selected_other_fields",
+        }.freeze
+        BINARY_FIELD = "$binary"
+
         description(
           name: "action:split_out",
           version: "1.0",
@@ -42,52 +49,93 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          field_names = parse_field_names(@configuration.fetch("field"))
-          include_mode = @configuration.fetch("include") { "no_other_fields" }
-          dest_names = parse_field_names(@configuration["destination_field_name"])
-          fields_to_include = parse_field_names(@configuration["fields_to_include"])
+          field_tracker = {}
+          items =
+            exec_ctx.input_items.flat_map do |item|
+              config = split_config(exec_ctx.get_parameters(item))
+
+              split_item(item, config, exec_ctx.paired_item_for(item), field_tracker)
+            end
+
+          add_missing_field_hints(exec_ctx, field_tracker)
+
+          [items]
+        end
+
+        private
+
+        def split_config(config)
+          options = config["options"].is_a?(Hash) ? config["options"] : {}
+          field_names = parse_field_names(config_value(config, "field", "fieldToSplitOut"))
+          dest_names =
+            parse_field_names(
+              config["destination_field_name"].presence || options["destinationFieldName"],
+            )
 
           if dest_names.present? && dest_names.length != field_names.length
             raise ArgumentError,
                   I18n.t("discourse_workflows.errors.split_out.destination_count_mismatch")
           end
 
-          items =
-            exec_ctx.input_items.flat_map do |item|
-              split_item(
-                item,
-                field_names,
-                include_mode,
-                dest_names,
-                fields_to_include,
-                exec_ctx.paired_item_for(item),
-              )
-            end
-          [items]
+          {
+            field_names: field_names,
+            include_mode: normalize_include_mode(config.fetch("include") { "no_other_fields" }),
+            dest_names: dest_names,
+            fields_to_include:
+              parse_field_names(config_value(config, "fields_to_include", "fieldsToInclude")),
+            disable_dot_notation:
+              truthy?(options.fetch("disableDotNotation") { config["disable_dot_notation"] }),
+            include_binary: truthy?(options.fetch("includeBinary") { config["include_binary"] }),
+          }
         end
 
-        private
+        def config_value(config, *keys)
+          keys.each do |key|
+            value = config[key]
+            return value if value.present?
+          end
+
+          nil
+        end
 
         def parse_field_names(value)
           return [] if value.blank?
-          value.to_s.split(",").filter_map { |v| v.strip.presence }
+          value.to_s.split(",").filter_map { |v| v.strip.sub(/\A\$json\./, "").presence }
         end
 
-        def dig_field(hash, field_name)
-          field_name.split(".").reduce(hash) { |obj, key| obj.is_a?(Hash) ? obj[key] : nil }
+        def truthy?(value)
+          value == true || value.to_s == "true"
         end
 
-        def set_field(hash, field_name, value)
-          keys = field_name.split(".")
+        def normalize_include_mode(value)
+          INCLUDE_MODE_ALIASES.fetch(value) { value }
+        end
+
+        def binary_field?(field_name)
+          field_name == BINARY_FIELD
+        end
+
+        def fetch_field(hash, field_name, disable_dot_notation)
+          return hash.key?(field_name), hash[field_name] if disable_dot_notation
+
           current = hash
-          keys[0..-2].each do |key|
-            current[key] ||= {}
-            current = current[key]
-          end
-          current[keys.last] = value
+          field_name
+            .split(".")
+            .each do |key|
+              return false, nil unless current.is_a?(Hash) && current.key?(key)
+
+              current = current[key]
+            end
+
+          [true, current]
         end
 
-        def unset_field(hash, field_name)
+        def unset_field(hash, field_name, disable_dot_notation)
+          if disable_dot_notation
+            hash.delete(field_name)
+            return
+          end
+
           keys = field_name.split(".")
           current = hash
           keys[0..-2].each do |key|
@@ -98,67 +146,143 @@ module DiscourseWorkflows
         end
 
         def coerce_to_array(value)
-          return nil if value.nil?
-          value = value.values if value.is_a?(Hash)
-          Array(value)
+          return value if value.is_a?(Array)
+          return value.values if value.is_a?(Hash)
+
+          [value]
         end
 
-        def split_item(item, field_names, include_mode, dest_names, fields_to_include, paired_item)
+        def split_item(item, config, paired_item, field_tracker)
           item_json = item.fetch("json") { {} }
-          arrays = field_names.map { |f| coerce_to_array(dig_field(item_json, f)) }
+          field_names = config[:field_names]
+          multi_split = field_names.length > 1
+          entries = []
 
-          return [item] if arrays.any?(&:nil?)
+          field_names.each_with_index do |field_name, field_index|
+            elements =
+              if binary_field?(field_name)
+                binary_split_elements(item)
+              else
+                field_tracker[field_name] = false unless field_tracker.key?(field_name)
+                exists, value = fetch_field(item_json, field_name, config[:disable_dot_notation])
+                field_tracker[field_name] = true if exists
+                next unless exists
 
-          max_len = arrays.map(&:length).max || 0
-          return [item] if max_len == 0
+                coerce_to_array(value)
+              end
 
-          if max_len > MAX_SPLIT_ITEMS
-            raise ArgumentError,
-                  I18n.t(
-                    "discourse_workflows.errors.split_out.too_many_items",
-                    max: MAX_SPLIT_ITEMS,
-                    count: max_len,
-                  )
-          end
+            next if elements.empty?
 
-          (0...max_len).map do |i|
-            entry = build_split_entry(i, field_names, arrays, dest_names)
-            entry =
-              apply_include_mode(entry, item_json, include_mode, field_names, fields_to_include)
-            wrap(entry, paired_item:)
-          end
-        end
+            if elements.length > MAX_SPLIT_ITEMS
+              raise ArgumentError,
+                    I18n.t(
+                      "discourse_workflows.errors.split_out.too_many_items",
+                      max: MAX_SPLIT_ITEMS,
+                      count: elements.length,
+                    )
+            end
 
-        def build_split_entry(index, field_names, arrays, dest_names)
-          entry = {}
-          field_names.each_with_index do |field_name, fi|
-            element = arrays[fi][index]
+            elements.each_with_index do |element, element_index|
+              entries[element_index] ||= { "json" => {} }
 
-            if field_names.length == 1 && dest_names.blank?
-              element.is_a?(Hash) ?
-                entry.merge!(element.deep_stringify_keys) :
-                entry["value"] = element
-            else
-              set_field(entry, dest_names.present? ? dest_names[fi] : field_name, element)
+              if binary_field?(field_name)
+                entries[element_index]["binary"] = element
+              else
+                write_split_element(
+                  entries[element_index]["json"],
+                  element,
+                  field_name,
+                  config[:dest_names][field_index],
+                  config[:include_mode],
+                  multi_split,
+                )
+              end
             end
           end
-          entry
+
+          entries.map do |entry|
+            json =
+              apply_include_mode(
+                entry["json"],
+                item_json,
+                config[:include_mode],
+                field_names,
+                config[:fields_to_include],
+                config[:disable_dot_notation],
+              )
+            item_output = wrap(json, paired_item:)
+            item_output["binary"] = entry["binary"] if entry["binary"].present?
+            if config[:include_binary] && item["binary"].present? && item_output["binary"].blank?
+              item_output["binary"] = item["binary"]
+            end
+            item_output
+          end
         end
 
-        def apply_include_mode(entry, item_json, include_mode, field_names, fields_to_include)
+        def binary_split_elements(item)
+          binary = item.fetch("binary") { {} }
+          return [] unless binary.is_a?(Hash)
+
+          binary.map { |key, value| { key => value } }
+        end
+
+        def write_split_element(
+          entry,
+          element,
+          field_name,
+          destination_field_name,
+          include_mode,
+          multi_split
+        )
+          output_field_name = destination_field_name.presence || field_name
+
+          if element.is_a?(Hash) && include_mode == "no_other_fields" &&
+               destination_field_name.blank? && !multi_split
+            entry.merge!(element.deep_stringify_keys)
+          else
+            entry[output_field_name] = element
+          end
+        end
+
+        def apply_include_mode(
+          entry,
+          item_json,
+          include_mode,
+          field_names,
+          fields_to_include,
+          disable_dot_notation
+        )
           case include_mode
           when "all_other_fields"
             base = item_json.deep_dup
-            field_names.each { |f| unset_field(base, f) }
+            field_names
+              .reject { |f| binary_field?(f) }
+              .each { |f| unset_field(base, f, disable_dot_notation) }
             base.merge(entry)
           when "selected_other_fields"
+            if fields_to_include.empty?
+              raise ArgumentError,
+                    I18n.t("discourse_workflows.errors.split_out.fields_to_include_required")
+            end
+
             fields_to_include.each do |f|
-              val = dig_field(item_json, f)
-              set_field(entry, f, val) unless val.nil?
+              _, val = fetch_field(item_json, f, disable_dot_notation)
+              entry[f] = val
             end
             entry
           else
             entry
+          end
+        end
+
+        def add_missing_field_hints(exec_ctx, field_tracker)
+          field_tracker.each do |field, found|
+            next if found
+
+            exec_ctx.add_execution_hint(
+              I18n.t("discourse_workflows.hints.split_out.field_not_found", field: field),
+              location: "outputPane",
+            )
           end
         end
       end

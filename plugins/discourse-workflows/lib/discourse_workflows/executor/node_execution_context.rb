@@ -8,6 +8,7 @@ module DiscourseWorkflows
                   :expression_errors,
                   :condition_details,
                   :log,
+                  :execution_hints,
                   :execution_id,
                   :resume_token,
                   :node_id,
@@ -60,6 +61,7 @@ module DiscourseWorkflows
         @expression_errors = []
         @condition_details = []
         @log = StepLog.new
+        @execution_hints = []
         @waiting = false
         @waiting_until = nil
         @workflow_dependencies = workflow_dependencies
@@ -166,6 +168,10 @@ module DiscourseWorkflows
       def put_execution_to_wait(waiting_until = nil)
         @waiting = true
         @waiting_until = waiting_until
+      end
+
+      def add_execution_hint(message, location: "outputPane")
+        @execution_hints << { "message" => message, "location" => location }
       end
 
       def waiting?
