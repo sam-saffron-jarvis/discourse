@@ -107,6 +107,31 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         ).to be(true)
       end
 
+      context "with URL query parameters" do
+        let(:params) do
+          { uuid: uuid, form_query_parameters: { "name" => "Query User", "source" => "email" } }
+        end
+
+        it "uses matching query parameters as field defaults" do
+          expect(result[:form_data][:form_fields].first["default_value"]).to eq("Query User")
+        end
+
+        it "persists query parameters in the signed submission token" do
+          token_payload =
+            DiscourseWorkflows::FormTriggerToken.payload(
+              result[:form_data][:resume_token],
+              workflow_id: workflow.id,
+              trigger_node_id: "trigger-1",
+              uuid: uuid,
+            )
+
+          expect(token_payload["form_query_parameters"]).to eq(
+            "name" => "Query User",
+            "source" => "email",
+          )
+        end
+      end
+
       context "when the draft workflow name changes after publishing" do
         before do
           trigger_node = workflow.nodes.find { |node| node["id"] == "trigger-1" }
@@ -209,6 +234,16 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         expect(form_data[:response_mode]).to eq("on_received")
         expect(form_data[:has_downstream_form]).to be(false)
         expect(form_data[:resume_token]).to eq(resume_token)
+      end
+
+      context "when the trigger captured query parameters" do
+        before do
+          execution.update!(trigger_data: { "formQueryParameters" => { "feedback" => "Prefill" } })
+        end
+
+        it "uses matching query parameters as waiting form field defaults" do
+          expect(result[:form_data][:form_fields].first["default_value"]).to eq("Prefill")
+        end
       end
 
       context "when form_description references $execution.resume_url" do

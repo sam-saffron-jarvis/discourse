@@ -256,7 +256,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       expect(response.body).to eq("ok" => true)
     end
 
-    it "retries transient response statuses" do
+    it "does not retry transient GET response statuses by default" do
       stub_request(:get, "https://api.example.com/retry").to_return(
         { status: 503, body: "unavailable" },
         {
@@ -269,11 +269,14 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       )
 
       ctx = described_class.new(input_items: [], resolver: nil)
-      response = ctx.http_request(method: "GET", url: "https://api.example.com/retry")
 
-      expect(response.status).to eq(200)
-      expect(response.body).to eq("ok" => true)
-      expect(WebMock).to have_requested(:get, "https://api.example.com/retry").twice
+      expect {
+        ctx.http_request(method: "GET", url: "https://api.example.com/retry")
+      }.to raise_error(
+        RuntimeError,
+        "HTTP GET https://api.example.com/retry failed with status 503",
+      )
+      expect(WebMock).to have_requested(:get, "https://api.example.com/retry").once
     end
 
     it "does not retry non-GET transient response statuses by default" do

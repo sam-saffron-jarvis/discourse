@@ -7,8 +7,14 @@ module DiscourseWorkflows
     params do
       attribute :uuid, :string
       attribute :resume_token, :string
+      attribute :form_query_parameters, default: -> { {} }
 
       validates :uuid, presence: true
+      validate :form_query_parameters_must_be_hash
+
+      def form_query_parameters_must_be_hash
+        errors.add(:form_query_parameters, :invalid) unless form_query_parameters.is_a?(Hash)
+      end
     end
 
     model :waiting_execution, optional: true
@@ -123,7 +129,10 @@ module DiscourseWorkflows
             user: guardian.user,
           ),
         form_fields:
-          Workflow.resolve_field_keys(CollectionParameters.rows(parameters, "form_fields")),
+          fields_with_query_defaults(
+            Workflow.resolve_field_keys(CollectionParameters.rows(parameters, "form_fields")),
+            waiting_execution.trigger_data["formQueryParameters"] || {},
+          ),
         response_mode: "on_received",
         has_downstream_form:
           waiting_execution.node_has_reachable_downstream_of_type?(form_node["id"], "action:form"),
@@ -137,6 +146,7 @@ module DiscourseWorkflows
           workflow_id: workflow.id,
           trigger_node_id: form_node["id"],
           uuid: params.uuid,
+          form_query_parameters: params.form_query_parameters,
         )
 
       exec_context = {
@@ -158,7 +168,11 @@ module DiscourseWorkflows
         uuid: params.uuid,
         form_title: config["form_title"],
         form_description: config["form_description"],
-        form_fields: Workflow.resolve_field_keys(CollectionParameters.rows(config, "form_fields")),
+        form_fields:
+          fields_with_query_defaults(
+            Workflow.resolve_field_keys(CollectionParameters.rows(config, "form_fields")),
+            params.form_query_parameters,
+          ),
         response_mode: config["response_mode"] || "on_received",
         has_downstream_form:
           workflow.node_has_reachable_downstream_of_type?(
@@ -168,6 +182,17 @@ module DiscourseWorkflows
           ),
         resume_token: resume_token,
       }
+    end
+
+    def fields_with_query_defaults(fields, query_parameters)
+      normalized_query_parameters = query_parameters.with_indifferent_access
+
+      fields.map do |field|
+        key = field["key"]
+        next field unless normalized_query_parameters.key?(key)
+
+        field.merge("default_value" => normalized_query_parameters[key])
+      end
     end
   end
 end

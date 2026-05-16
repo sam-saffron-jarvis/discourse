@@ -7,25 +7,41 @@ module DiscourseWorkflows
     KEY_LENGTH = 32
     TTL = 1.hour
 
-    def self.generate(workflow_id:, trigger_node_id:, uuid:)
-      verifier.generate(
-        {
-          "workflow_id" => workflow_id,
-          "trigger_node_id" => trigger_node_id.to_s,
-          "uuid" => uuid,
-          "nonce" => SecureRandom.hex(16),
-        },
-        purpose: PURPOSE,
-        expires_in: TTL,
-      )
+    def self.generate(workflow_id:, trigger_node_id:, uuid:, form_query_parameters: nil)
+      payload = {
+        "workflow_id" => workflow_id,
+        "trigger_node_id" => trigger_node_id.to_s,
+        "uuid" => uuid,
+        "nonce" => SecureRandom.hex(16),
+      }
+
+      normalized_query_parameters =
+        DiscourseWorkflows::FormPayload.normalize_query_parameters(form_query_parameters)
+      if normalized_query_parameters.present?
+        payload["form_query_parameters"] = normalized_query_parameters
+      end
+
+      verifier.generate(payload, purpose: PURPOSE, expires_in: TTL)
     end
 
     def self.valid?(token, workflow_id:, trigger_node_id:, uuid:)
-      payload = verify(token)
-      return false if payload.blank?
+      payload(
+        token,
+        workflow_id: workflow_id,
+        trigger_node_id: trigger_node_id,
+        uuid: uuid,
+      ).present?
+    end
 
-      payload["workflow_id"].to_s == workflow_id.to_s &&
-        payload["trigger_node_id"].to_s == trigger_node_id.to_s && payload["uuid"].to_s == uuid.to_s
+    def self.payload(token, workflow_id:, trigger_node_id:, uuid:)
+      payload = verify(token)
+      return if payload.blank?
+
+      if payload["workflow_id"].to_s == workflow_id.to_s &&
+           payload["trigger_node_id"].to_s == trigger_node_id.to_s &&
+           payload["uuid"].to_s == uuid.to_s
+        payload
+      end
     end
 
     def self.verify(token)

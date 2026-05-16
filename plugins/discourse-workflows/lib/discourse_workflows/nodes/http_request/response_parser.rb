@@ -16,6 +16,7 @@ module DiscourseWorkflows
             end
           {
             status: response.status,
+            status_message: response.respond_to?(:reason_phrase) ? response.reason_phrase : nil,
             headers: response.headers.to_h,
             body: parse_body(response, max_size, log),
           }

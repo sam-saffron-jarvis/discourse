@@ -22,6 +22,7 @@ module DiscourseWorkflows
     model :trigger_node
     policy :authenticated_if_required
     policy :valid_initial_submission_token
+    model :submission_token_payload
     model :form_validation, :validate_form
     step :ensure_form_valid
     model :execution, :run_workflow
@@ -66,11 +67,21 @@ module DiscourseWorkflows
         )
     end
 
-    def run_workflow(published_trigger:, form_validation:, guardian:)
-      trigger_data = {
-        "form_data" => form_validation.data,
-        "submitted_at" => Time.current.utc.iso8601,
-      }
+    def fetch_submission_token_payload(workflow:, trigger_node:, params:)
+      DiscourseWorkflows::FormTriggerToken.payload(
+        params.resume_token,
+        workflow_id: workflow.id,
+        trigger_node_id: trigger_node["id"],
+        uuid: params.uuid,
+      )
+    end
+
+    def run_workflow(published_trigger:, form_validation:, submission_token_payload:, guardian:)
+      trigger_data =
+        DiscourseWorkflows::FormPayload.build(
+          form_validation.data,
+          query_parameters: submission_token_payload["form_query_parameters"],
+        )
 
       DiscourseWorkflows::TriggerDispatcher.execute(
         published_trigger,

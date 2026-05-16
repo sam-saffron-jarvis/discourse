@@ -83,7 +83,7 @@ module DiscourseWorkflows
               },
             },
           },
-          output_schema: Schemas::FormFields::OUTPUT_SCHEMA,
+          output_schema: Schemas::FormFields::FORM_OUTPUT_SCHEMA,
           capabilities: {
             waits_for_resume: true,
           },

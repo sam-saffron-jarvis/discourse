@@ -60,10 +60,16 @@ module DiscourseWorkflows
     end
 
     def resume_execution(execution:, claimed_execution:, form_validation:, guardian:)
-      form_data = execution.accumulated_form_data.merge(form_validation.data)
-
       response_items = [
-        { "json" => { "form_data" => form_data, "submitted_at" => Time.current.utc.iso8601 } },
+        {
+          "json" =>
+            DiscourseWorkflows::FormPayload.build(
+              form_validation.data,
+              form_mode:
+                execution.trigger_data["formMode"] ||
+                  DiscourseWorkflows::FormPayload::DEFAULT_FORM_MODE,
+            ),
+        },
       ]
       DiscourseWorkflows::Executor.resume(claimed_execution, response_items, user: guardian.user)
     end

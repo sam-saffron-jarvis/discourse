@@ -86,11 +86,35 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
     };
 
     const fields = resolveNodeFields(node, []);
-    const formData = fields.find((field) => field.key === "form_data");
-
-    assert.deepEqual(formData.children, [
+    assert.deepEqual(fields, [
       { key: "name", type: "string", id: "name" },
       { key: "age", type: "integer", id: "age" },
+      { key: "submittedAt", type: "string", id: "submittedAt" },
+      { key: "formMode", type: "string", id: "formMode" },
+      {
+        key: "formQueryParameters",
+        type: "object",
+        id: "formQueryParameters",
+      },
+    ]);
+  });
+
+  test("resolveNodeFields omits query metadata for form action pages", function (assert) {
+    const node = {
+      type: "action:form",
+      configuration: {
+        form_fields: {
+          values: [{ field_label: "Feedback", field_type: "text" }],
+        },
+      },
+    };
+
+    const fields = resolveNodeFields(node, []);
+
+    assert.deepEqual(fields, [
+      { key: "feedback", type: "string", id: "feedback" },
+      { key: "submittedAt", type: "string", id: "submittedAt" },
+      { key: "formMode", type: "string", id: "formMode" },
     ]);
   });
 

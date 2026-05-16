@@ -3,10 +3,10 @@
 module DiscourseWorkflows
   class Executor
     class HttpClient
-      Response = Struct.new(:status, :headers, :body, keyword_init: true)
+      Response = Struct.new(:status, :headers, :body, :status_message, keyword_init: true)
 
       TIMEOUT_SECONDS = 30
-      DEFAULT_GET_MAX_RETRIES = 1
+      DEFAULT_MAX_RETRIES = 0
       DEFAULT_RETRY_STATUSES = Set[429, 500, 502, 503, 504].freeze
 
       def initialize(exec_ctx)
@@ -29,7 +29,12 @@ module DiscourseWorkflows
             max_size_kb: config["max_response_size_kb"],
             log: @exec_ctx.log,
           )
-        Response.new(status: parsed[:status], headers: parsed[:headers], body: parsed[:body])
+        Response.new(
+          status: parsed[:status],
+          headers: parsed[:headers],
+          body: parsed[:body],
+          status_message: parsed[:status_message],
+        )
       end
 
       private
@@ -73,8 +78,8 @@ module DiscourseWorkflows
         config.fetch("max_retries") { default_max_retries(method) }.to_i.clamp(0, 5)
       end
 
-      def default_max_retries(method)
-        method == :get ? DEFAULT_GET_MAX_RETRIES : 0
+      def default_max_retries(_method)
+        DEFAULT_MAX_RETRIES
       end
 
       def retry_statuses(config)

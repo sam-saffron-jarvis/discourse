@@ -13,7 +13,7 @@ module DiscourseWorkflows
 
     enum :status,
          { pending: 0, running: 1, success: 2, error: 3, waiting: 4, rate_limited: 5, skipped: 6 }
-    enum :execution_mode, { normal: 0, error_mode: 1 }
+    enum :execution_mode, { normal: 0, error_mode: 1, manual: 2 }
 
     scope :for_workflow, ->(workflow_id) { workflow_id ? where(workflow_id: workflow_id) : all }
     scope :recent, ->(period = 7.days) { where("created_at >= ?", period.ago) }
@@ -103,16 +103,6 @@ module DiscourseWorkflows
       steps = entries[waiting_node_id.to_s] || []
       waiting_step = steps.find { |s| s["status"] == "waiting" }
       waiting_step&.dig("input") || [{ "json" => {} }]
-    end
-
-    def accumulated_form_data
-      return {} unless execution_data
-      execution_data
-        .steps_array
-        .each_with_object({}) do |step, data|
-          form_data = step.dig("output", 0, "json", "form_data")
-          data.merge!(form_data) if form_data
-        end
     end
 
     def find_waiting_node

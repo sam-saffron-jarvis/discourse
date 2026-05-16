@@ -16,8 +16,51 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
       config = { "method" => "GET", "url" => "https://api.example.com/data" }
       result = execute_node(configuration: config, item: item)
 
-      expect(result["status"]).to eq(200)
-      expect(result["body"]).to eq("result" => "ok")
+      expect(result).to eq("result" => "ok")
+    end
+
+    it "returns full response data when enabled" do
+      stub_request(:get, "https://api.example.com/data").to_return(
+        status: 200,
+        body: { result: "ok" }.to_json,
+        headers: {
+          "content-type" => "application/json",
+        },
+      )
+
+      config = {
+        "method" => "GET",
+        "url" => "https://api.example.com/data",
+        "full_response" => true,
+      }
+      result = execute_node(configuration: config, item: item)
+
+      expect(result).to include(
+        "body" => {
+          "result" => "ok",
+        },
+        "headers" => include("content-type" => "application/json"),
+        "statusCode" => 200,
+      )
+      expect(result).to have_key("statusMessage")
+    end
+
+    it "splits top-level JSON array responses into separate output items" do
+      stub_request(:get, "https://api.example.com/users").to_return(
+        status: 200,
+        body: [{ id: 1 }, { id: 2 }].to_json,
+        headers: {
+          "content-type" => "application/json",
+        },
+      )
+
+      config = { "method" => "GET", "url" => "https://api.example.com/users" }
+      result = execute_node_output(configuration: config, item: item).first
+
+      expect(result.map { |output_item| output_item["json"] }).to eq([{ "id" => 1 }, { "id" => 2 }])
+      expect(result.map { |output_item| output_item["pairedItem"] }).to eq(
+        [{ "item" => 0 }, { "item" => 0 }],
+      )
     end
 
     it "sends a JSON body with POST requests" do
@@ -37,8 +80,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
 
       result = execute_node(configuration: config, item: item)
 
-      expect(result["status"]).to eq(201)
-      expect(result["body"]).to eq("id" => 1)
+      expect(result).to eq("id" => 1)
     end
 
     it "raises an error for non-2xx status codes by default" do
@@ -78,7 +120,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
       config = { "method" => "GET", "url" => "https://example.com/page" }
       result = execute_node(configuration: config, item: item)
 
-      expect(result["body"]).to eq("data" => "<html>hello</html>")
+      expect(result).to eq("data" => "<html>hello</html>")
     end
 
     it "records request details in logs" do
@@ -155,8 +197,28 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
 
         result = execute_node(configuration: config, item: item)
 
-        expect(result["status"]).to eq(404)
-        expect(result["body"]).to eq("error" => "not found")
+        expect(result).to eq("error" => "not found")
+      end
+
+      it "returns non-2xx response status when full response is enabled" do
+        stub_request(:get, "https://api.example.com/missing").to_return(
+          status: 404,
+          body: { error: "not found" }.to_json,
+          headers: {
+            "content-type" => "application/json",
+          },
+        )
+
+        config = {
+          "method" => "GET",
+          "url" => "https://api.example.com/missing",
+          "never_error" => true,
+          "full_response" => true,
+        }
+
+        result = execute_node(configuration: config, item: item)
+
+        expect(result).to include("statusCode" => 404, "body" => { "error" => "not found" })
       end
     end
 
@@ -198,7 +260,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
         }
 
         result = execute_node(configuration: config, item: item)
-        expect(result["status"]).to eq(200)
+        expect(result).to eq("ok" => true)
       end
     end
 
@@ -237,7 +299,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
         }
 
         result = execute_node(configuration: config, item: item)
-        expect(result["status"]).to eq(200)
+        expect(result).to eq("ok" => true)
       end
     end
 
@@ -258,7 +320,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
         }
 
         result = execute_node(configuration: config, item: item)
-        expect(result["status"]).to eq(200)
+        expect(result).to eq("ok" => true)
       end
     end
   end

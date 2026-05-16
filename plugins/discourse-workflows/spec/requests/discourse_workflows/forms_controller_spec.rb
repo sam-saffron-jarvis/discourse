@@ -113,6 +113,31 @@ RSpec.describe DiscourseWorkflows::FormsController do
       expect(execution.execution_data.context_data["__resume_token"]).to eq(json["resume_token"])
     end
 
+    it "stores initial URL query parameters in the trigger payload" do
+      get form_path, params: { source: "email", ref: "spring" }
+      expect(response).to have_http_status(:ok)
+
+      post form_path,
+           params: {
+             resume_token: response.parsed_body["resume_token"],
+             form_data: {
+               name: "Test User",
+             },
+           },
+           headers: origin_headers
+
+      execution = DiscourseWorkflows::Execution.last
+      expect(execution.trigger_data).to include(
+        "name" => "Test User",
+        "formMode" => "production",
+        "formQueryParameters" => {
+          "source" => "email",
+          "ref" => "spring",
+        },
+      )
+      expect(execution.trigger_data).not_to have_key("form_data")
+    end
+
     it "returns 422 when the initial submission token is missing" do
       post form_path, params: { form_data: { name: "Test User" } }, headers: origin_headers
 

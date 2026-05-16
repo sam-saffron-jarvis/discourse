@@ -155,6 +155,20 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
         expect(result[:execution]).to be_a(DiscourseWorkflows::Execution)
       end
 
+      it "stores an n8n-compatible top-level trigger payload" do
+        freeze_time Time.utc(2026, 1, 1)
+
+        result
+
+        expect(result[:execution].trigger_data).to include(
+          "name" => "Test User",
+          "submittedAt" => "2026-01-01T00:00:00.000Z",
+          "formMode" => "production",
+        )
+        expect(result[:execution].trigger_data).not_to have_key("form_data")
+        expect(result[:execution].trigger_data).not_to have_key("submitted_at")
+      end
+
       it "computes response metadata" do
         result
         expect(result[:response_metadata]).to include(
@@ -169,8 +183,31 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
         it "stores the truncated value in trigger data" do
           result
 
-          stored_name = result[:execution].trigger_data.dig("form_data", "name")
+          stored_name = result[:execution].trigger_data["name"]
           expect(stored_name.length).to eq(DiscourseWorkflows::FormSchema::MAX_FIELD_VALUE_LENGTH)
+        end
+      end
+
+      context "when the initial form URL had query parameters" do
+        let(:resume_token) do
+          DiscourseWorkflows::FormTriggerToken.generate(
+            workflow_id: workflow.id,
+            trigger_node_id: "trigger-1",
+            uuid: uuid,
+            form_query_parameters: {
+              source: "email",
+              ref: "spring",
+            },
+          )
+        end
+
+        it "stores formQueryParameters on the trigger payload" do
+          result
+
+          expect(result[:execution].trigger_data["formQueryParameters"]).to eq(
+            "source" => "email",
+            "ref" => "spring",
+          )
         end
       end
 

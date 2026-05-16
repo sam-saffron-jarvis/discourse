@@ -180,6 +180,43 @@ RSpec.describe DiscourseWorkflows::Form::Resume do
         expect(execution.reload.status).not_to eq("waiting")
       end
 
+      it "records an n8n-compatible top-level form page payload" do
+        freeze_time Time.utc(2026, 1, 1)
+
+        result
+
+        output =
+          execution.reload.execution_data.entries.dig("form-action-1", 0, "output", 0, "json")
+        expect(output).to include(
+          "feedback" => "Looks good",
+          "submittedAt" => "2026-01-01T00:00:00.000Z",
+          "formMode" => "production",
+        )
+        expect(output).not_to have_key("form_data")
+        expect(output).not_to have_key("submitted_at")
+      end
+
+      context "when the trigger captured query parameters" do
+        before do
+          execution.update!(
+            trigger_data: {
+              "formMode" => "production",
+              "formQueryParameters" => {
+                "source" => "email",
+              },
+            },
+          )
+        end
+
+        it "does not copy trigger-only query metadata into the form page payload" do
+          result
+
+          output =
+            execution.reload.execution_data.entries.dig("form-action-1", 0, "output", 0, "json")
+          expect(output).not_to have_key("formQueryParameters")
+        end
+      end
+
       context "with a long form field value" do
         let(:form_data) { { "feedback" => "a" * 10_001 } }
 

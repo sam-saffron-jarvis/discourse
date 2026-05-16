@@ -148,16 +148,16 @@ module DiscourseWorkflows
               required: false,
               default: false,
             },
+            full_response: {
+              type: :boolean,
+              required: false,
+              default: false,
+            },
             max_response_size_kb: {
               type: :integer,
               required: false,
               default: 1024,
             },
-          },
-          output_schema: {
-            status: :integer,
-            headers: :object,
-            body: :object,
           },
           credentials: [
             {
@@ -176,11 +176,11 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           items =
-            exec_ctx.input_items.map do |item|
+            exec_ctx.input_items.flat_map do |item|
               exec_ctx.with_item(item) do
                 config = exec_ctx.get_parameters(item)
                 result = process(config, exec_ctx)
-                wrap(result)
+                wrap_result(result, paired_item: exec_ctx.paired_item_for(item))
               end
             end
           [items]
@@ -201,7 +201,32 @@ module DiscourseWorkflows
               body: body,
               options: request_options(config),
             )
-          { status: response.status, headers: response.headers, body: response.body }
+          if full_response?(config)
+            {
+              body: response.body,
+              headers: response.headers,
+              statusCode: response.status,
+              statusMessage: response.status_message,
+            }
+          else
+            response.body
+          end
+        end
+
+        def full_response?(config)
+          config["full_response"] == true || config["fullResponse"] == true
+        end
+
+        def wrap_result(result, paired_item:)
+          if result.is_a?(Array)
+            result.map { |entry| wrap_response_body(entry, paired_item:) }
+          else
+            [wrap_response_body(result, paired_item:)]
+          end
+        end
+
+        def wrap_response_body(body, paired_item:)
+          wrap(body.is_a?(Hash) ? body : { data: body }, paired_item:)
         end
 
         def log_request(log, method, uri, headers, body)

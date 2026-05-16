@@ -18,7 +18,9 @@ module DiscourseWorkflows
 
     def show
       if request.format.json?
-        DiscourseWorkflows::Form::Show.call(service_params) do
+        DiscourseWorkflows::Form::Show.call(
+          service_params.deep_merge(params: { form_query_parameters: form_query_parameters }),
+        ) do
           on_success { |form_data:| render json: form_data }
           on_failed_policy(:authenticated_if_required) { raise Discourse::NotLoggedIn }
           on_failed_policy(:action_form) { raise Discourse::NotFound }
@@ -101,6 +103,10 @@ module DiscourseWorkflows
       raise Discourse::InvalidAccess if URI.parse(origin).host != Discourse.current_hostname
     rescue URI::InvalidURIError
       raise Discourse::InvalidAccess
+    end
+
+    def form_query_parameters
+      request.query_parameters.except("resume_token")
     end
   end
 end

@@ -35,25 +35,28 @@ const FORM_FIELD_TYPE_MAP = {
   checkbox: "boolean",
 };
 
-function fieldsFromFormFields(formFields) {
+function fieldsFromFormFields(
+  formFields,
+  { includeQueryParameters = false } = {}
+) {
   const rows = fixedCollectionRows(formFields);
   if (!rows.length) {
     return null;
   }
-  return [
-    {
-      key: "form_data",
-      type: "object",
-      id: "form_data",
-      children: rows.map((f) =>
-        toFieldEntry(
-          formFieldKey(f),
-          FORM_FIELD_TYPE_MAP[f.field_type] || "string"
-        )
-      ),
-    },
-    toFieldEntry("submitted_at", "string"),
-  ];
+  const fields = rows.map((f) =>
+    toFieldEntry(formFieldKey(f), FORM_FIELD_TYPE_MAP[f.field_type] || "string")
+  );
+
+  fields.push(
+    toFieldEntry("submittedAt", "string"),
+    toFieldEntry("formMode", "string")
+  );
+
+  if (includeQueryParameters) {
+    fields.push(toFieldEntry("formQueryParameters", "object"));
+  }
+
+  return fields;
 }
 
 function fieldsFromAssignments(assignments) {
@@ -110,7 +113,9 @@ export default function resolveNodeFields(
     return result;
   }
 
-  const formFields = fieldsFromFormFields(config.form_fields);
+  const formFields = fieldsFromFormFields(config.form_fields, {
+    includeQueryParameters: node.type === "trigger:form",
+  });
   if (formFields) {
     return formFields;
   }

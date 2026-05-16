@@ -745,7 +745,7 @@
     <div class="card" style="border-color:rgba(74,232,160,.3)">
       <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
       <div class="card-title">http_request</div>
-      <div class="card-desc">Full HTTP client. GET/POST/PUT/DELETE/PATCH. JSON, form, raw body. Auth: none, basic, bearer. Output: <code>{ status, headers, body }</code></div>
+      <div class="card-desc">Full HTTP client. GET/POST/PUT/DELETE/PATCH. JSON, form, raw body. Auth: none, basic, bearer. Output defaults to the response body; full response adds <code>{ body, headers, statusCode, statusMessage }</code>.</div>
     </div>
     <div class="card" style="border-color:rgba(74,232,160,.3)">
       <div style="margin-bottom:.5rem;"><span class="badge badge-action">action</span></div>
@@ -1125,7 +1125,7 @@
     <div class="accordion-body">
       <div class="accordion-inner">
 <pre><span class="cmt">// Assuming a node named "HTTP: Get User" ran earlier</span>
-<span class="op">=</span> $(<span class="str">"HTTP: Get User"</span>).first().json.body.username
+<span class="op">=</span> $(<span class="str">"HTTP: Get User"</span>).first().json.username
 
 <span class="cmt">// All items from a list_topics node</span>
 <span class="op">=</span> $(<span class="str">"List Support Topics"</span>).all().length
@@ -1277,12 +1277,15 @@ authentication: <span class="str">"none"</span>
 authentication: <span class="str">"basic_auth"</span>     <span class="cmt"># credential_id required</span>
 authentication: <span class="str">"bearer_token"</span>   <span class="cmt"># credential_id required</span>
 
-<span class="cmt"># Response output item</span>
-{ status: <span class="num">200</span>, headers: {...}, body: {...} }</pre>
+<span class="cmt"># Default response output item</span>
+{ username: <span class="str">"ada"</span>, id: <span class="num">1</span> }
+
+<span class="cmt"># With full_response: true</span>
+{ statusCode: <span class="num">200</span>, statusMessage: <span class="str">"OK"</span>, headers: {...}, body: {...} }</pre>
     </div>
     <div>
       <div class="callout">
-        <strong>never_error:</strong> By default, 4xx/5xx HTTP responses fail the step. Set <code>never_error: true</code> to treat all responses as success — useful when you want to check <code>$json.status</code> yourself in a downstream IF node.
+        <strong>never_error:</strong> By default, 4xx/5xx HTTP responses fail the step. Set <code>never_error: true</code> and <code>full_response: true</code> to treat all responses as success and inspect <code>$json.statusCode</code> yourself in a downstream IF node.
       </div>
       <div class="callout">
         <strong>Response size limit:</strong> Max <code>max_response_size_kb</code> (default 1024 KB). Responses exceeding this are truncated with an error flag in the output.
@@ -1491,9 +1494,9 @@ authentication: <span class="str">"bearer_token"</span>   <span class="cmt"># cr
 <pre><span class="cmt"># Default: 4xx/5xx fail the step</span>
 never_error: <span class="kw">false</span>  <span class="cmt">← default</span>
 
-<span class="cmt"># With never_error: true — inspect status manually</span>
+<span class="cmt"># With never_error: true and full_response: true — inspect status manually</span>
 <span class="kw">IF</span> node:
-  left:     <span class="str">"= $json.status"</span>
+  left:     <span class="str">"= $json.statusCode"</span>
   operator: <span class="str">"greater_than"</span>
   right:    <span class="str">"399"</span>
   <span class="cmt">→ true branch handles the error</span>

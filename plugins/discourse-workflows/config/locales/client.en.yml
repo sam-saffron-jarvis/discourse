@@ -434,6 +434,8 @@ en:
         raw_content_type_placeholder: "text/plain"
         never_error: "Never error"
         never_error_description: "Return non-2xx responses instead of raising an error"
+        full_response: "Include response headers and status"
+        full_response_description: "Return the full response instead of only the body"
       split_out:
         field: "Fields to split out"
         field_description: "Comma-separated field name(s) containing arrays to split. Supports dot notation for nested fields."

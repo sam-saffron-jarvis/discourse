@@ -48,7 +48,7 @@ module DiscourseWorkflows
               },
             },
           },
-          output_schema: Schemas::FormFields::OUTPUT_SCHEMA,
+          output_schema: Schemas::FormFields::FORM_TRIGGER_OUTPUT_SCHEMA,
           capabilities: {
             manually_triggerable: true,
             provides_current_user: true,
@@ -56,14 +56,26 @@ module DiscourseWorkflows
           webhooks: [{ name: "default", path: "webhook_id", http_method: "GET" }],
         )
 
-        def initialize(form_data:, submitted_at:)
+        def initialize(
+          form_data:,
+          submitted_at: Time.current.utc.iso8601(3),
+          form_mode: DiscourseWorkflows::FormPayload::DEFAULT_FORM_MODE,
+          query_parameters: nil
+        )
           super(parameters: {})
           @form_data = form_data
           @submitted_at = submitted_at
+          @form_mode = form_mode
+          @query_parameters = query_parameters
         end
 
         def output
-          { form_data: @form_data, submitted_at: @submitted_at }
+          DiscourseWorkflows::FormPayload.build(
+            @form_data,
+            submitted_at: @submitted_at,
+            form_mode: @form_mode,
+            query_parameters: @query_parameters,
+          )
         end
       end
     end
