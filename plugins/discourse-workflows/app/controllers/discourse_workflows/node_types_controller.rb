@@ -19,14 +19,61 @@ module DiscourseWorkflows
     end
 
     def options
+      request_context = load_options_request_context
+      version = params[:version].presence || request_context.dig("node", "type_version")
       node_class =
-        DiscourseWorkflows::Registry.find_node_type(params[:identifier], version: params[:version])
-      raise Discourse::NotFound unless node_class.respond_to?(:load_options)
+        DiscourseWorkflows::Registry.find_node_type(params[:identifier], version: version)
+      unless node_class.respond_to?(:load_options) || node_class.respond_to?(:load_options_context)
+        raise Discourse::NotFound
+      end
 
-      options = node_class.load_options(params[:source_key])
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: params[:source_key],
+          property_name: request_context["property_name"],
+          node_identifier: params[:identifier],
+          node_version: version,
+          node_id: request_context.dig("node", "id"),
+          node_name: request_context.dig("node", "name"),
+          workflow_id: request_context["workflow_id"],
+          parameters: request_context["parameters"],
+          credentials: request_context["credentials"],
+          search: request_context["search"],
+          filter: request_context["filter"],
+          input_context: request_context["input_context"],
+          execution_context: request_context["execution_context"],
+          user: current_user,
+          guardian: guardian,
+          node_class: node_class,
+        )
+
+      options = DiscourseWorkflows::LoadOptions.call(node_class, context)
       raise Discourse::NotFound if options.nil?
 
       render json: { options: options }
+    end
+
+    private
+
+    def load_options_request_context
+      {
+        "property_name" => params[:property_name],
+        "parameters" => hash_param(:parameters) || hash_param(:currentNodeParameters),
+        "credentials" => hash_param(:credentials),
+        "search" => params[:search],
+        "filter" => params[:filter],
+        "node" => hash_param(:node),
+        "workflow_id" => params[:workflow_id],
+        "input_context" => hash_param(:input_context),
+        "execution_context" => hash_param(:execution_context),
+      }
+    end
+
+    def hash_param(key)
+      value = params[key]
+      value = JSON.parse(value) if value.is_a?(String) && value.start_with?("{")
+      value = value.to_unsafe_h if value.respond_to?(:to_unsafe_h)
+      value if value.is_a?(Hash)
     end
   end
 end

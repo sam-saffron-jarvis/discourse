@@ -348,9 +348,14 @@ export default class FixedCollection extends Component {
                         @form={{object}}
                         @formApi={{@formApi}}
                         @configuration={{item}}
+                        @connections={{@connections}}
+                        @credentials={{@credentials}}
                         @fieldName={{itemField.name}}
+                        @node={{@node}}
                         @nodeDefinition={{this.nodeDefinition}}
+                        @nodeParameters={{@nodeParameters}}
                         @nodeType={{@nodeType}}
+                        @nodes={{@nodes}}
                         @nodeTypes={{@nodeTypes}}
                         @schema={{itemField}}
                       />
@@ -394,9 +399,14 @@ export default class FixedCollection extends Component {
                                 <Field
                                   @form={{subObject}}
                                   @formApi={{@formApi}}
+                                  @connections={{@connections}}
+                                  @credentials={{@credentials}}
                                   @fieldName={{subField.name}}
+                                  @node={{@node}}
                                   @nodeDefinition={{this.nodeDefinition}}
+                                  @nodeParameters={{@nodeParameters}}
                                   @nodeType={{@nodeType}}
+                                  @nodes={{@nodes}}
                                   @nodeTypes={{@nodeTypes}}
                                   @schema={{subField}}
                                 />
@@ -428,9 +438,14 @@ export default class FixedCollection extends Component {
                         <Field
                           @form={{object}}
                           @formApi={{@formApi}}
+                          @connections={{@connections}}
+                          @credentials={{@credentials}}
                           @fieldName={{extraField.name}}
+                          @node={{@node}}
                           @nodeDefinition={{this.nodeDefinition}}
+                          @nodeParameters={{@nodeParameters}}
                           @nodeType={{@nodeType}}
+                          @nodes={{@nodes}}
                           @nodeTypes={{@nodeTypes}}
                           @schema={{extraField}}
                         />
@@ -523,9 +538,14 @@ export default class FixedCollection extends Component {
                   @form={{object}}
                   @formApi={{@formApi}}
                   @configuration={{item}}
+                  @connections={{@connections}}
+                  @credentials={{@credentials}}
                   @fieldName={{itemField.name}}
+                  @node={{@node}}
                   @nodeDefinition={{this.nodeDefinition}}
+                  @nodeParameters={{@nodeParameters}}
                   @nodeType={{@nodeType}}
+                  @nodes={{@nodes}}
                   @nodeTypes={{@nodeTypes}}
                   @schema={{itemField}}
                 />

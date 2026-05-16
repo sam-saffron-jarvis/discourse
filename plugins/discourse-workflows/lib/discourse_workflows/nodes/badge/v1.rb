@@ -62,15 +62,22 @@ module DiscourseWorkflows
           },
         )
 
-        def self.load_options(source_key)
-          case source_key
+        def self.load_options(context)
+          context = DiscourseWorkflows::LoadOptionsContext.coerce(context)
+
+          case context.source_key
           when "badges"
             ::Badge
               .where(enabled: true)
               .order(:name)
               .pluck(:id, :name)
+              .select { |_, name| option_matches_search?(name, context.search) }
               .map { |id, name| { id:, name: } }
           end
+        end
+
+        def self.option_matches_search?(name, search)
+          search.blank? || name.downcase.include?(search.downcase)
         end
 
         def execute(exec_ctx)

@@ -34,6 +34,10 @@ DiscourseWorkflows::Engine.routes.draw do
           :constraints => {
             identifier: %r{[^/]+},
           }
+      post "/node-types/:identifier/options/:source_key" => "node_types#options",
+           :constraints => {
+             identifier: %r{[^/]+},
+           }
       get "/templates" => "templates#index"
       get "/templates/:id" => "templates#show"
       post "/executions" => "executions#create"

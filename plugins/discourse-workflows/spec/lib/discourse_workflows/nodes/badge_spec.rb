@@ -20,6 +20,19 @@ RSpec.describe DiscourseWorkflows::Nodes::Badge::V1 do
         { id: disabled_badge.id, name: disabled_badge.name },
       )
     end
+
+    it "filters badges by the search term" do
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: "badges",
+          search: "A badge",
+          node_class: described_class,
+        )
+
+      expect(described_class.load_options(context)).to contain_exactly(
+        { id: badge_2.id, name: badge_2.name },
+      )
+    end
   end
 
   describe "#execute" do

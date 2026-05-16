@@ -2,8 +2,7 @@ import { hash } from "@ember/helper";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
 import DButton from "discourse/components/d-button";
-import ComboBox from "discourse/select-kit/components/combo-box";
-import ComboBoxField from "./combo-box";
+import ComboBoxField, { DynamicOptionsComboBox } from "./combo-box";
 import ExpressionWrapper from "./expression-wrapper";
 
 export default class DataTableSelect extends ComboBoxField {
@@ -23,8 +22,9 @@ export default class DataTableSelect extends ComboBoxField {
       @placeholder={{@placeholder}}
     >
       <div class="workflows-property-engine__select-with-action">
-        <ComboBox
+        <DynamicOptionsComboBox
           @content={{this.options}}
+          @loadOptions={{if this.usesRemoteOptions this.loadRemoteOptions}}
           @nameProperty="name"
           @value={{@field.value}}
           @valueProperty="id"

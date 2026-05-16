@@ -16,7 +16,34 @@ RSpec.describe DiscourseWorkflows::Nodes::Group::V1 do
 
     it "excludes automatic groups" do
       auto_group_ids = described_class.load_options("groups").map { |g| g[:id] }
-      expect(auto_group_ids).not_to include(*Group::AUTO_GROUP_IDS.values)
+      expect(auto_group_ids).not_to include(*Group::AUTO_GROUPS.values)
+    end
+
+    it "can include automatic groups when the current operation only reads a group" do
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: "groups",
+          parameters: {
+            operation: "get",
+          },
+          node_class: described_class,
+        )
+      group_ids = described_class.load_options(context).map { |g| g[:id] }
+
+      expect(group_ids).to include(*Group::AUTO_GROUPS.values)
+    end
+
+    it "filters groups by the search term" do
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: "groups",
+          search: "another",
+          node_class: described_class,
+        )
+
+      expect(described_class.load_options(context)).to contain_exactly(
+        { id: group_2.id, name: group_2.name },
+      )
     end
   end
 

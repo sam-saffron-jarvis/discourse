@@ -150,12 +150,17 @@ export default class AssignmentCollection extends Component {
             <Field
               @form={{object}}
               @formApi={{@formApi}}
+              @connections={{@connections}}
+              @credentials={{@credentials}}
               @fieldName="name"
               @label={{i18n
                 "discourse_workflows.property_engine.assignment_name"
               }}
+              @node={{@node}}
               @nodeDefinition={{this.nodeDefinition}}
+              @nodeParameters={{@nodeParameters}}
               @nodeType={{@nodeType}}
+              @nodes={{@nodes}}
               @nodeTypes={{@nodeTypes}}
               @schema={{this.nameSchema}}
             />
@@ -163,12 +168,17 @@ export default class AssignmentCollection extends Component {
             <Field
               @form={{object}}
               @formApi={{@formApi}}
+              @connections={{@connections}}
+              @credentials={{@credentials}}
               @fieldName="type"
               @label={{i18n
                 "discourse_workflows.property_engine.assignment_type"
               }}
+              @node={{@node}}
               @nodeDefinition={{this.nodeDefinition}}
+              @nodeParameters={{@nodeParameters}}
               @nodeType={{@nodeType}}
+              @nodes={{@nodes}}
               @nodeTypes={{@nodeTypes}}
               @schema={{this.typeSchema}}
             />
@@ -176,12 +186,17 @@ export default class AssignmentCollection extends Component {
             <Field
               @form={{object}}
               @formApi={{@formApi}}
+              @connections={{@connections}}
+              @credentials={{@credentials}}
               @fieldName="value"
               @label={{i18n
                 "discourse_workflows.property_engine.assignment_value"
               }}
+              @node={{@node}}
               @nodeDefinition={{this.nodeDefinition}}
+              @nodeParameters={{@nodeParameters}}
               @nodeType={{@nodeType}}
+              @nodes={{@nodes}}
               @nodeTypes={{@nodeTypes}}
               @schema={{this.valueSchema item}}
             />

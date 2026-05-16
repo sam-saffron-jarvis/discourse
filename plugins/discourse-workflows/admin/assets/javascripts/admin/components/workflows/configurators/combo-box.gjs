@@ -13,6 +13,16 @@ import {
 } from "../../../lib/workflows/property-engine";
 import ExpressionWrapper from "./expression-wrapper";
 
+export class DynamicOptionsComboBox extends ComboBox {
+  search(filter) {
+    if (this.loadOptions) {
+      return this.loadOptions(filter);
+    }
+
+    return super.search(filter);
+  }
+}
+
 function optionValue(option, valueProperty) {
   return option[valueProperty] ?? option.id ?? option.value;
 }
@@ -24,36 +34,48 @@ function optionName(option, nameProperty) {
 export default class ComboBoxField extends Component {
   @service workflowsNodeTypes;
 
-  @tracked _remoteOptions = null;
+  @tracked _remoteOptions = [];
+  _remoteOptionsRequestKey = null;
 
   constructor(owner, args) {
     super(owner, args);
-    const source = args.schema?.options_source;
-    const identifier =
-      args.nodeDefinition?.name || args.nodeDefinition?.identifier;
-    const localOptions =
-      args.metadata?.[source] || args.nodeDefinition?.metadata?.[source];
-    if (source && identifier && !localOptions) {
-      this.workflowsNodeTypes
-        .loadSourceOptions(identifier, source, args.nodeDefinition?.version)
-        .then((options) => {
-          this._remoteOptions = options;
-        });
-    }
+    this.ensureRemoteOptions();
+  }
+
+  get source() {
+    return this.args.schema?.options_source;
+  }
+
+  get identifier() {
+    return (
+      this.args.nodeDefinition?.name || this.args.nodeDefinition?.identifier
+    );
+  }
+
+  get typeVersion() {
+    return this.args.nodeDefinition?.version || this.args.node?.type_version;
+  }
+
+  get localOptions() {
+    return (
+      this.args.metadata?.[this.source] ||
+      this.args.nodeDefinition?.metadata?.[this.source]
+    );
+  }
+
+  get usesRemoteOptions() {
+    return Boolean(this.source && this.identifier && !this.localOptions);
   }
 
   get metadataOptions() {
-    const source = this.args.schema?.options_source;
-    if (!source) {
+    if (!this.source) {
       return null;
     }
-    const localOptions =
-      this.args.metadata?.[source] ||
-      this.args.nodeDefinition?.metadata?.[source];
-    if (localOptions) {
-      return localOptions;
+    if (this.localOptions) {
+      return this.localOptions;
     }
-    return this._remoteOptions || [];
+    this.ensureRemoteOptions();
+    return this._remoteOptions;
   }
 
   get controlOptions() {
@@ -93,13 +115,7 @@ export default class ComboBoxField extends Component {
 
   get options() {
     if (this.metadataOptions) {
-      return this.metadataOptions.map((option) => ({
-        id: optionValue(option, this.valueProperty),
-        name:
-          optionName(option, this.nameProperty) ||
-          optionValue(option, this.valueProperty),
-        original: option,
-      }));
+      return this.formatOptions(this.metadataOptions);
     }
 
     const optionFormat = this.controlOptions.option_format;
@@ -114,6 +130,78 @@ export default class ComboBoxField extends Component {
           ),
       original: option,
     }));
+  }
+
+  formatOptions(options) {
+    return options.map((option) => ({
+      id: optionValue(option, this.valueProperty),
+      name:
+        optionName(option, this.nameProperty) ||
+        optionValue(option, this.valueProperty),
+      original: option,
+    }));
+  }
+
+  remoteOptionsContext(search = null) {
+    return {
+      propertyName: this.args.fieldName,
+      parameters: this.args.nodeParameters || this.args.configuration || {},
+      credentials: this.args.credentials || {},
+      node: this.args.node,
+      search,
+    };
+  }
+
+  remoteOptionsRequestKey(search = null) {
+    return JSON.stringify({
+      source: this.source,
+      identifier: this.identifier,
+      typeVersion: this.typeVersion,
+      context: this.remoteOptionsContext(search),
+    });
+  }
+
+  ensureRemoteOptions(search = null) {
+    if (!this.usesRemoteOptions) {
+      return;
+    }
+
+    const requestKey = this.remoteOptionsRequestKey(search);
+    if (this._remoteOptionsRequestKey === requestKey) {
+      return;
+    }
+
+    this._remoteOptionsRequestKey = requestKey;
+    this.workflowsNodeTypes
+      .loadSourceOptions(
+        this.identifier,
+        this.source,
+        this.typeVersion,
+        this.remoteOptionsContext(search)
+      )
+      .then((options) => {
+        if (this._remoteOptionsRequestKey === requestKey) {
+          this._remoteOptions = options;
+        }
+      });
+  }
+
+  @action
+  async loadRemoteOptions(search = null) {
+    if (!this.usesRemoteOptions) {
+      return null;
+    }
+
+    const options = await this.workflowsNodeTypes.loadSourceOptions(
+      this.identifier,
+      this.source,
+      this.typeVersion,
+      this.remoteOptionsContext(search)
+    );
+    this._remoteOptions = options;
+    this._remoteOptionsRequestKey = this.remoteOptionsRequestKey(search);
+
+    return this.formatOptions(options);
   }
 
   @action
@@ -155,8 +243,9 @@ export default class ComboBoxField extends Component {
       @supportsExpression={{@supportsExpression}}
       @placeholder={{@placeholder}}
     >
-      <ComboBox
+      <DynamicOptionsComboBox
         @content={{this.options}}
+        @loadOptions={{if this.usesRemoteOptions this.loadRemoteOptions}}
         @nameProperty="name"
         @value={{@field.value}}
         @valueProperty="id"

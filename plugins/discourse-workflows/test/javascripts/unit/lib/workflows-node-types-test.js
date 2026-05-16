@@ -1,4 +1,7 @@
+import { setupTest } from "ember-qunit";
 import { module, test } from "qunit";
+import pretender, { response } from "discourse/tests/helpers/create-pretender";
+import ComboBoxField from "discourse/plugins/discourse-workflows/admin/components/workflows/configurators/combo-box";
 import {
   nodeTypeInputLabel,
   nodeTypeInputs,
@@ -158,5 +161,145 @@ module("Unit | Utility | workflows node types", function () {
       }),
       "Input 1"
     );
+  });
+});
+
+module("Unit | Service | workflows-node-types", function (hooks) {
+  setupTest(hooks);
+
+  test("buildLoadOptionsContext includes current node, parameters, credentials, and execution context", function (assert) {
+    const service = this.owner.lookup("service:workflows-node-types");
+    const node = {
+      clientId: "node-1",
+      name: "Group",
+      type: "action:group",
+      type_version: "1.0",
+    };
+    const upstreamOutput = [{ json: { username: "sam" } }];
+
+    service.lastExecutionNodeOutputs = { "node-0": upstreamOutput };
+    service.setEditingContext(
+      node,
+      [node],
+      [{ sourceClientId: "node-0", targetClientId: "node-1" }],
+      { workflowId: 7 }
+    );
+
+    const context = service.buildLoadOptionsContext({
+      identifier: "action:group",
+      typeVersion: "1.0",
+      propertyName: "group_id",
+      parameters: { operation: "get" },
+      credentials: { auth: { id: "12", credential_type: "basic_auth" } },
+      search: "staff",
+    });
+
+    assert.deepEqual(context.parameters, { operation: "get" });
+    assert.deepEqual(context.credentials, {
+      auth: { id: "12", credential_type: "basic_auth" },
+    });
+    assert.deepEqual(context.node, {
+      id: "node-1",
+      name: "Group",
+      type: "action:group",
+      type_version: "1.0",
+    });
+    assert.strictEqual(context.property_name, "group_id");
+    assert.strictEqual(context.workflow_id, 7);
+    assert.strictEqual(context.search, "staff");
+    assert.strictEqual(context.filter, "staff");
+    assert.deepEqual(context.input_context, {
+      available: true,
+      source_node_outputs: { "node-0": upstreamOutput },
+    });
+    assert.deepEqual(context.execution_context, {
+      last_node_outputs: { "node-0": upstreamOutput },
+    });
+  });
+
+  test("dynamic options use full node parameters even inside nested configurators", function (assert) {
+    const component = Object.create(ComboBoxField.prototype);
+
+    Object.defineProperty(component, "args", {
+      value: {
+        fieldName: "nested_group_id",
+        configuration: { local: true },
+        nodeParameters: { operation: "get", authentication: "basic_auth" },
+        credentials: { auth: { id: "12", credential_type: "basic_auth" } },
+        node: { clientId: "node-1", type: "action:group" },
+      },
+    });
+
+    const context = component.remoteOptionsContext("staff");
+
+    assert.deepEqual(context.parameters, {
+      operation: "get",
+      authentication: "basic_auth",
+    });
+    assert.deepEqual(context.credentials, {
+      auth: { id: "12", credential_type: "basic_auth" },
+    });
+    assert.deepEqual(context.node, {
+      clientId: "node-1",
+      type: "action:group",
+    });
+    assert.strictEqual(context.propertyName, "nested_group_id");
+    assert.strictEqual(context.search, "staff");
+  });
+
+  test("loadSourceOptions posts structured context and caches by context", async function (assert) {
+    const requests = [];
+
+    pretender.post(
+      "/admin/plugins/discourse-workflows/node-types/action%3Agroup/options/groups.json",
+      (request) => {
+        const body = JSON.parse(request.requestBody);
+        requests.push(body);
+
+        return response({
+          options: [{ id: requests.length, name: body.parameters.operation }],
+        });
+      }
+    );
+
+    const service = this.owner.lookup("service:workflows-node-types");
+    const context = {
+      parameters: { operation: "add" },
+      search: "alp",
+      node: { clientId: "node-1", name: "Group" },
+    };
+
+    const first = await service.loadSourceOptions(
+      "action:group",
+      "groups",
+      "1.0",
+      context
+    );
+    const second = await service.loadSourceOptions(
+      "action:group",
+      "groups",
+      "1.0",
+      context
+    );
+    const third = await service.loadSourceOptions(
+      "action:group",
+      "groups",
+      "1.0",
+      { ...context, parameters: { operation: "get" } }
+    );
+
+    assert.strictEqual(requests.length, 2);
+    assert.deepEqual(second, first);
+    assert.deepEqual(requests[0].parameters, { operation: "add" });
+    assert.strictEqual(requests[0].search, "alp");
+    assert.strictEqual(requests[0].filter, "alp");
+    assert.deepEqual(requests[0].node, {
+      id: "node-1",
+      name: "Group",
+      type: "action:group",
+      type_version: "1.0",
+    });
+    assert.strictEqual(requests[0].version, "1.0");
+    assert.strictEqual(third[0].name, "get");
   });
 });

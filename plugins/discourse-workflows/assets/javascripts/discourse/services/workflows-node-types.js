@@ -3,6 +3,42 @@ import Service from "@ember/service";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 
+function sortForStableStringify(value) {
+  if (Array.isArray(value)) {
+    return value.map(sortForStableStringify);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.keys(value)
+      .sort()
+      .reduce((result, key) => {
+        result[key] = sortForStableStringify(value[key]);
+        return result;
+      }, {});
+  }
+
+  return value;
+}
+
+function stableStringify(value) {
+  return JSON.stringify(sortForStableStringify(value));
+}
+
+function compactObject(object) {
+  return Object.fromEntries(
+    Object.entries(object).filter(([, value]) => value !== undefined)
+  );
+}
+
+function normalizeNodeForLoadOptions(node, identifier, typeVersion) {
+  return compactObject({
+    id: node?.clientId || node?.id,
+    name: node?.name,
+    type: node?.type || identifier,
+    type_version: node?.type_version || typeVersion,
+  });
+}
+
 export default class WorkflowsNodeTypes extends Service {
   @tracked nodeTypes = null;
   @tracked credentialTypes = null;
@@ -50,8 +86,24 @@ export default class WorkflowsNodeTypes extends Service {
     return this.nodeTypeMap.get(identifier) || null;
   }
 
-  async loadSourceOptions(identifier, sourceKey, typeVersion = null) {
-    const cacheKey = `${identifier}:${typeVersion || "latest"}:${sourceKey}`;
+  async loadSourceOptions(
+    identifier,
+    sourceKey,
+    typeVersion = null,
+    context = {}
+  ) {
+    const requestContext = this.buildLoadOptionsContext({
+      identifier,
+      sourceKey,
+      typeVersion,
+      ...context,
+    });
+    const cacheKey = stableStringify({
+      identifier,
+      typeVersion: typeVersion || "latest",
+      sourceKey,
+      context: requestContext,
+    });
     if (this._sourceOptionsCache.has(cacheKey)) {
       return this._sourceOptionsCache.get(cacheKey);
     }
@@ -60,7 +112,14 @@ export default class WorkflowsNodeTypes extends Service {
       const encodedIdentifier = encodeURIComponent(identifier);
       const url = `/admin/plugins/discourse-workflows/node-types/${encodedIdentifier}/options/${sourceKey}.json`;
       const result = await ajax(url, {
-        data: typeVersion ? { version: typeVersion } : undefined,
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(
+          compactObject({
+            version: typeVersion,
+            ...requestContext,
+          })
+        ),
       });
       const options = result.options || [];
       this._sourceOptionsCache.set(cacheKey, options);
@@ -69,6 +128,84 @@ export default class WorkflowsNodeTypes extends Service {
       popupAjaxError(e);
       return [];
     }
+  }
+
+  buildLoadOptionsContext({
+    identifier,
+    typeVersion = null,
+    propertyName = null,
+    parameters = null,
+    credentials = null,
+    node = null,
+    search = null,
+    filter = null,
+    inputContext = null,
+    executionContext = null,
+  } = {}) {
+    const resolvedNode = node || this.editingNode;
+
+    return compactObject({
+      property_name: propertyName,
+      parameters: parameters || {},
+      credentials: credentials || {},
+      search,
+      filter: filter || search,
+      node: normalizeNodeForLoadOptions(resolvedNode, identifier, typeVersion),
+      workflow_id: this.workflowId,
+      input_context:
+        inputContext === null
+          ? this.inputContextForNode(resolvedNode)
+          : inputContext,
+      execution_context:
+        executionContext === null
+          ? this.executionContextForNode(resolvedNode)
+          : executionContext,
+    });
+  }
+
+  inputContextForNode(node = this.editingNode) {
+    if (!node || !this.lastExecutionNodeOutputs) {
+      return {
+        available: false,
+        reason: "No editor execution preview is available for this node",
+      };
+    }
+
+    const incomingConnections = (this.graphConnections || []).filter(
+      (connection) => connection.targetClientId === node.clientId
+    );
+    const sourceNodeOutputs = Object.fromEntries(
+      incomingConnections
+        .map((connection) => [
+          connection.sourceClientId,
+          this.lastExecutionNodeOutputs[connection.sourceClientId],
+        ])
+        .filter(([, output]) => output !== undefined)
+    );
+
+    if (Object.keys(sourceNodeOutputs).length === 0) {
+      return {
+        available: false,
+        reason:
+          "No upstream execution preview output is available for this node",
+      };
+    }
+
+    return {
+      available: true,
+      source_node_outputs: sourceNodeOutputs,
+    };
+  }
+
+  executionContextForNode(node = this.editingNode) {
+    const currentNodeOutput = node
+      ? this.lastExecutionNodeOutputs?.[node.clientId]
+      : undefined;
+
+    return compactObject({
+      last_node_outputs: this.lastExecutionNodeOutputs || {},
+      current_node_output: currentNodeOutput,
+    });
   }
 
   setEditingContext(node, nodes, connections, { workflowId } = {}) {

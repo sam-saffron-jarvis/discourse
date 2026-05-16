@@ -104,10 +104,15 @@ export default class Collection extends Component {
               @form={{@form}}
               @formApi={{@formApi}}
               @configuration={{this.currentValue}}
+              @connections={{@connections}}
+              @credentials={{@credentials}}
               @fieldName={{this.optionPath option.name}}
               @label={{this.optionLabel option}}
+              @node={{@node}}
               @nodeDefinition={{this.nodeDefinition}}
+              @nodeParameters={{@nodeParameters}}
               @nodeType={{@nodeType}}
+              @nodes={{@nodes}}
               @nodeTypes={{@nodeTypes}}
               @schema={{option}}
             />

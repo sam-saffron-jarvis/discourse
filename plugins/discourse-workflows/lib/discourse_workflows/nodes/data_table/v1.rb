@@ -141,11 +141,14 @@ module DiscourseWorkflows
           "#{property_i18n_prefix}.#{property_i18n_scope}.operations.#{operation}"
         end
 
-        def self.load_options(source_key)
-          case source_key
+        def self.load_options(context)
+          context = DiscourseWorkflows::LoadOptionsContext.coerce(context)
+
+          case context.source_key
           when "data_tables"
             DiscourseWorkflows::DataTable
               .order(:name)
+              .select { |dt| option_matches_search?(dt.name, context.search) }
               .map do |dt|
                 {
                   id: dt.id,
@@ -161,6 +164,10 @@ module DiscourseWorkflows
                 }
               end
           end
+        end
+
+        def self.option_matches_search?(name, search)
+          search.blank? || name.downcase.include?(search.downcase)
         end
 
         def execute(exec_ctx)

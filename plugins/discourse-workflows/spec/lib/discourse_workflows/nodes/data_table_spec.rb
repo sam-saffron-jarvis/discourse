@@ -31,6 +31,20 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
       expect(column_names_reserved).to contain_exactly("id", "created_at", "updated_at")
       expect(table_meta[:columns].find { |c| c[:name] == "email" }).not_to have_key(:reserved)
     end
+
+    it "filters data tables by the search term" do
+      Fabricate(:discourse_workflows_data_table, name: "projects")
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: "data_tables",
+          search: "cont",
+          node_class: described_class,
+        )
+
+      expect(described_class.load_options(context).map { |table| table[:id] }).to contain_exactly(
+        data_table.id,
+      )
+    end
   end
 
   describe "error handling" do

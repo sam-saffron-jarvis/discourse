@@ -33,6 +33,10 @@ export default class PropertyEngineConfigurator extends Component {
     return this.nodeDefinition?.metadata || {};
   }
 
+  get nodeParameters() {
+    return this.args.nodeParameters || this.args.configuration || {};
+  }
+
   <template>
     {{#each this.allFields key="name" as |field|}}
       {{#if (fieldVisible field @configuration)}}
@@ -40,9 +44,15 @@ export default class PropertyEngineConfigurator extends Component {
           <Collection
             @form={{@form}}
             @formApi={{@formApi}}
+            @configuration={{@configuration}}
+            @connections={{@connections}}
+            @credentials={{@credentials}}
             @fieldName={{field.name}}
+            @node={{@node}}
             @nodeDefinition={{this.nodeDefinition}}
+            @nodeParameters={{this.nodeParameters}}
             @nodeType={{this.nodeType}}
+            @nodes={{@nodes}}
             @nodeTypes={{@nodeTypes}}
             @schema={{field}}
           />
@@ -50,9 +60,15 @@ export default class PropertyEngineConfigurator extends Component {
           <FixedCollection
             @form={{@form}}
             @formApi={{@formApi}}
+            @configuration={{@configuration}}
+            @connections={{@connections}}
+            @credentials={{@credentials}}
             @fieldName={{field.name}}
+            @node={{@node}}
             @nodeDefinition={{this.nodeDefinition}}
+            @nodeParameters={{this.nodeParameters}}
             @nodeType={{this.nodeType}}
+            @nodes={{@nodes}}
             @nodeTypes={{@nodeTypes}}
             @schema={{field}}
           />
@@ -60,9 +76,15 @@ export default class PropertyEngineConfigurator extends Component {
           <AssignmentCollection
             @form={{@form}}
             @formApi={{@formApi}}
+            @configuration={{@configuration}}
+            @connections={{@connections}}
+            @credentials={{@credentials}}
             @fieldName={{field.name}}
+            @node={{@node}}
             @nodeDefinition={{this.nodeDefinition}}
+            @nodeParameters={{this.nodeParameters}}
             @nodeType={{this.nodeType}}
+            @nodes={{@nodes}}
             @nodeTypes={{@nodeTypes}}
             @schema={{field}}
           />
@@ -72,10 +94,12 @@ export default class PropertyEngineConfigurator extends Component {
             @formApi={{@formApi}}
             @configuration={{@configuration}}
             @connections={{@connections}}
+            @credentials={{@credentials}}
             @fieldName={{field.name}}
             @metadata={{this.metadata}}
             @node={{@node}}
             @nodeDefinition={{this.nodeDefinition}}
+            @nodeParameters={{this.nodeParameters}}
             @nodes={{@nodes}}
             @nodeType={{this.nodeType}}
             @nodeTypes={{@nodeTypes}}
