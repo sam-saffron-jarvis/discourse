@@ -20,7 +20,13 @@ module DiscourseWorkflows
         node_id = node["id"]
         node_type = node["type"]
         parameters = NodeData.parameters(node)
-        credentials = NodeData.normalize_credentials(NodeData.credentials(node))
+        split =
+          NodeData.split(
+            parameters: parameters,
+            credentials: NodeData.credentials(node),
+            node_type: node_type,
+          )
+        credentials = split["credentials"]
 
         rows << build_row("node_type", node_type, node_id) if node_type.present?
 
