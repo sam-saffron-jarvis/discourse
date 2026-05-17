@@ -5,17 +5,32 @@ import {
 import StickyNote, { STICKY_NOTE_TYPE } from "../../../models/sticky-note";
 import WorkflowNode from "../../../models/workflow-node";
 
-export function exportWorkflowToFile(nodes, connections, stickyNotes) {
+function stripCredentials(serialized) {
+  delete serialized.credentials;
+  return serialized;
+}
+
+function sanitizeImportedObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const sanitized = structuredClone(value);
+  delete sanitized.credentials;
+  return sanitized;
+}
+
+export function buildWorkflowExportPayload(nodes, connections, stickyNotes) {
   const exportedNodes = (nodes || []).map((n) => {
     const serialized = WorkflowNode.serialize(n);
     delete serialized.client_id;
-    return serialized;
+    return stripCredentials(serialized);
   });
 
   const exportedStickyNotes = (stickyNotes || []).map((n) => {
     const serialized = StickyNote.serialize(n);
     delete serialized.client_id;
-    return serialized;
+    return stripCredentials(serialized);
   });
 
   const allNodes = [...exportedNodes, ...exportedStickyNotes];
@@ -36,12 +51,15 @@ export function exportWorkflowToFile(nodes, connections, stickyNotes) {
       target_input_index: normalizeTargetInputIndex(c),
     }));
 
-  const payload = {
+  return {
     version: 2,
     nodes: allNodes,
     connections: exportedConnections,
   };
+}
 
+export function exportWorkflowToFile(nodes, connections, stickyNotes) {
+  const payload = buildWorkflowExportPayload(nodes, connections, stickyNotes);
   const data = JSON.stringify(payload, null, 2);
   const date = new Date().toISOString().slice(0, 10);
   const file = new File([data], `workflow-nodes-${date}.json`, {
@@ -77,9 +95,9 @@ export function parseWorkflowImport(text) {
       type: n.type,
       type_version: n.type_version,
       name: n.name,
-      parameters: n.parameters || {},
-      credentials: n.credentials || {},
-      settings: n.settings || {},
+      parameters: sanitizeImportedObject(n.parameters),
+      credentials: {},
+      settings: sanitizeImportedObject(n.settings),
       webhook_id: n.webhook_id || null,
       position: n.position || null,
     })

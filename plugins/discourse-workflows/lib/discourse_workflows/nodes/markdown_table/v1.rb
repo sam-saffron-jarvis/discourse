@@ -94,11 +94,7 @@ module DiscourseWorkflows
         end
 
         def render_table(headers, rows)
-          lines = []
-          lines << row_line(headers)
-          lines << row_line(headers.map { "---" })
-          rows.each { |cells| lines << row_line(cells) }
-          lines.join("\n")
+          ([headers, headers.map { "---" }] + rows).map { |cells| row_line(cells) }.join("\n")
         end
 
         def row_line(cells)

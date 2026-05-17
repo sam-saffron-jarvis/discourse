@@ -279,14 +279,8 @@ module DiscourseWorkflows
         return query if normalized_filter.blank? || normalized_filter["filters"].blank?
 
         conditions = normalized_filter["filters"].map { |f| build_arel_condition(f) }
-        combined =
-          if normalized_filter["type"] == "or"
-            conditions.reduce(:or)
-          else
-            conditions.reduce(:and)
-          end
-
-        query.where(combined)
+        combiner = normalized_filter["type"] == "or" ? :or : :and
+        query.where(conditions.reduce(combiner))
       end
 
       def apply_ordering(query, sort_by, sort_direction)
@@ -358,7 +352,7 @@ module DiscourseWorkflows
       end
 
       def serialize_row(row)
-        row.each_with_object({}) { |(key, value), result| result[key] = serialize_value(value) }
+        row.transform_values { |value| serialize_value(value) }
       end
 
       def serialize_value(value)

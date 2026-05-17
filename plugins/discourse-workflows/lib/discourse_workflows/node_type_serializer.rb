@@ -2,74 +2,41 @@
 
 module DiscourseWorkflows
   class NodeTypeSerializer
-    def initialize(identifier:, latest_class:, latest_version:, available_versions:)
+    def initialize(identifier:, available_versions:)
       @identifier = identifier
-      @latest_class = latest_class
-      @latest_version = latest_version
       @available_versions = available_versions
+      @latest_version = available_versions.last
     end
 
     def to_h
-      latest = serializable_version(@latest_class, @latest_version)
-      description = latest[:description]
-      ui = latest[:ui]
-      capabilities = latest[:capabilities]
+      versions = version_descriptions
+      latest = versions.fetch(@latest_version)
+      schema_versions = versions.transform_values { |v| v[:property_schema] } if versions.size > 1
 
-      {
-        displayName: description[:displayName],
-        name: @identifier,
-        version: @latest_version,
-        defaults: description[:defaults],
-        inputs: description[:inputs],
-        outputs: description[:outputs],
-        properties: description[:properties],
-        property_versions: property_schema_versions,
-        outputSchema: latest[:output_schema],
-        credentials: description[:credentials],
-        webhooks: description[:webhooks],
-        description: description,
-        identifier: @identifier,
-        kind: @latest_class.kind,
+      latest.merge(
+        property_versions: schema_versions,
+        property_schema_versions: schema_versions,
         latest_version: @latest_version,
         available_versions: @available_versions,
         latest: latest,
-        versions: version_descriptions,
-        property_schema: @latest_class.property_schema,
-        property_schema_versions: property_schema_versions,
-        output_schema: latest[:output_schema],
-        ui: ui,
-        capabilities: capabilities,
-        ports: latest[:outputs],
-        operations: latest[:operations],
-        icon: ui[:icon],
-        color: ui[:color],
-        branching: capabilities[:branching],
-        manually_triggerable: capabilities[:manually_triggerable],
-        available: @latest_class.available?,
-        unavailable_reason_key:
-          (@latest_class.unavailable_reason_key unless @latest_class.available?),
-      }.compact
+        versions: versions,
+        icon: latest.dig(:ui, :icon),
+        color: latest.dig(:ui, :color),
+        branching: latest.dig(:capabilities, :branching),
+        manually_triggerable: latest.dig(:capabilities, :manually_triggerable),
+      ).compact
     end
 
     private
 
     def version_descriptions
-      @available_versions.to_h do |version|
-        klass = Registry.find_node_type(@identifier, version: version)
-        [version, serializable_version(klass, version)]
-      end
-    end
-
-    def property_schema_versions
-      return if @available_versions.size <= 1
-
-      @available_versions.to_h do |version|
-        [version, Registry.find_node_type(@identifier, version: version).property_schema]
+      @available_versions.index_with do |version|
+        serializable_version(Registry.find_node_type(@identifier, version: version), version)
       end
     end
 
     def serializable_version(klass, version)
-      output_schema = klass.respond_to?(:output_schema) ? klass.output_schema : {}
+      output_schema = klass.output_schema
       description =
         klass.description.merge(
           displayName: klass.label_key,

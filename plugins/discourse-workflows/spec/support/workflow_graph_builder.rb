@@ -24,7 +24,7 @@ module DiscourseWorkflows
           credentials: credentials,
           settings: settings,
           webhook_id: webhook_id,
-          node_type: type,
+          node_type: registered_node_type(type) || type,
         )
 
       @nodes << {
@@ -62,6 +62,10 @@ module DiscourseWorkflows
     end
 
     private
+
+    def registered_node_type(type)
+      DiscourseWorkflows::NodeType.registered_nodes.find { _1.description[:name] == type }
+    end
 
     def connection_index(value)
       value = value.to_s

@@ -3,13 +3,7 @@
 module DiscourseWorkflows
   class InputContext
     def self.from_node_context(node_context)
-      return {} unless node_context
-
-      {}.tap do |input_context|
-        if node_context.key?("no_items_left")
-          input_context["noItemsLeft"] = node_context["no_items_left"]
-        end
-      end
+      node_context&.key?("no_items_left") ? { "noItemsLeft" => node_context["no_items_left"] } : {}
     end
   end
 end

@@ -138,17 +138,12 @@ module DiscourseWorkflows
 
     def self.exemplar_value(value)
       return TYPE_EXEMPLARS.fetch(value, "") unless value.is_a?(Hash)
-
-      if value.key?(:type)
-        type = value[:type]
-        if type == :object && value[:fields].is_a?(Hash)
-          exemplar_from_schema(value[:fields])
-        else
-          TYPE_EXEMPLARS.fetch(type, "")
-        end
-      else
-        exemplar_from_schema(value)
+      return exemplar_from_schema(value) unless value.key?(:type)
+      if value[:type] == :object && value[:fields].is_a?(Hash)
+        return exemplar_from_schema(value[:fields])
       end
+
+      TYPE_EXEMPLARS.fetch(value[:type], "")
     end
 
     def self.schema_extensions
@@ -197,6 +192,10 @@ module DiscourseWorkflows
     end
 
     private
+
+    def map_input_items(exec_ctx)
+      [exec_ctx.input_items.map { |item| wrap(yield(exec_ctx.get_parameters(item), item)) }]
+    end
 
     def wrap(data, paired_item: nil)
       Item.wrap(data, paired_item:)

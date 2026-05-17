@@ -72,12 +72,12 @@ module DiscourseWorkflows
     end
     alias get_current_node_parameters current_node_parameters
 
-    def credential_reference(slot)
-      direct_reference = credentials[slot.to_s]
-      return direct_reference if direct_reference.present?
+    def matches_search?(value)
+      search.blank? || value.downcase.include?(search.downcase)
+    end
 
-      definition = credential_definition(slot)
-      credentials[definition["name"]] if definition.present?
+    def credential_reference(slot)
+      credentials[slot.to_s].presence || credentials[credential_definition(slot)&.fetch("name")]
     end
 
     def credential_reference?(slot)
@@ -130,23 +130,11 @@ module DiscourseWorkflows
     end
 
     def filter_credentials(credentials)
-      normalized = NodeData.normalize_credentials(normalize_hash(credentials))
-      definitions = credential_definitions
-      return normalized if node_class.blank?
-      return {} if definitions.blank?
-
-      definitions.each_with_object({}) do |definition, result|
-        slot = definition["name"]
-        credential = normalized[slot]
-        next if credential.blank? || !NodeData.credential_slot_visible?(definition, parameters)
-
-        credential_type = credential["credential_type"].presence
-        credential_types = NodeData.credential_types_for(definition)
-        credential_type ||= credential_types.first if credential_types.one?
-        next if credential_type.blank? || credential_types.exclude?(credential_type)
-
-        result[slot] = credential.merge("credential_type" => credential_type)
-      end
+      NodeData.filter_declared_credentials(
+        NodeData.normalize_credentials(normalize_hash(credentials)),
+        node_class,
+        parameters,
+      )
     end
 
     def credential_definitions

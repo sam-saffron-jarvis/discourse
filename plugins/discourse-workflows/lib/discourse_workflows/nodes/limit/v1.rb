@@ -31,13 +31,7 @@ module DiscourseWorkflows
           max = @configuration.fetch("max_items") { 10 }.to_i
           keep = @configuration.fetch("keep") { "first" }
 
-          items =
-            if keep == "last"
-              exec_ctx.input_items.last(max)
-            else
-              exec_ctx.input_items.first(max)
-            end
-          [items]
+          [keep == "last" ? exec_ctx.input_items.last(max) : exec_ctx.input_items.first(max)]
         end
       end
     end

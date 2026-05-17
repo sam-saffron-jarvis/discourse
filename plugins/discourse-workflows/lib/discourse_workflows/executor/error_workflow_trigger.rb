@@ -14,8 +14,8 @@ module DiscourseWorkflows
         return if @execution_mode == :manual
 
         error_workflow = error_workflow_for_failure
-        return unless eligible?(error_workflow)
-        return if self_retriggering?(error_workflow)
+        return unless error_workflow&.published?
+        return if @execution_mode == :error_mode && error_workflow.id == @workflow.id
 
         workflow_version = error_workflow.published_version
         trigger_node = trigger_node_for(workflow_version)
@@ -41,14 +41,6 @@ module DiscourseWorkflows
       def error_workflow_for_failure
         return @workflow.error_workflow if @workflow.error_workflow_id.present?
         @workflow if trigger_node_for(@workflow.published_version)
-      end
-
-      def eligible?(error_workflow)
-        error_workflow&.published?
-      end
-
-      def self_retriggering?(error_workflow)
-        @execution_mode == :error_mode && error_workflow.id == @workflow.id
       end
 
       def trigger_node_for(workflow_version)
@@ -91,21 +83,9 @@ module DiscourseWorkflows
       def n8n_execution_mode
         return "error" if @execution_mode == :error_mode
         return "manual" if @execution_mode == :manual
-        return "webhook" if webhook_trigger?
 
-        "trigger"
-      end
-
-      def webhook_trigger?
-        %w[trigger:form trigger:webhook].include?(trigger_node_type)
-      end
-
-      def trigger_node_type
-        @trigger_node_type ||=
-          begin
-            trigger_node = @execution&.workflow_node(@execution.trigger_node_id)
-            trigger_node&.dig("type")
-          end
+        trigger_node = @execution&.workflow_node(@execution.trigger_node_id)
+        %w[trigger:form trigger:webhook].include?(trigger_node&.dig("type")) ? "webhook" : "trigger"
       end
 
       def last_failed_step_node_name
@@ -113,9 +93,8 @@ module DiscourseWorkflows
           @steps.reverse_each.find do |s|
             s.respond_to?(:error?) ? s.error? : s["status"] == "error"
           end
-        return step.node_name if step.respond_to?(:node_name)
 
-        step&.dig("node_name")
+        step.respond_to?(:node_name) ? step.node_name : step&.dig("node_name")
       end
     end
   end

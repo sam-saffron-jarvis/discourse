@@ -35,36 +35,32 @@ module DiscourseWorkflows
     def initialize(workflow_data)
       data = workflow_data.deep_stringify_keys
       @workflow_name = data["workflow_name"]
-      @nodes_by_id = {}
       @nodes =
         data
           .fetch("nodes") { [] }
           .map do |n|
-            node =
-              SnapshotNode.new(
-                id: n["id"].to_s,
-                type: n["type"],
-                type_version: n["type_version"] || Registry::DEFAULT_VERSION,
-                name: n["name"],
-                position: n["position"],
-                parameters: n["parameters"] || {},
-                credentials: n["credentials"] || {},
-                settings: n["settings"] || {},
-                webhook_id: n["webhook_id"],
-              ).freeze
-            @nodes_by_id[node.id] = node
-            node
+            SnapshotNode.new(
+              id: n["id"].to_s,
+              type: n["type"],
+              type_version: n["type_version"] || Registry::DEFAULT_VERSION,
+              name: n["name"],
+              position: n["position"],
+              parameters: n["parameters"] || {},
+              credentials: n["credentials"] || {},
+              settings: n["settings"] || {},
+              webhook_id: n["webhook_id"],
+            ).freeze
           end
+      @nodes_by_id = @nodes.index_by(&:id)
 
       @connections =
         data
           .fetch("connections") { [] }
           .map do |c|
-            target_node_id = c["target_node_id"].to_s
             SnapshotConnection.new(
               source_node_id: c["source_node_id"].to_s,
               source_output_index: c["source_output_index"].to_i,
-              target_node_id: target_node_id,
+              target_node_id: c["target_node_id"].to_s,
               target_input_index: c["target_input_index"].to_i,
               connection_type: c["connection_type"] || "main",
             ).freeze
@@ -117,34 +113,11 @@ module DiscourseWorkflows
     end
 
     def to_h
-      result = {
-        "nodes" =>
-          nodes.map do |n|
-            {
-              "id" => n.id,
-              "type" => n.type,
-              "type_version" => n.type_version,
-              "name" => n.name,
-              "position" => n.position,
-              "parameters" => n.parameters,
-              "credentials" => n.credentials,
-              "settings" => n.settings,
-              "webhook_id" => n.webhook_id,
-            }
-          end,
-        "connections" =>
-          connections.map do |c|
-            {
-              "source_node_id" => c.source_node_id,
-              "source_output_index" => c.source_output_index,
-              "target_node_id" => c.target_node_id,
-              "target_input_index" => c.target_input_index,
-              "connection_type" => c.connection_type,
-            }
-          end,
-      }
-      result["workflow_name"] = workflow_name if workflow_name.present?
-      result
+      {
+        "nodes" => nodes.map { |node| node.to_h.stringify_keys },
+        "connections" => connections.map { |connection| connection.to_h.stringify_keys },
+        "workflow_name" => workflow_name.presence,
+      }.compact
     end
 
     def self.from_workflow(workflow, published: false)

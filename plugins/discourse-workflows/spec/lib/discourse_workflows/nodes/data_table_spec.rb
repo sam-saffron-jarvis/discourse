@@ -69,6 +69,36 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
         )
       }.to raise_error(ArgumentError, /Unknown column name/)
     end
+
+    it "raises invalid row errors with the node error prefix" do
+      expect {
+        execute_data_table(
+          "operation" => "insert",
+          "data_table_id" => data_table.id.to_s,
+          "columns" => {
+            "score" => "not-a-number",
+          },
+        )
+      }.to raise_error(ArgumentError, /Invalid row: Value 'not-a-number'/)
+    end
+
+    it "raises invalid query errors with the node error prefix" do
+      expect {
+        execute_data_table(
+          "operation" => "get",
+          "data_table_id" => data_table.id.to_s,
+          "filter" => [
+            { "columnName" => "nonexistent", "condition" => "equals", "value" => "test" },
+          ],
+        )
+      }.to raise_error(ArgumentError, /Invalid query: Unknown column name/)
+    end
+
+    it "raises for unknown operations" do
+      expect {
+        execute_data_table("operation" => "truncate", "data_table_id" => data_table.id.to_s)
+      }.to raise_error(ArgumentError, /Unknown operation/)
+    end
   end
 
   describe "insert operation" do
@@ -189,6 +219,25 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
 
       expect(items[0]["json"]["operation"]).to eq("insert")
       expect(count_data_table_rows(data_table)).to eq(2)
+    end
+
+    it "updates when the filter matches an existing row" do
+      insert_data_table_row(data_table, "email" => "existing@test.com", "score" => 1)
+
+      items =
+        execute_data_table(
+          "operation" => "upsert",
+          "data_table_id" => data_table.id.to_s,
+          "filter" => [
+            { "columnName" => "email", "condition" => "equals", "value" => "existing@test.com" },
+          ],
+          "columns" => {
+            "score" => "10",
+          },
+        )
+
+      expect(items[0]["json"]).to eq("operation" => "update", "count" => 1)
+      expect(count_data_table_rows(data_table)).to eq(1)
     end
 
     it "raises when the storage limit is exceeded" do

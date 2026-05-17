@@ -69,7 +69,7 @@ module DiscourseWorkflows
 
       filter = filter.with_indifferent_access
       column_name = validated_column_name(filter[:columnName], index)
-      condition = validated_condition(filter[:condition], index)
+      condition = validated_condition(filter[:condition])
 
       {
         "columnName" => column_name,
@@ -84,7 +84,7 @@ module DiscourseWorkflows
       column_name
     end
 
-    def validated_condition(condition, index)
+    def validated_condition(condition)
       condition ||= "eq"
       if VALID_CONDITIONS.exclude?(condition)
         raise ArgumentError, "Unsupported filter condition '#{condition}'"
@@ -97,8 +97,8 @@ module DiscourseWorkflows
       normalized = DataTableRow.normalize_value(value, DataTable.column_type(column))
 
       return normalize_like_value(normalized, condition) if LIKE_CONDITIONS.include?(condition)
-      if COMPARISON_CONDITIONS.include?(condition)
-        validate_comparison_not_nil!(normalized, condition)
+      if COMPARISON_CONDITIONS.include?(condition) && normalized.nil?
+        raise ArgumentError, "#{condition.upcase} filter value cannot be null or undefined"
       end
 
       normalized
@@ -112,12 +112,6 @@ module DiscourseWorkflows
         raise ArgumentError, "#{condition.upcase} filter value must be a string"
       end
       normalized
-    end
-
-    def validate_comparison_not_nil!(normalized, condition)
-      if normalized.nil?
-        raise ArgumentError, "#{condition.upcase} filter value cannot be null or undefined"
-      end
     end
   end
 end

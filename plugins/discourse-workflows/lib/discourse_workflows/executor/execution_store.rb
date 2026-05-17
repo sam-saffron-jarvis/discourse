@@ -147,62 +147,48 @@ module DiscourseWorkflows
 
       def save!(steps)
         entries = steps_to_entries(steps)
-        context = @execution_context.context
 
         ed = execution.execution_data || execution.build_execution_data
-        json_data = {
-          "entries" => entries,
-          "context" => context,
-          "node_contexts" => @execution_context.node_contexts,
-        }.to_json
+        ed.update!(
+          data: serialized_execution_data(entries),
+          workflow_data: @workflow_snapshot&.to_h,
+        )
+      end
 
-        if json_data.bytesize > MAX_EXECUTION_DATA_SIZE
-          Rails.logger.warn(
-            "discourse-workflows: execution data for execution #{execution.id} " \
-              "exceeds #{MAX_EXECUTION_DATA_SIZE} bytes, truncating context",
+      def serialized_execution_data(entries)
+        truncated_context = { "__truncated" => true }
+        json_data =
+          execution_data_payload(
+            entries,
+            @execution_context.context,
+            @execution_context.node_contexts,
           )
-          json_data = {
-            "entries" => entries,
-            "context" => {
-              "__truncated" => true,
-            },
-            "node_contexts" => {
-            },
-          }.to_json
-        end
+        return json_data if json_data.bytesize <= MAX_EXECUTION_DATA_SIZE
 
-        if json_data.bytesize > MAX_EXECUTION_DATA_SIZE
-          Rails.logger.warn(
-            "discourse-workflows: execution data for execution #{execution.id} " \
-              "still exceeds #{MAX_EXECUTION_DATA_SIZE} bytes, truncating entries",
-          )
-          json_data = {
-            "entries" => compact_entries(entries),
-            "context" => {
-              "__truncated" => true,
-            },
-            "node_contexts" => {
-            },
-          }.to_json
-        end
+        log_oversized_execution_data("exceeds #{MAX_EXECUTION_DATA_SIZE} bytes, truncating context")
+        json_data = execution_data_payload(entries, truncated_context)
+        return json_data if json_data.bytesize <= MAX_EXECUTION_DATA_SIZE
 
-        if json_data.bytesize > MAX_EXECUTION_DATA_SIZE
-          Rails.logger.warn(
-            "discourse-workflows: execution data for execution #{execution.id} " \
-              "still exceeds #{MAX_EXECUTION_DATA_SIZE} bytes after all truncation attempts, storing minimal record",
-          )
-          json_data = {
-            "entries" => {
-            },
-            "context" => {
-              "__truncated" => true,
-            },
-            "node_contexts" => {
-            },
-          }.to_json
-        end
+        log_oversized_execution_data(
+          "still exceeds #{MAX_EXECUTION_DATA_SIZE} bytes, truncating entries",
+        )
+        json_data = execution_data_payload(compact_entries(entries), truncated_context)
+        return json_data if json_data.bytesize <= MAX_EXECUTION_DATA_SIZE
 
-        ed.update!(data: json_data, workflow_data: @workflow_snapshot&.to_h)
+        log_oversized_execution_data(
+          "still exceeds #{MAX_EXECUTION_DATA_SIZE} bytes after all truncation attempts, storing minimal record",
+        )
+        execution_data_payload({}, truncated_context)
+      end
+
+      def execution_data_payload(entries, context, node_contexts = {})
+        { "entries" => entries, "context" => context, "node_contexts" => node_contexts }.to_json
+      end
+
+      def log_oversized_execution_data(message)
+        Rails.logger.warn(
+          "discourse-workflows: execution data for execution #{execution.id} #{message}",
+        )
       end
 
       def steps_to_entries(steps)
@@ -309,27 +295,19 @@ module DiscourseWorkflows
         return unless trigger_node&.type == "trigger:form"
 
         channel = self.class.form_channel(execution.id, @execution_context.resume_token)
+        return if %i[success error].exclude?(status)
 
-        case status
-        when :success
-          form_completion = @execution_context.form_completion
-          MessageBus.publish(
-            channel,
-            { status: "success", form_completion: form_completion }.compact,
-          )
-        when :error
-          MessageBus.publish(channel, { status: "error" })
-        end
+        payload = { status: status.to_s }
+        payload[:form_completion] = @execution_context.form_completion if status == :success
+        MessageBus.publish(channel, payload.compact)
       end
 
       def publish_execution_node_outputs(steps)
-        outputs = {}
-        steps.each do |step|
-          next unless step.success?
-          items = step.output || []
-          first_json = items.dig(0, "json")
-          outputs[step.node_id] = first_json if first_json.present?
-        end
+        outputs =
+          steps.each_with_object({}) do |step, result|
+            first_json = (step.output || []).dig(0, "json") if step.success?
+            result[step.node_id] = first_json if first_json.present?
+          end
 
         return if outputs.empty?
 

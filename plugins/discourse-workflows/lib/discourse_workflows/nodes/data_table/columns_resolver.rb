@@ -28,9 +28,9 @@ module DiscourseWorkflows
           when Hash
             fields.stringify_keys
           when Array
-            fields.each_with_object({}) do |field, hash|
+            fields.to_h do |field|
               field = field.with_indifferent_access
-              hash[field[:columnName]] = field[:value]
+              [field[:columnName], field[:value]]
             end
           else
             {}

@@ -43,40 +43,28 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          items =
-            exec_ctx.input_items.map do |item|
-              config = exec_ctx.get_parameters(item)
-              result = process(exec_ctx, config)
-              wrap(result)
-            end
-          [items]
+          map_input_items(exec_ctx) { |config| process(exec_ctx, config) }
         end
 
         private
 
         def process(exec_ctx, config)
           topic = Topic.find(config["topic_id"])
-          ensure_topic_is_open!(topic)
+          if topic.closed? || topic.archived?
+            raise ActiveRecord::RecordNotSaved,
+                  I18n.t("discourse_workflows.errors.create_post.topic_closed_or_archived")
+          end
 
           author = exec_ctx.find_user(username: config["author_username"].presence || "system")
-          post = PostCreator.new(author, build_post_args(topic, config)).create!
-
-          { post: Schemas::Post.serialize(post) }
-        end
-
-        def ensure_topic_is_open!(topic)
-          return unless topic.closed? || topic.archived?
-          raise ActiveRecord::RecordNotSaved,
-                I18n.t("discourse_workflows.errors.create_post.topic_closed_or_archived")
-        end
-
-        def build_post_args(topic, config)
-          {
+          post_args = {
             topic_id: topic.id,
             raw: config["raw"],
             reply_to_post_number: config["reply_to_post_number"].presence,
             skip_workflows: true,
           }.compact
+          post = PostCreator.new(author, post_args).create!
+
+          { post: Schemas::Post.serialize(post) }
         end
       end
     end

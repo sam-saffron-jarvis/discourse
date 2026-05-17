@@ -14,18 +14,15 @@ module DiscourseWorkflows
       payload["submittedAt"] = submitted_at
       payload["formMode"] = form_mode.presence || DEFAULT_FORM_MODE
 
-      normalized_query_parameters = normalize_query_parameters(query_parameters)
-      if normalized_query_parameters.present?
-        payload["formQueryParameters"] = normalized_query_parameters
+      if (query_parameters = normalize_query_parameters(query_parameters)).present?
+        payload["formQueryParameters"] = query_parameters
       end
 
       payload
     end
 
     def self.normalize_query_parameters(query_parameters)
-      return {} if query_parameters.blank?
-
-      query_parameters.to_h.deep_stringify_keys
+      query_parameters.present? ? query_parameters.to_h.deep_stringify_keys : {}
     end
   end
 end

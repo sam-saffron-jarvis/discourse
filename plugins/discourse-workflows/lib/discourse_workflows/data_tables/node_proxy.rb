@@ -3,43 +3,39 @@
 module DiscourseWorkflows
   module DataTables
     class NodeProxy
-      OPERATOR_MAP = {
-        "equals" => "eq",
-        "notEquals" => "neq",
-        "contains" => "ilike",
-        "notContains" => "not_ilike",
-      }.freeze
+      CONDITION_OVERRIDES =
+        {
+          "equals" => "eq",
+          "notEquals" => "neq",
+          "contains" => "ilike",
+          "notContains" => "not_ilike",
+        }.transform_values { |condition| { "condition" => condition } }
+          .merge(
+            "empty" => {
+              "condition" => "eq",
+              "value" => nil,
+            },
+            "notEmpty" => {
+              "condition" => "neq",
+              "value" => nil,
+            },
+            "true" => {
+              "condition" => "eq",
+              "value" => true,
+            },
+            "false" => {
+              "condition" => "eq",
+              "value" => false,
+            },
+          )
+          .freeze
 
-      COMPOUND_OPERATORS = {
-        "empty" => {
-          "condition" => "eq",
-          "value" => nil,
-        },
-        "notEmpty" => {
-          "condition" => "neq",
-          "value" => nil,
-        },
-        "true" => {
-          "condition" => "eq",
-          "value" => true,
-        },
-        "false" => {
-          "condition" => "eq",
-          "value" => false,
-        },
-      }.freeze
+      attr_reader :facade
+      delegate :data_table, to: :facade
 
       def initialize(facade)
         @facade = facade
         @columns_resolver = Nodes::DataTable::ColumnsResolver.new(facade.data_table)
-      end
-
-      def data_table
-        @facade.data_table
-      end
-
-      def facade
-        @facade
       end
 
       def column_names
@@ -92,13 +88,10 @@ module DiscourseWorkflows
         sort_column: nil,
         sort_direction: nil
       )
-        normalized_filter =
-          if filter.present?
-            {
-              "type" => filter_combinator || "and",
-              "filters" => filter.map { |c| normalize_condition(c) },
-            }
-          end
+        normalized_filter = {
+          "type" => filter_combinator || "and",
+          "filters" => filter.map { |c| normalize_condition(c) },
+        } if filter.present?
 
         query =
           @facade.build_query(
@@ -108,7 +101,7 @@ module DiscourseWorkflows
             sort_direction: sort_direction,
             optional_filter: true,
           )
-        raise ArgumentError, query.errors.full_messages.join(", ") if query.invalid?
+        raise_invalid(:query, query) if query.invalid?
         query
       end
 
@@ -118,25 +111,26 @@ module DiscourseWorkflows
             data: @columns_resolver.resolve(columns || {}),
             fill_missing: false,
           )
-        raise ArgumentError, row_input.errors.full_messages.join(", ") if row_input.invalid?
+        raise_invalid(:row, row_input) if row_input.invalid?
         row_input
       end
 
       def normalize_condition(condition)
-        operator = condition["condition"]
-        if (compound = COMPOUND_OPERATORS[operator])
-          condition.merge(compound)
-        elsif (mapped = OPERATOR_MAP[operator])
-          condition.merge("condition" => mapped)
-        else
-          condition
-        end
+        condition.merge(CONDITION_OVERRIDES.fetch(condition["condition"]) { {} })
       end
 
       def resolve_sort_column(column_name)
         return if column_name.blank?
         @columns_resolver.validate_column!(column_name)
         column_name
+      end
+
+      def raise_invalid(type, value)
+        raise ArgumentError,
+              I18n.t(
+                "discourse_workflows.errors.data_table.invalid_#{type}",
+                errors: value.errors.full_messages.join(", "),
+              )
       end
     end
   end

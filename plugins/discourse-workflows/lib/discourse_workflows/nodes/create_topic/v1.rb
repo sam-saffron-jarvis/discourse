@@ -55,13 +55,7 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          items =
-            exec_ctx.input_items.map do |item|
-              config = exec_ctx.get_parameters(item)
-              result = process(exec_ctx, config)
-              wrap(result)
-            end
-          [items]
+          map_input_items(exec_ctx) { |config| process(exec_ctx, config) }
         end
 
         private

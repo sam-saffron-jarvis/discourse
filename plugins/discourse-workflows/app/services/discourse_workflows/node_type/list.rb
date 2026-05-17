@@ -13,22 +13,18 @@ module DiscourseWorkflows
     private
 
     def fetch_node_types
-      seen = Set.new
+      DiscourseWorkflows::Registry
+        .nodes
+        .uniq(&:identifier)
+        .filter_map do |klass|
+          identifier = klass.identifier
+          next unless klass.palette_visible?
 
-      DiscourseWorkflows::Registry.nodes.filter_map do |klass|
-        identifier = klass.identifier
-        next if seen.include?(identifier)
-        seen.add(identifier)
-        next unless klass.palette_visible?
-
-        NodeTypeSerializer.new(
-          identifier: identifier,
-          latest_class:
-            Registry.find_node_type(identifier, version: Registry.latest_version(identifier)),
-          latest_version: Registry.latest_version(identifier),
-          available_versions: Registry.available_versions(identifier),
-        ).to_h
-      end
+          NodeTypeSerializer.new(
+            identifier: identifier,
+            available_versions: Registry.available_versions(identifier),
+          ).to_h
+        end
     end
 
     def fetch_credential_types

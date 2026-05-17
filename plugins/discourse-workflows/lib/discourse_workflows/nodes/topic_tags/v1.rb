@@ -47,13 +47,7 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          items =
-            exec_ctx.input_items.map do |item|
-              config = exec_ctx.get_parameters(item)
-              result = process(exec_ctx, config)
-              wrap(result)
-            end
-          [items]
+          map_input_items(exec_ctx) { |config| process(exec_ctx, config) }
         end
 
         private
@@ -61,7 +55,7 @@ module DiscourseWorkflows
         def process(exec_ctx, config)
           topic = Topic.find(config["topic_id"])
           actor = exec_ctx.find_user(username: config["actor_username"].presence || "system")
-          guardian = Guardian.new(actor)
+          guardian = actor.guardian
 
           names =
             Array

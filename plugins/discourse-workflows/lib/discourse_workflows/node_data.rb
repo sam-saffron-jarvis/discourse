@@ -60,8 +60,9 @@ module DiscourseWorkflows
     end
 
     def filter_declared_credentials(credentials, node_type, parameters)
-      definitions = credential_definitions_for(node_type)
       return credentials if node_type.blank?
+
+      definitions = credential_definitions_for(node_type)
       return {} if definitions.blank?
 
       definitions.each_with_object({}) do |definition, result|
@@ -79,17 +80,14 @@ module DiscourseWorkflows
     end
 
     def credential_definitions_for(node_type)
-      return [] if node_type.blank?
-
-      klass = Registry.find_node_type(node_type)
-      normalize_credential_definitions(klass&.credentials)
+      normalize_credential_definitions(node_class(node_type)&.credentials)
     end
 
     def remove_undeclared_credential_parameters(parameters, node_type)
       return if node_type.blank? || !parameters.key?("credential_id")
+      return if node_class(node_type)&.property_schema&.key?(:credential_id)
 
-      klass = Registry.find_node_type(node_type)
-      parameters.delete("credential_id") unless klass&.property_schema&.key?(:credential_id)
+      parameters.delete("credential_id")
     end
 
     def normalize_credential_definitions(definitions)
@@ -125,9 +123,15 @@ module DiscourseWorkflows
     end
 
     def extract_webhook_id(parameters, webhook_id, node_type)
-      return webhook_id unless node_type == "trigger:form"
+      unless node_type == "trigger:form" || node_class(node_type)&.identifier == "trigger:form"
+        return webhook_id
+      end
 
       parameters.delete("uuid").presence || webhook_id
+    end
+
+    def node_class(node_type)
+      node_type.respond_to?(:identifier) ? node_type : Registry.find_node_type(node_type)
     end
   end
 end

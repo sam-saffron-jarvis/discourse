@@ -148,7 +148,7 @@ module DiscourseWorkflows
           when "data_tables"
             DiscourseWorkflows::DataTable
               .order(:name)
-              .select { |dt| option_matches_search?(dt.name, context.search) }
+              .select { |dt| context.matches_search?(dt.name) }
               .map do |dt|
                 {
                   id: dt.id,
@@ -166,41 +166,67 @@ module DiscourseWorkflows
           end
         end
 
-        def self.option_matches_search?(name, search)
-          search.blank? || name.downcase.include?(search.downcase)
-        end
-
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }
           config = exec_ctx.get_parameters(item)
 
-          result = execute_with_config(config, item, exec_ctx)
-          [result]
+          [Array.wrap(execute_with_config(config, item, exec_ctx))]
         end
 
         private
 
         def execute_with_config(config, item, exec_ctx)
           node_proxy = exec_ctx.data_table(config.fetch("data_table_id"))
-          facade = node_proxy.facade
-          columns_resolver = ColumnsResolver.new(facade.data_table)
-          operation_name = config.fetch("operation") { "insert" }
+          operation_name = config.fetch("operation", "insert")
 
-          config = auto_mapped_config(config, item, node_proxy) if auto_mapping?(
-            config,
-            operation_name,
-          )
+          if operation_name == "insert" && config["mapping_mode"] == "auto"
+            json = item["json"] || {}
+            config = config.merge("columns" => json.slice(*node_proxy.column_names))
+          end
 
-          Operations.for(operation_name).new(facade, columns_resolver).execute(config)
+          result =
+            case operation_name
+            when "insert"
+              node_proxy.insert(columns: config["columns"])
+            when "get"
+              node_proxy.get(
+                **filter_options(config),
+                limit: config["limit"]&.to_i,
+                sort_column: config["sort_column"],
+                sort_direction: config["sort_direction"],
+              )
+            when "update"
+              {
+                "updated_count" =>
+                  node_proxy.update(**filter_options(config), columns: config["columns"]),
+              }
+            when "delete"
+              { "deleted_count" => node_proxy.delete(**filter_options(config)) }
+            when "upsert"
+              upsert_output(node_proxy, config)
+            else
+              raise ArgumentError,
+                    I18n.t(
+                      "discourse_workflows.errors.data_table.unknown_operation",
+                      operation: operation_name,
+                    )
+            end
+
+          wrap(result)
         end
 
-        def auto_mapping?(config, operation_name)
-          operation_name == "insert" && config["mapping_mode"] == "auto"
+        def upsert_output(node_proxy, config)
+          result = node_proxy.upsert(**filter_options(config), columns: config["columns"])
+
+          if result[:operation] == "update"
+            { "operation" => "update", "count" => result[:updated_count] }
+          else
+            { "operation" => "insert" }.merge(result[:row])
+          end
         end
 
-        def auto_mapped_config(config, item, proxy)
-          json = item["json"] || {}
-          config.merge("columns" => json.slice(*proxy.column_names))
+        def filter_options(config)
+          { filter: config["filter"], filter_combinator: config["filter_combinator"] }
         end
       end
     end

@@ -51,13 +51,10 @@ module DiscourseWorkflows
       end
 
       def self.topic_status(topic)
-        if topic.archived
-          "archived"
-        elsif topic.closed
-          "closed"
-        else
-          "open"
-        end
+        return "archived" if topic.archived
+        return "closed" if topic.closed
+
+        "open"
       end
     end
   end

@@ -12,11 +12,9 @@ module DiscourseWorkflows
       end
       return unless node_class.respond_to?(:load_options)
 
-      if context_aware_load_options?(node_class)
-        node_class.load_options(context)
-      else
-        node_class.load_options(context.source_key)
-      end
+      node_class.load_options(
+        context_aware_load_options?(node_class) ? context : context.source_key,
+      )
     end
 
     def context_aware_load_options?(node_class)

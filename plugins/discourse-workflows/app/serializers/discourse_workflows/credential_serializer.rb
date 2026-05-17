@@ -6,15 +6,11 @@ module DiscourseWorkflows
 
     def data
       schema = Registry.find_credential_type(object.credential_type)&.property_schema || {}
-      decrypted_data.each_with_object({}) do |(key, value), hash|
-        field_schema = schema[key.to_sym] || {}
-        hash[key] = (
-          if field_schema.dig(:ui, :control) == :password
-            Credential::REDACTED_VALUE
-          else
-            value
-          end
-        )
+      decrypted_data.to_h do |key, value|
+        [
+          key,
+          schema.dig(key.to_sym, :ui, :control) == :password ? Credential::REDACTED_VALUE : value,
+        ]
       end
     end
 

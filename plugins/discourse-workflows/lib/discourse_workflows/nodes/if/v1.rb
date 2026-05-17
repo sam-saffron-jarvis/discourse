@@ -40,10 +40,7 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          true_items, false_items =
-            exec_ctx.input_items.partition { |item| exec_ctx.get_parameter(:conditions, item) }
-
-          [true_items, false_items]
+          exec_ctx.input_items.partition { |item| exec_ctx.get_parameter(:conditions, item) }
         end
       end
     end

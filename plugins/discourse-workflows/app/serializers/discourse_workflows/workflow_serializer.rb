@@ -79,15 +79,11 @@ module DiscourseWorkflows
       return unless execution&.execution_data
 
       entries = execution.execution_data.entries || {}
-      outputs = {}
-      entries.each do |node_id, steps|
+      entries.each_with_object({}) do |(node_id, steps), outputs|
         step = Array(steps).find { |s| s["status"] == "success" }
-        next unless step
-        items = step["output"] || []
-        first_json = items.dig(0, "json")
+        first_json = (step["output"] || []).dig(0, "json") if step
         outputs[node_id] = first_json if first_json.present?
       end
-      outputs
     end
   end
 end
