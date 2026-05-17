@@ -105,6 +105,68 @@ module("Integration | Component | workflows property engine", function (hooks) {
     assert.strictEqual(document.activeElement, keyInput);
   });
 
+  test("renders fixed collections with missing group data", async function (assert) {
+    this.setProperties({
+      configuration: { entries: {} },
+      formApi: null,
+      nodeType: "action:log",
+      schema: {
+        entries: {
+          type: "fixed_collection",
+          type_options: {
+            multiple_values: true,
+          },
+          options: [
+            {
+              name: "values",
+              values: {
+                key: {
+                  type: "string",
+                  required: true,
+                  ui: {
+                    expression: false,
+                  },
+                },
+                value: {
+                  type: "string",
+                  required: true,
+                },
+              },
+            },
+          ],
+        },
+      },
+      registerApi: (api) => {
+        this.set("formApi", api);
+      },
+    });
+
+    await render(
+      <template>
+        <Form
+          @data={{this.configuration}}
+          @onRegisterApi={{this.registerApi}}
+          as |form transientData|
+        >
+          <PropertyEngineConfigurator
+            @form={{form}}
+            @formApi={{this.formApi}}
+            @configuration={{transientData}}
+            @nodeType={{this.nodeType}}
+            @schema={{this.schema}}
+          />
+        </Form>
+      </template>
+    );
+
+    assert.dom(".workflows-property-engine__collection-row").doesNotExist();
+
+    await click(".btn-default");
+
+    assert.dom(".workflows-property-engine__collection-row").exists();
+    assert.strictEqual(this.formApi.get("entries.values").length, 1);
+  });
+
   test("renders condition builder controls inside the property engine", async function (assert) {
     this.setProperties({
       configuration: {

@@ -40,7 +40,7 @@ export default class FKCollection extends Component {
   }
 
   get collectionData() {
-    return this.args.data.get(this.name).map((item, index) => {
+    return (this.args.data.get(this.name) ?? []).map((item, index) => {
       return {
         identifier: `${this.name}-${index}`,
         item,

@@ -1,5 +1,5 @@
 import Component from "@glimmer/component";
-import { fn } from "@ember/helper";
+import { fn, hash } from "@ember/helper";
 import { action } from "@ember/object";
 import DButton from "discourse/components/d-button";
 import DropdownMenu from "discourse/components/dropdown-menu";
@@ -13,6 +13,7 @@ import {
   propertyDescription,
   propertyLabel,
 } from "../../../lib/workflows/property-engine";
+import WorkflowsEmptyState from "../empty-state";
 import Field from "./field";
 
 export default class Collection extends Component {
@@ -31,6 +32,24 @@ export default class Collection extends Component {
 
   get description() {
     return propertyDescription(this.nodeDefinition, this.args.fieldName);
+  }
+
+  get addLabel() {
+    return (
+      this.args.addLabel || i18n("discourse_workflows.property_engine.add_item")
+    );
+  }
+
+  get isArrayCollection() {
+    return Boolean(this.args.emptyItem);
+  }
+
+  get arrayItems() {
+    return this.args.formApi?.get(this.args.fieldName) || [];
+  }
+
+  get showEmptyState() {
+    return this.args.emptyStateDescription && this.arrayItems.length === 0;
   }
 
   get currentValue() {
@@ -87,63 +106,117 @@ export default class Collection extends Component {
     this.args.formApi.set(this.args.fieldName, nextValue);
   }
 
+  @action
+  addItem() {
+    const item = this.args.emptyItem();
+    this.args.form.addItemToCollection(this.args.fieldName, item);
+    this.args.onAdd?.(item);
+  }
+
+  @action
+  removeItem(removeFn, index) {
+    this.args.onRemove?.(index);
+    removeFn(index);
+  }
+
   <template>
     <@form.Section @title={{this.label}} @subtitle={{this.description}}>
-      {{#each this.selectedOptions key="name" as |option|}}
-        <div class="workflows-property-engine__collection-row">
-          <div class="workflows-property-engine__collection-delete">
-            <DButton
-              @action={{fn this.removeOption option}}
-              @icon="trash-can"
-              class="btn-transparent btn-small btn-danger"
-            />
-          </div>
-
-          <div class="workflows-property-engine__collection-fields">
-            <Field
-              @form={{@form}}
-              @formApi={{@formApi}}
-              @configuration={{this.currentValue}}
-              @connections={{@connections}}
-              @credentials={{@credentials}}
-              @fieldName={{this.optionPath option.name}}
-              @label={{this.optionLabel option}}
-              @node={{@node}}
-              @nodeDefinition={{this.nodeDefinition}}
-              @nodeParameters={{@nodeParameters}}
-              @nodeType={{@nodeType}}
-              @nodes={{@nodes}}
-              @nodeTypes={{@nodeTypes}}
-              @schema={{option}}
-            />
-          </div>
-        </div>
-      {{/each}}
-
-      {{#if this.hasAvailableOptions}}
-        <DMenu
-          class="btn btn-default workflows-property-engine__add-attrs-btn"
-          @inline={{true}}
-          @modalForwardRecipient={{true}}
+      {{#if this.isArrayCollection}}
+        <@form.Collection
+          @name={{@fieldName}}
+          @tagName="div"
+          as |collection index item|
         >
-          <:trigger>
-            {{i18n "discourse_workflows.property_engine.add_option"}}
-            {{icon "chevron-down"}}
-          </:trigger>
-          <:content as |menu|>
-            <DropdownMenu as |dropdown|>
-              {{#each this.availableOptions key="name" as |option|}}
-                <dropdown.item>
-                  <DButton
-                    class="btn-transparent"
-                    @action={{fn this.addOption option menu.close}}
-                    @translatedLabel={{this.optionLabel option}}
-                  />
-                </dropdown.item>
-              {{/each}}
-            </DropdownMenu>
-          </:content>
-        </DMenu>
+          <div class="workflows-property-engine__collection-row">
+            <div class="workflows-property-engine__collection-delete">
+              <DButton
+                @action={{fn this.removeItem collection.remove index}}
+                @icon="trash-can"
+                class="btn-transparent btn-small btn-danger"
+              />
+            </div>
+
+            <collection.Object
+              class="workflows-property-engine__collection-fields"
+              as |object|
+            >
+              {{yield (hash object=object item=item index=index)}}
+            </collection.Object>
+          </div>
+        </@form.Collection>
+
+        {{#if this.showEmptyState}}
+          <WorkflowsEmptyState
+            @description={{@emptyStateDescription}}
+            @onAction={{this.addItem}}
+            @buttonIcon="plus"
+            @translatedButtonLabel={{this.addLabel}}
+          />
+        {{else}}
+          <DButton
+            @action={{this.addItem}}
+            @icon="plus"
+            @translatedLabel={{this.addLabel}}
+            class="btn-default"
+          />
+        {{/if}}
+      {{else}}
+        {{#each this.selectedOptions key="name" as |option|}}
+          <div class="workflows-property-engine__collection-row">
+            <div class="workflows-property-engine__collection-delete">
+              <DButton
+                @action={{fn this.removeOption option}}
+                @icon="trash-can"
+                class="btn-transparent btn-small btn-danger"
+              />
+            </div>
+
+            <div class="workflows-property-engine__collection-fields">
+              <Field
+                @form={{@form}}
+                @formApi={{@formApi}}
+                @configuration={{this.currentValue}}
+                @connections={{@connections}}
+                @credentials={{@credentials}}
+                @fieldName={{this.optionPath option.name}}
+                @label={{this.optionLabel option}}
+                @node={{@node}}
+                @nodeDefinition={{this.nodeDefinition}}
+                @nodeParameters={{@nodeParameters}}
+                @nodeType={{@nodeType}}
+                @nodes={{@nodes}}
+                @nodeTypes={{@nodeTypes}}
+                @schema={{option}}
+              />
+            </div>
+          </div>
+        {{/each}}
+
+        {{#if this.hasAvailableOptions}}
+          <DMenu
+            class="btn btn-default workflows-property-engine__add-attrs-btn"
+            @inline={{true}}
+            @modalForwardRecipient={{true}}
+          >
+            <:trigger>
+              {{i18n "discourse_workflows.property_engine.add_option"}}
+              {{icon "chevron-down"}}
+            </:trigger>
+            <:content as |menu|>
+              <DropdownMenu as |dropdown|>
+                {{#each this.availableOptions key="name" as |option|}}
+                  <dropdown.item>
+                    <DButton
+                      class="btn-transparent"
+                      @action={{fn this.addOption option menu.close}}
+                      @translatedLabel={{this.optionLabel option}}
+                    />
+                  </dropdown.item>
+                {{/each}}
+              </DropdownMenu>
+            </:content>
+          </DMenu>
+        {{/if}}
       {{/if}}
     </@form.Section>
   </template>
