@@ -19,10 +19,6 @@ module DiscourseWorkflows
                 :guardian,
                 :node_class
 
-    def self.coerce(value)
-      value.is_a?(self) ? value : new(source_key: value)
-    end
-
     def initialize(
       source_key:,
       property_name: nil,
@@ -59,18 +55,16 @@ module DiscourseWorkflows
       @guardian = guardian
     end
 
-    def current_node_parameter(path = nil, fallback = nil)
+    def get_current_node_parameter(path = nil, fallback = nil)
       return parameters if path.blank?
 
       value = dig_path(parameters, path)
       value.nil? ? fallback : value
     end
-    alias get_current_node_parameter current_node_parameter
 
-    def current_node_parameters
+    def get_current_node_parameters
       parameters
     end
-    alias get_current_node_parameters current_node_parameters
 
     def matches_search?(value)
       search.blank? || value.downcase.include?(search.downcase)
@@ -84,7 +78,7 @@ module DiscourseWorkflows
       credential_reference(slot).present?
     end
 
-    def get_credential(slot)
+    def get_credentials(slot)
       definition = credential_definition(slot)
       reference = credential_reference(slot)
       raise Discourse::InvalidAccess if definition.blank? || reference.blank?
@@ -101,7 +95,6 @@ module DiscourseWorkflows
         user: user,
       )
     end
-    alias get_credentials get_credential
 
     def to_h
       {

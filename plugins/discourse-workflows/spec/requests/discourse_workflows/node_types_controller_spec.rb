@@ -124,7 +124,7 @@ RSpec.describe DiscourseWorkflows::NodeTypesController do
           def self.load_options_context(context)
             [
               {
-                id: context.current_node_parameter("operation"),
+                id: context.get_current_node_parameter("operation"),
                 name: context.search,
                 property_name: context.property_name,
                 workflow_id: context.workflow_id,
@@ -256,7 +256,7 @@ RSpec.describe DiscourseWorkflows::NodeTypesController do
       DiscourseWorkflows::Registry.reset_indexes!
     end
 
-    it "keeps legacy load_options(source_key) support" do
+    it "does not support legacy load_options source key hooks" do
       node_class =
         Class.new(DiscourseWorkflows::NodeType) do
           description(name: "action:legacy_load_options_test")
@@ -272,11 +272,7 @@ RSpec.describe DiscourseWorkflows::NodeTypesController do
       post "/admin/plugins/discourse-workflows/node-types/action%3Alegacy_load_options_test/options/legacy.json",
            as: :json
 
-      expect(response).to have_http_status(:ok)
-      expect(response.parsed_body["options"]).to contain_exactly(
-        "id" => "legacy",
-        "name" => "LEGACY",
-      )
+      expect(response).to have_http_status(:not_found)
     ensure
       DiscoursePluginRegistry._raw_discourse_workflows_nodes.reject! do |entry|
         entry[:value] == node_class

@@ -6,42 +6,39 @@ RSpec.describe DiscourseWorkflows::Nodes::Group::V1 do
   fab!(:group)
   fab!(:group_2) { Fabricate(:group, name: "another_group") }
 
-  describe ".load_options" do
+  describe ".load_options_context" do
+    def load_options(parameters: {}, search: nil)
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: "groups",
+          parameters: parameters,
+          search: search,
+          node_class: described_class,
+        )
+
+      described_class.load_options_context(context)
+    end
+
     it "returns non-automatic groups for the chooser" do
-      expect(described_class.load_options("groups")).to include(
+      expect(load_options).to include(
         { id: group.id, name: group.name },
         { id: group_2.id, name: group_2.name },
       )
     end
 
     it "excludes automatic groups" do
-      auto_group_ids = described_class.load_options("groups").map { |g| g[:id] }
+      auto_group_ids = load_options.map { |g| g[:id] }
       expect(auto_group_ids).not_to include(*Group::AUTO_GROUPS.values)
     end
 
     it "can include automatic groups when the current operation only reads a group" do
-      context =
-        DiscourseWorkflows::LoadOptionsContext.new(
-          source_key: "groups",
-          parameters: {
-            operation: "get",
-          },
-          node_class: described_class,
-        )
-      group_ids = described_class.load_options(context).map { |g| g[:id] }
+      group_ids = load_options(parameters: { operation: "get" }).map { |g| g[:id] }
 
       expect(group_ids).to include(*Group::AUTO_GROUPS.values)
     end
 
     it "filters groups by the search term" do
-      context =
-        DiscourseWorkflows::LoadOptionsContext.new(
-          source_key: "groups",
-          search: "another",
-          node_class: described_class,
-        )
-
-      expect(described_class.load_options(context)).to contain_exactly(
+      expect(load_options(search: "another")).to contain_exactly(
         { id: group_2.id, name: group_2.name },
       )
     end

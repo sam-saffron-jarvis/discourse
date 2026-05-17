@@ -20,9 +20,20 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
     execute_node_output(configuration: configuration, item: item).first
   end
 
-  describe ".load_options" do
+  describe ".load_options_context" do
+    def load_options(search: nil)
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: "data_tables",
+          search: search,
+          node_class: described_class,
+        )
+
+      described_class.load_options_context(context)
+    end
+
     it "marks reserved columns" do
-      tables = described_class.load_options("data_tables")
+      tables = load_options
       table_meta = tables.find { |dt| dt[:id] == data_table.id }
       column_names_reserved = table_meta[:columns].select { |c| c[:reserved] }.map { |c| c[:name] }
 
@@ -32,14 +43,8 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
 
     it "filters data tables by the search term" do
       Fabricate(:discourse_workflows_data_table, name: "projects")
-      context =
-        DiscourseWorkflows::LoadOptionsContext.new(
-          source_key: "data_tables",
-          search: "cont",
-          node_class: described_class,
-        )
 
-      expect(described_class.load_options(context).map { |table| table[:id] }).to contain_exactly(
+      expect(load_options(search: "cont").map { |table| table[:id] }).to contain_exactly(
         data_table.id,
       )
     end

@@ -23,9 +23,7 @@ module DiscourseWorkflows
       version = params[:version].presence || request_context.dig("node", "type_version")
       node_class =
         DiscourseWorkflows::Registry.find_node_type(params[:identifier], version: version)
-      unless node_class.respond_to?(:load_options) || node_class.respond_to?(:load_options_context)
-        raise Discourse::NotFound
-      end
+      raise Discourse::NotFound unless node_class.respond_to?(:load_options_context)
 
       context =
         DiscourseWorkflows::LoadOptionsContext.new(
@@ -47,7 +45,7 @@ module DiscourseWorkflows
           node_class: node_class,
         )
 
-      options = DiscourseWorkflows::LoadOptions.call(node_class, context)
+      options = node_class.load_options_context(context)
       raise Discourse::NotFound if options.nil?
 
       render json: { options: options }
@@ -58,7 +56,7 @@ module DiscourseWorkflows
     def load_options_request_context
       {
         "property_name" => params[:property_name],
-        "parameters" => hash_param(:parameters) || hash_param(:currentNodeParameters),
+        "parameters" => hash_param(:parameters),
         "credentials" => hash_param(:credentials),
         "search" => params[:search],
         "filter" => params[:filter],

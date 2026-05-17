@@ -141,9 +141,7 @@ module DiscourseWorkflows
           "#{property_i18n_prefix}.#{property_i18n_scope}.operations.#{operation}"
         end
 
-        def self.load_options(context)
-          context = DiscourseWorkflows::LoadOptionsContext.coerce(context)
-
+        def self.load_options_context(context)
           case context.source_key
           when "data_tables"
             DiscourseWorkflows::DataTable

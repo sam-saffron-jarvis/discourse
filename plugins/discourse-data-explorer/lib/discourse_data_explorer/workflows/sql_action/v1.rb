@@ -118,10 +118,10 @@ module DiscourseDataExplorer
           }
         end
 
-        def self.load_options(source_key)
-          case source_key
+        def self.load_options_context(context)
+          case context.source_key
           when "queries"
-            metadata[:queries]
+            metadata[:queries].select { |query| context.matches_search?(query[:name]) }
           end
         end
 

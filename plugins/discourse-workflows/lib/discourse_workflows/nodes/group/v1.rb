@@ -69,13 +69,11 @@ module DiscourseWorkflows
           },
         )
 
-        def self.load_options(context)
-          context = DiscourseWorkflows::LoadOptionsContext.coerce(context)
-
+        def self.load_options_context(context)
           case context.source_key
           when "groups"
             scope = ::Group.order(:name)
-            scope = scope.where(automatic: false) unless context.current_node_parameter(
+            scope = scope.where(automatic: false) unless context.get_current_node_parameter(
               "operation",
             ) == "get"
 

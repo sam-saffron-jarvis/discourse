@@ -62,9 +62,7 @@ module DiscourseWorkflows
           },
         )
 
-        def self.load_options(context)
-          context = DiscourseWorkflows::LoadOptionsContext.coerce(context)
-
+        def self.load_options_context(context)
           case context.source_key
           when "badges"
             ::Badge

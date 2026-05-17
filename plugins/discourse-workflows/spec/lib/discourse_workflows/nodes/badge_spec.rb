@@ -4,11 +4,22 @@ RSpec.describe DiscourseWorkflows::Nodes::Badge::V1 do
   fab!(:user)
   fab!(:badge)
 
-  describe ".load_options" do
+  describe ".load_options_context" do
     fab!(:badge_2) { Fabricate(:badge, name: "A badge") }
 
+    def load_options(search: nil)
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: "badges",
+          search: search,
+          node_class: described_class,
+        )
+
+      described_class.load_options_context(context)
+    end
+
     it "returns enabled badges for the chooser" do
-      expect(described_class.load_options("badges")).to include(
+      expect(load_options).to include(
         { id: badge_2.id, name: badge_2.name },
         { id: badge.id, name: badge.name },
       )
@@ -16,20 +27,11 @@ RSpec.describe DiscourseWorkflows::Nodes::Badge::V1 do
 
     it "excludes disabled badges" do
       disabled_badge = Fabricate(:badge, name: "Disabled Badge", enabled: false)
-      expect(described_class.load_options("badges")).not_to include(
-        { id: disabled_badge.id, name: disabled_badge.name },
-      )
+      expect(load_options).not_to include({ id: disabled_badge.id, name: disabled_badge.name })
     end
 
     it "filters badges by the search term" do
-      context =
-        DiscourseWorkflows::LoadOptionsContext.new(
-          source_key: "badges",
-          search: "A badge",
-          node_class: described_class,
-        )
-
-      expect(described_class.load_options(context)).to contain_exactly(
+      expect(load_options(search: "A badge")).to contain_exactly(
         { id: badge_2.id, name: badge_2.name },
       )
     end

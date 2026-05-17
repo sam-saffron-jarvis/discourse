@@ -145,6 +145,62 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
     end
   end
 
+  describe ".load_options_context" do
+    it "returns non-hidden query options" do
+      query =
+        DiscourseDataExplorer::Query.create!(
+          name: "Visible query",
+          sql: "SELECT 1",
+          user_id: Discourse::SYSTEM_USER_ID,
+        )
+      hidden_query =
+        DiscourseDataExplorer::Query.create!(
+          name: "Hidden query",
+          sql: "SELECT 1",
+          user_id: Discourse::SYSTEM_USER_ID,
+          hidden: true,
+        )
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: "queries",
+          node_class: described_class,
+        )
+
+      options = described_class.load_options_context(context)
+      query_ids = options.map { |option| option[:id] }
+
+      expect(query_ids).to include(query.id)
+      expect(query_ids).not_to include(hidden_query.id)
+    end
+
+    it "filters query options by search term" do
+      matching_query =
+        DiscourseDataExplorer::Query.create!(
+          name: "Needle query",
+          sql: "SELECT 1",
+          user_id: Discourse::SYSTEM_USER_ID,
+        )
+      other_query =
+        DiscourseDataExplorer::Query.create!(
+          name: "Haystack query",
+          sql: "SELECT 1",
+          user_id: Discourse::SYSTEM_USER_ID,
+        )
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          source_key: "queries",
+          search: "needle",
+          node_class: described_class,
+        )
+
+      options = described_class.load_options_context(context)
+      query_ids = options.map { |option| option[:id] }
+
+      expect(query_ids).to include(matching_query.id)
+      expect(query_ids).not_to include(other_query.id)
+    end
+  end
+
   describe ".metadata" do
     it "includes non-hidden queries with their params" do
       query =

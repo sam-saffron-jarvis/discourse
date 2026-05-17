@@ -75,10 +75,10 @@ if defined?(DiscourseWorkflows)
             { result: :string }
           end
 
-          def self.load_options(source_key)
-            case source_key
+          def self.load_options_context(context)
+            case context.source_key
             when "agents"
-              agent_options
+              agent_options.select { |agent| context.matches_search?(agent[:name]) }
             end
           end
 
