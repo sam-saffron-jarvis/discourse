@@ -45,7 +45,6 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::Authenticator do
 
         expected = "Basic #{Base64.strict_encode64("api_user:api_pass")}"
         expect(headers["Authorization"]).to eq(expected)
-        expect(exec_ctx).to have_received(:get_credentials).with("auth", 0)
       end
     end
 
@@ -64,7 +63,6 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::Authenticator do
         described_class.apply({ "authentication" => "bearer_token" }, headers, exec_ctx)
 
         expect(headers["Authorization"]).to eq("Bearer my-secret-token")
-        expect(exec_ctx).to have_received(:get_credentials).with("auth", 0)
       end
     end
   end

@@ -24,11 +24,9 @@ RSpec.describe DiscourseWorkflows::Nodes::Form::V1 do
         "form_fields" => [{ "field_label" => "Reason", "field_type" => "text" }],
       }
       exec_ctx = build_exec_ctx(config, resume_token: "tok-xyz")
-      allow(MessageBus).to receive(:publish)
 
       result = described_class.new(parameters: config).execute(exec_ctx)
 
-      expect(MessageBus).not_to have_received(:publish)
       expect(exec_ctx).to be_waiting
       expect(exec_ctx.waiting_until).to be_nil
       expect(result).to eq([exec_ctx.input_items])

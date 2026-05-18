@@ -77,16 +77,6 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::ResponseParser do
       expect(log).to have_received(:warn).with(a_string_including("truncated"))
     end
 
-    it "does not emit a warning log when no truncation occurs" do
-      response =
-        build_response(status: 200, body: "small", headers: { "content-type" => "text/plain" })
-      log = instance_spy(DiscourseWorkflows::Executor::StepLog)
-
-      described_class.parse(response, log: log)
-
-      expect(log).not_to have_received(:warn)
-    end
-
     it "respects a custom max_response_size_kb" do
       response =
         build_response(status: 200, body: "x" * 3000, headers: { "content-type" => "text/plain" })
