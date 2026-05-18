@@ -25,6 +25,8 @@ module DiscourseWorkflows
           return items;
         JS
         N8N_ITEM_KEYS = %w[json binary pairedItem error index].freeze
+        RUN_ONCE_FOR_ALL_ITEMS = "runOnceForAllItems"
+        RUN_ONCE_FOR_EACH_ITEM = "runOnceForEachItem"
 
         description(
           name: "action:code",
@@ -36,8 +38,8 @@ module DiscourseWorkflows
           properties: {
             mode: {
               type: :options,
-              default: "run_once_for_all_items",
-              options: %w[run_once_for_each_item run_once_for_all_items],
+              default: RUN_ONCE_FOR_ALL_ITEMS,
+              options: [RUN_ONCE_FOR_EACH_ITEM, RUN_ONCE_FOR_ALL_ITEMS],
               ui: {
                 expression: false,
               },
@@ -67,8 +69,9 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           code = @configuration["code"].to_s
-          mode = @configuration["mode"] || "run_once_for_all_items"
-          validate_no_disallowed_methods_in_run_for_each!(code) if mode == "run_once_for_each_item"
+          mode = @configuration["mode"] || RUN_ONCE_FOR_ALL_ITEMS
+          validate_mode!(mode)
+          validate_no_disallowed_methods_in_run_for_each!(code) if mode == RUN_ONCE_FOR_EACH_ITEM
 
           items =
             exec_ctx.with_sandbox(capture_logs: true) do |sandbox|
@@ -77,9 +80,8 @@ module DiscourseWorkflows
                 exec_ctx.input_items,
                 @configuration,
                 DiscourseWorkflows::InputContext.from_node_context(exec_ctx.get_context(:node)),
-                mode,
               )
-              if mode == "run_once_for_all_items"
+              if mode == RUN_ONCE_FOR_ALL_ITEMS
                 execute_all_items(sandbox, code)
               else
                 execute_per_item(sandbox, code, exec_ctx.input_items)
@@ -327,6 +329,15 @@ module DiscourseWorkflows
           raise DiscourseWorkflows::NodeError, "#{message}#{suffix}: #{description}"
         end
 
+        def validate_mode!(mode)
+          return if [RUN_ONCE_FOR_ALL_ITEMS, RUN_ONCE_FOR_EACH_ITEM].include?(mode)
+
+          raise_validation_error!(
+            "Invalid Code mode",
+            "#{mode.inspect} is not a supported Code execution mode.",
+          )
+        end
+
         def n8n_item_key?(key)
           N8N_ITEM_KEYS.include?(key.to_s)
         end
@@ -349,11 +360,10 @@ module DiscourseWorkflows
           result
         end
 
-        def setup_code_sandbox!(sandbox, input_items, input_params, input_context, mode)
+        def setup_code_sandbox!(sandbox, input_items, input_params, input_context)
           sandbox.declare_json("__allInputItems", input_items)
           sandbox.declare_json("__inputParams", input_params)
           sandbox.declare_json("__inputContext", input_context)
-          sandbox.declare_json("__nodeMode", mode)
           sandbox.eval(<<~JS)
             function __WorkflowCodeInput(item) {
               this.item = item;
@@ -397,18 +407,6 @@ module DiscourseWorkflows
               set: function(value) { __itemIndex = value; },
               configurable: true
             });
-            if (__nodeMode === "run_once_for_all_items") {
-              Object.defineProperty(this, 'items', {
-                value: __allInputItems,
-                configurable: true,
-                writable: false
-              });
-            } else {
-              Object.defineProperty(this, 'item', {
-                get: function() { return $input.item; },
-                configurable: true
-              });
-            }
           JS
         end
       end
