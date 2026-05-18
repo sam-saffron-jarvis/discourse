@@ -14,6 +14,7 @@ module DiscourseWorkflows
                   :execution_id,
                   :resume_token,
                   :node_id,
+                  :node_identifier,
                   :waiting_until
 
       def initialize(
@@ -33,6 +34,7 @@ module DiscourseWorkflows
         execution_id: nil,
         resume_token: nil,
         node_id: nil,
+        node_identifier: nil,
         flow_context: nil,
         resolver_context: nil,
         workflow_dependencies: nil
@@ -58,6 +60,7 @@ module DiscourseWorkflows
         @execution_id = execution_id
         @resume_token = resume_token
         @node_id = node_id
+        @node_identifier = node_identifier.presence&.to_s
         @flow_context = flow_context || {}
         @resolver_context = resolver_context || {}
         @expression_errors = []
@@ -141,13 +144,14 @@ module DiscourseWorkflows
         value.is_a?(Hash) ? value : default
       end
 
-      def data_table(id)
-        id = id.to_s
-        ensure_data_table_access!(id)
-        table = DiscourseWorkflows::DataTable.find(id)
-        DiscourseWorkflows::DataTables::NodeProxy.new(
-          DiscourseWorkflows::DataTables::Facade.new(table),
-        )
+      def helpers
+        @helpers ||=
+          ContextHelpers.new(
+            node_identifier: node_identifier,
+            data_table_access_validator: ->(data_table_id) do
+              ensure_data_table_access!(data_table_id)
+            end,
+          )
       end
 
       def credential_reference?(slot)

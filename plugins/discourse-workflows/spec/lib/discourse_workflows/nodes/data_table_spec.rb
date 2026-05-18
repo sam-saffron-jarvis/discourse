@@ -48,6 +48,17 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
         data_table.id,
       )
     end
+
+    it "uses the injected helper API instead of storage or model internals" do
+      path = "plugins/discourse-workflows/lib/discourse_workflows/nodes/data_table/v1.rb"
+      source = File.read(Rails.root.join(path))
+
+      expect(source).to include("context.helpers.get_data_table_aggregate_proxy")
+      expect(source).to include("exec_ctx.helpers.get_data_table_proxy")
+      expect(source).not_to include("DiscourseWorkflows::DataTable")
+      expect(source).not_to include("DataTables::Storage")
+      expect(source).not_to include("DataTables::Facade")
+    end
   end
 
   describe "error handling" do

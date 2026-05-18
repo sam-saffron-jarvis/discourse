@@ -35,11 +35,20 @@ module DiscourseWorkflows
 
       def initialize(facade)
         @facade = facade
-        @columns_resolver = Nodes::DataTable::ColumnsResolver.new(facade.data_table)
+        @columns_resolver = ColumnsResolver.new(facade.data_table)
       end
 
       def column_names
-        @facade.data_table.columns.map { |c| c["name"] }
+        get_columns.map { |column| column[:name] }
+      end
+
+      def get_columns
+        @facade.data_table.columns.filter_map do |column|
+          name = DiscourseWorkflows::DataTable.column_name(column)
+          next if Types.system_column?(name)
+
+          { name: name, type: DiscourseWorkflows::DataTable.column_type(column) }
+        end
       end
 
       def insert(columns:)

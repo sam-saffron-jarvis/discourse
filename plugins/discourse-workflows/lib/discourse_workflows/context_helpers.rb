@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+module DiscourseWorkflows
+  class ContextHelpers
+    def initialize(node_identifier:, data_table_access_validator: nil, guardian: nil)
+      @data_table_proxy_provider =
+        DataTables::NodeProxyProvider.new(
+          node_identifier: node_identifier,
+          data_table_access_validator: data_table_access_validator,
+          guardian: guardian,
+        )
+    end
+
+    def get_data_table_proxy(data_table_id)
+      @data_table_proxy_provider.get_data_table_proxy(data_table_id)
+    end
+
+    def get_data_table_aggregate_proxy
+      @data_table_proxy_provider.get_data_table_aggregate_proxy
+    end
+  end
+end

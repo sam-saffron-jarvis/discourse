@@ -146,23 +146,15 @@ module DiscourseWorkflows
         def self.load_options_context(context)
           case context.method_name
           when "data_tables"
-            DiscourseWorkflows::DataTable
-              .order(:name)
-              .select { |dt| context.matches_filter?(dt.name) }
-              .map do |dt|
-                {
-                  id: dt.id,
-                  name: dt.name,
-                  columns:
-                    dt.columns.map do |c|
-                      col = { name: c["name"], type: c["type"] }
-                      col[:reserved] = true if DataTables::Storage::RESERVED_COLUMN_NAMES.include?(
-                        c["name"],
-                      )
-                      col
-                    end,
-                }
-              end
+            result =
+              context.helpers.get_data_table_aggregate_proxy.get_many_and_count(
+                filter: {
+                  name: context.filter,
+                },
+                sort_by: "name:asc",
+              )
+
+            result[:data]
           end
         end
 
@@ -176,7 +168,7 @@ module DiscourseWorkflows
         private
 
         def execute_with_config(config, item, exec_ctx)
-          node_proxy = exec_ctx.data_table(config.fetch("data_table_id"))
+          node_proxy = exec_ctx.helpers.get_data_table_proxy(config.fetch("data_table_id"))
           operation_name = config.fetch("operation", "insert")
 
           if operation_name == "insert" && config["mapping_mode"] == "auto"

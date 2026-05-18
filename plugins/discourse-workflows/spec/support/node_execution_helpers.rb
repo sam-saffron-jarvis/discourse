@@ -25,6 +25,7 @@ module NodeExecutionHelpers
       credentials: node_credentials,
       property_schema: described_class.property_schema,
       credential_schema: described_class.credentials,
+      node_identifier: described_class.identifier,
       resolver_context: resolver_context,
     }
     kwargs[:node_context] = node_context if node_context

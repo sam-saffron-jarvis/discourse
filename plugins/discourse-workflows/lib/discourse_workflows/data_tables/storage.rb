@@ -10,7 +10,7 @@ module DiscourseWorkflows
         "date" => :timestamp,
       }.freeze
 
-      RESERVED_COLUMN_NAMES = %w[id created_at updated_at].freeze
+      RESERVED_COLUMN_NAMES = Types::SYSTEM_COLUMN_NAMES
 
       REVERSE_TYPE_MAP = {
         "int8" => "number",

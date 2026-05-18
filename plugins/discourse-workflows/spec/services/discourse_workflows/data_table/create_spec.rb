@@ -76,7 +76,7 @@ RSpec.describe DiscourseWorkflows::DataTable::Create do
         expect(data_table.name).to eq("empty_table")
         user_columns =
           data_table.columns.reject do |c|
-            DiscourseWorkflows::DataTables::Storage::RESERVED_COLUMN_NAMES.include?(c["name"])
+            DiscourseWorkflows::DataTables::Types.system_column?(c["name"])
           end
         expect(user_columns).to be_empty
       end

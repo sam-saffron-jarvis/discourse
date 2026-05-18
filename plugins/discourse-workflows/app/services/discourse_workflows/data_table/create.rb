@@ -27,7 +27,7 @@ module DiscourseWorkflows
           next if name.blank? || type.blank?
           next unless DiscourseWorkflows::DataTable::COLUMN_NAME_FORMAT.match?(name)
           next if DiscourseWorkflows::DataTable::VALID_COLUMN_TYPES.exclude?(type)
-          next if DiscourseWorkflows::DataTables::Storage::RESERVED_COLUMN_NAMES.include?(name)
+          next if DiscourseWorkflows::DataTables::Types.system_column?(name)
           next if name.length > DiscourseWorkflows::DataTable::MAX_COLUMN_NAME_LENGTH
 
           { "name" => name, "type" => type }

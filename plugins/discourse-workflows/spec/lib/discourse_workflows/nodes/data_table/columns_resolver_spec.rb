@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe DiscourseWorkflows::Nodes::DataTable::ColumnsResolver do
+RSpec.describe DiscourseWorkflows::DataTables::ColumnsResolver do
   fab!(:data_table) do
     Fabricate(
       :discourse_workflows_data_table,
@@ -41,6 +41,10 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::ColumnsResolver do
         ArgumentError,
         /Unknown column name/,
       )
+    end
+
+    it "does not resolve system columns" do
+      expect { resolver.resolve("id" => 1) }.to raise_error(ArgumentError, /Unknown column name/)
     end
   end
 

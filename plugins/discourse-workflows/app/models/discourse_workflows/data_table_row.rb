@@ -9,7 +9,7 @@ module DiscourseWorkflows
         data_table
           .columns
           .index_by { |column| DataTable.column_name(column) }
-          .except(*DataTables::Storage::RESERVED_COLUMN_NAMES)
+          .except(*DataTables::Types::SYSTEM_COLUMN_NAMES)
       end
 
       def normalize_row_data(data_table, data, fill_missing:)

@@ -92,6 +92,10 @@ module DiscourseWorkflows
       )
     end
 
+    def helpers
+      @helpers ||= ContextHelpers.new(node_identifier: node_identifier, guardian: guardian)
+    end
+
     def to_h
       {
         method_name: method_name,

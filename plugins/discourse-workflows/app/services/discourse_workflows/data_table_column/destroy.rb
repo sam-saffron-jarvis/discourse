@@ -28,7 +28,7 @@ module DiscourseWorkflows
     end
 
     def not_reserved_column(params:)
-      DataTables::Storage::RESERVED_COLUMN_NAMES.exclude?(params.column_name)
+      DataTables::Types::SYSTEM_COLUMN_NAMES.exclude?(params.column_name)
     end
 
     def drop_storage_column(data_table:, params:)

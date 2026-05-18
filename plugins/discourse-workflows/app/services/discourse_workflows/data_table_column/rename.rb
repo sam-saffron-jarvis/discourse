@@ -23,7 +23,7 @@ module DiscourseWorkflows
                     "must start with a letter or underscore and contain only letters, numbers, and underscores",
                 },
                 exclusion: {
-                  in: DataTables::Storage::RESERVED_COLUMN_NAMES,
+                  in: DataTables::Types::SYSTEM_COLUMN_NAMES,
                   message: "is reserved",
                 }
     end
@@ -45,7 +45,7 @@ module DiscourseWorkflows
     end
 
     def not_reserved_column(params:)
-      DataTables::Storage::RESERVED_COLUMN_NAMES.exclude?(params.column_name)
+      DataTables::Types::SYSTEM_COLUMN_NAMES.exclude?(params.column_name)
     end
 
     def name_available(data_table:, params:)
