@@ -15,19 +15,23 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionContext do
       expect(execution_context.context["my_node"]).to eq([{ "json" => { "x" => 1 } }])
     end
 
-    it "warns when storing a reserved key" do
+    it "still overwrites and warns when storing a reserved top-level key" do
       allow(Rails.logger).to receive(:warn)
+      overridden = [{ "json" => { "overridden" => true } }]
 
-      execution_context.store_context("$trigger", [{ "json" => {} }])
+      execution_context.store_context("$trigger", overridden)
 
+      expect(execution_context.context["$trigger"]).to eq(overridden)
       expect(Rails.logger).to have_received(:warn).with(/collides with reserved context key/)
     end
 
-    it "warns when storing an internal resolver key" do
+    it "still stores and warns when storing an internal resolver key" do
       allow(Rails.logger).to receive(:warn)
+      payload = [{ "json" => { "x" => 1 } }]
 
-      execution_context.store_context("__input_item", [{ "json" => {} }])
+      execution_context.store_context("__input_item", payload)
 
+      expect(execution_context.context["__input_item"]).to eq(payload)
       expect(Rails.logger).to have_received(:warn).with(/collides with reserved context key/)
     end
   end
