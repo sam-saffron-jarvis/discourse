@@ -89,6 +89,10 @@ module DiscourseWorkflows
         Array.new(max_index + 1) { |index| @input_groups[index] || [] }
       end
 
+      def input_context
+        InputContext.from_node_context(get_context(:node))
+      end
+
       def with_sandbox(capture_logs: false)
         sandbox =
           JsSandbox.new(
@@ -195,6 +199,14 @@ module DiscourseWorkflows
         paired_item = { "item" => item_index_for(item, input_index:) }
         paired_item["input"] = input_index if input_index != 0
         paired_item
+      end
+
+      def normalize_items(execution_data)
+        Item.normalize_items(execution_data)
+      end
+
+      def normalize_paired_item(paired_item)
+        Item.normalize_paired_item(paired_item)
       end
 
       private

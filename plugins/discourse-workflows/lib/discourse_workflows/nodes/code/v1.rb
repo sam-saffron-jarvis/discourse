@@ -24,7 +24,6 @@ module DiscourseWorkflows
 
           return items;
         JS
-        N8N_ITEM_KEYS = %w[json binary pairedItem error index].freeze
         RUN_ONCE_FOR_ALL_ITEMS = "runOnceForAllItems"
         RUN_ONCE_FOR_EACH_ITEM = "runOnceForEachItem"
 
@@ -72,6 +71,7 @@ module DiscourseWorkflows
           mode = @configuration["mode"] || RUN_ONCE_FOR_ALL_ITEMS
           validate_mode!(mode)
           validate_no_disallowed_methods_in_run_for_each!(code) if mode == RUN_ONCE_FOR_EACH_ITEM
+          result_validator = result_validator(exec_ctx)
 
           items =
             exec_ctx.with_sandbox(capture_logs: true) do |sandbox|
@@ -79,12 +79,12 @@ module DiscourseWorkflows
                 sandbox,
                 exec_ctx.input_items,
                 @configuration,
-                DiscourseWorkflows::InputContext.from_node_context(exec_ctx.get_context(:node)),
+                exec_ctx.input_context,
               )
               if mode == RUN_ONCE_FOR_ALL_ITEMS
-                execute_all_items(sandbox, code)
+                execute_all_items(sandbox, code, result_validator)
               else
-                execute_per_item(sandbox, code, exec_ctx.input_items)
+                execute_per_item(sandbox, code, exec_ctx.input_items, result_validator)
               end
             end
           [items]
@@ -92,21 +92,21 @@ module DiscourseWorkflows
 
         private
 
-        def execute_per_item(sandbox, code, input_items)
+        def execute_per_item(sandbox, code, input_items, result_validator)
           input_items.each_with_index.filter_map do |item, item_index|
             sandbox.rebind_code_item(item, item_index:)
             result = evaluate_code(sandbox, code)
             next if result["type"] == "null"
 
-            validate_run_code_each_item(result, item_index)
+            result_validator.validate_each_item(result, item_index:)
           end
         end
 
-        def execute_all_items(sandbox, code)
+        def execute_all_items(sandbox, code, result_validator)
           result = evaluate_code(sandbox, code)
           return [] if result["type"] == "null"
 
-          validate_run_code_all_items(result)
+          result_validator.validate_all_items(result)
         end
 
         def evaluate_code(sandbox, code)
@@ -130,172 +130,6 @@ module DiscourseWorkflows
           JS
         end
 
-        def validate_run_code_each_item(result, item_index)
-          value = result["value"]
-
-          if result["type"] != "object"
-            raise_validation_error!(
-              "Code doesn't return an object",
-              "Please return an object representing the output item. " \
-                "('#{value}' was returned instead.)",
-              item_index:,
-            )
-          end
-
-          if value.is_a?(Array)
-            first_sentence =
-              (
-                if value.length > 0
-                  "An array of #{value.first.class.name.downcase}s was returned."
-                else
-                  "An empty array was returned."
-                end
-              )
-            raise_validation_error!(
-              "Code doesn't return a single object",
-              "#{first_sentence} If you need to output multiple items, please use the " \
-                "'Run Once for All Items' mode instead.",
-              item_index:,
-            )
-          end
-
-          unless value.is_a?(Hash)
-            raise_validation_error!(
-              "Code doesn't return an object",
-              "Please return an object representing the output item.",
-              item_index:,
-            )
-          end
-
-          return_data = normalize_items([value]).first
-          validate_item!(return_data, item_index:)
-          validate_top_level_keys!(return_data, item_index:)
-          return_data["pairedItem"] ||= { "item" => item_index }
-          normalize_item_result(return_data)
-        end
-
-        def validate_run_code_all_items(result)
-          value = result["value"]
-
-          if result["type"] != "object"
-            raise_validation_error!(
-              "Code doesn't return items properly",
-              "Please return an array of objects, one for each item you would like to output.",
-            )
-          end
-
-          if value.is_a?(Array)
-            items = value.map { |item| stringify_result(item) }
-            unless items.all? { |item| item.is_a?(Hash) }
-              raise_validation_error!(
-                "Code doesn't return items properly",
-                "Please return an array of objects, one for each item you would like to output.",
-              )
-            end
-
-            if items.any? { |item| item.keys.any? { |key| n8n_item_key?(key) } }
-              items.each_with_index do |item, index|
-                validate_top_level_keys!(item, item_index: index)
-              end
-            end
-          elsif !value.is_a?(Hash)
-            raise_validation_error!(
-              "Code doesn't return items properly",
-              "Please return an array of objects, one for each item you would like to output.",
-            )
-          end
-
-          normalize_items(value).tap do |return_data|
-            return_data.each_with_index { |item, index| validate_item!(item, item_index: index) }
-          end
-        end
-
-        def normalize_items(execution_data)
-          execution_data = stringify_result(execution_data)
-
-          if execution_data.is_a?(Hash)
-            return [normalize_item_result(execution_data)] if execution_data.key?("json")
-
-            return [wrap(execution_data)]
-          end
-
-          if execution_data.all? { |item| item.is_a?(Hash) && item.key?("json") }
-            return execution_data.map { |item| normalize_item_result(item) }
-          end
-
-          if execution_data.any? { |item| item.is_a?(Hash) && item.key?("json") }
-            raise_validation_error!(
-              "Inconsistent item format",
-              "Every returned item must use the same format.",
-            )
-          end
-
-          if execution_data.all? { |item| item.is_a?(Hash) && item.key?("binary") }
-            return(
-              execution_data.map do |item|
-                normalize_item_result("json" => item.except("binary"), "binary" => item["binary"])
-              end
-            )
-          end
-
-          if execution_data.any? { |item| item.is_a?(Hash) && item.key?("binary") }
-            raise_validation_error!(
-              "Inconsistent item format",
-              "Every returned item must use the same format.",
-            )
-          end
-
-          execution_data.map { |item| wrap(item) }
-        end
-
-        def validate_item!(item, item_index:)
-          unless item["json"].is_a?(Hash)
-            raise_validation_error!(
-              "A 'json' property isn't an object",
-              "In the returned data, every key named 'json' must point to an object.",
-              item_index:,
-            )
-          end
-
-          if item.key?("binary") && !item["binary"].is_a?(Hash)
-            raise_validation_error!(
-              "A 'binary' property isn't an object",
-              "In the returned data, every key named 'binary' must point to an object.",
-              item_index:,
-            )
-          end
-        end
-
-        def validate_top_level_keys!(item, item_index:)
-          found_reserved_key = nil
-          unknown_keys = []
-
-          item.each_key do |key|
-            if n8n_item_key?(key)
-              found_reserved_key ||= key
-            else
-              unknown_keys << key
-            end
-          end
-
-          return if unknown_keys.empty?
-
-          if found_reserved_key
-            raise_validation_error!(
-              "Invalid output format",
-              "An output item contains the reserved key #{found_reserved_key}. " \
-                "Wrap each item in an object under a key called json.",
-              item_index:,
-            )
-          end
-
-          raise_validation_error!(
-            "Unknown top-level item key: #{unknown_keys.first}",
-            "Access the properties of an item under .json, e.g. item.json",
-            item_index:,
-          )
-        end
-
         def validate_no_disallowed_methods_in_run_for_each!(code)
           match = code.match(/\$input\.(?<disallowed_method>first|last|all|itemMatching)/)
           return if match.blank?
@@ -310,54 +144,31 @@ module DiscourseWorkflows
               end
           return if line_number.nil?
 
-          raise_validation_error!(
+          raise_node_error!(
             "Can't use .#{disallowed_method}() here",
-            "This is only available in 'Run Once for All Items' mode.",
+            description: "This is only available in 'Run Once for All Items' mode.",
             item_index: 0,
             line_number: line_number + 1,
           )
         end
 
-        def raise_validation_error!(message, description, item_index: nil, line_number: nil)
-          suffix = +""
-          suffix << " [line #{line_number}" if line_number
-          if item_index
-            suffix << (line_number ? ", for item #{item_index}" : " [item #{item_index}")
-          end
-          (suffix.presence&.<<("]"))
-
-          raise DiscourseWorkflows::NodeError, "#{message}#{suffix}: #{description}"
-        end
-
         def validate_mode!(mode)
           return if [RUN_ONCE_FOR_ALL_ITEMS, RUN_ONCE_FOR_EACH_ITEM].include?(mode)
 
-          raise_validation_error!(
+          raise_node_error!(
             "Invalid Code mode",
-            "#{mode.inspect} is not a supported Code execution mode.",
+            description: "#{mode.inspect} is not a supported Code execution mode.",
           )
         end
 
-        def n8n_item_key?(key)
-          N8N_ITEM_KEYS.include?(key.to_s)
-        end
-
-        def stringify_result(value)
-          case value
-          when Hash
-            value.deep_stringify_keys
-          when Array
-            value.map { |item| stringify_result(item) }
-          else
-            value
-          end
-        end
-
-        def normalize_item_result(result)
-          if result.key?("pairedItem")
-            result["pairedItem"] = Item.normalize_paired_item(result["pairedItem"])
-          end
-          result
+        def result_validator(exec_ctx)
+          ResultValidator.new(
+            normalize_items: ->(value) { exec_ctx.normalize_items(value) },
+            raise_error:
+              lambda do |message, description:, item_index: nil, line_number: nil|
+                raise_node_error!(message, description:, item_index:, line_number:)
+              end,
+          )
         end
 
         def setup_code_sandbox!(sandbox, input_items, input_params, input_context)

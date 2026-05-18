@@ -50,4 +50,41 @@ RSpec.describe DiscourseWorkflows::Item do
       expect { described_class.wrap("string") }.to raise_error(ArgumentError)
     end
   end
+
+  describe ".normalize_items" do
+    it "wraps plain objects as json items" do
+      expect(described_class.normalize_items([{ name: "Ada" }])).to eq(
+        [{ "json" => { "name" => "Ada" } }],
+      )
+    end
+
+    it "preserves item-shaped objects and normalizes pairedItem" do
+      expect(described_class.normalize_items([{ json: { name: "Ada" }, pairedItem: 0 }])).to eq(
+        [{ "json" => { "name" => "Ada" }, "pairedItem" => { "item" => 0 } }],
+      )
+    end
+
+    it "raises when json item and plain object formats are mixed" do
+      expect { described_class.normalize_items([{ json: { id: 1 } }, { id: 2 }]) }.to raise_error(
+        described_class::InconsistentItemFormatError,
+        described_class::INCONSISTENT_ITEM_FORMAT_MESSAGE,
+      )
+    end
+
+    it "raises when binary item and plain object formats are mixed" do
+      expect { described_class.normalize_items([{ binary: {} }, { id: 2 }]) }.to raise_error(
+        described_class::InconsistentItemFormatError,
+        described_class::INCONSISTENT_ITEM_FORMAT_MESSAGE,
+      )
+    end
+
+    it "raises when json and binary item formats are mixed" do
+      expect {
+        described_class.normalize_items([{ json: { id: 1 } }, { binary: {} }])
+      }.to raise_error(
+        described_class::InconsistentItemFormatError,
+        described_class::INCONSISTENT_ITEM_FORMAT_MESSAGE,
+      )
+    end
+  end
 end
