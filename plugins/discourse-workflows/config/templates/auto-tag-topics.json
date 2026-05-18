@@ -26,11 +26,11 @@
           {
             "id": "a1404264-d341-43a9-84b8-d7d6c67e477d",
             "operator": {
-              "type": "string",
+              "type": "integer",
               "operation": "equals",
               "singleValue": false
             },
-            "leftValue": "topic.category_id",
+            "leftValue": "={{ $json.topic.category_id }}",
             "rightValue": ""
           }
         ]
