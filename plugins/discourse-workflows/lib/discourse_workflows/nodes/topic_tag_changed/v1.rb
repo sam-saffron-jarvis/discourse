@@ -31,7 +31,7 @@ module DiscourseWorkflows
         end
 
         def valid?
-          @topic.present?
+          @topic.present? && added_tags.present?
         end
 
         def output
@@ -39,9 +39,19 @@ module DiscourseWorkflows
             topic: Schemas::Topic.serialize(@topic),
             old_tags: @old_tag_names,
             new_tags: @new_tag_names,
-            added_tags: @new_tag_names - @old_tag_names,
-            removed_tags: @old_tag_names - @new_tag_names,
+            added_tags: added_tags,
+            removed_tags: removed_tags,
           }
+        end
+
+        private
+
+        def added_tags
+          @new_tag_names - @old_tag_names
+        end
+
+        def removed_tags
+          @old_tag_names - @new_tag_names
         end
       end
     end

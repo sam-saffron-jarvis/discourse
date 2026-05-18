@@ -138,7 +138,7 @@ en:
         "trigger:post_created": "Fires when a new post or reply is created"
         "trigger:topic_created": "Fires when a new topic is created"
         "trigger:topic_category_changed": "Fires when a topic is moved to a different category"
-        "trigger:topic_tag_changed": "Fires when tags are added or removed from a topic"
+        "trigger:topic_tag_changed": "Fires when tags are added to a topic"
         "trigger:webhook": "Fires when an external service sends a webhook request"
         "trigger:manual": "Fires when triggered manually by an admin"
         "condition:if": "Branch the workflow based on a condition"

@@ -13,6 +13,16 @@ RSpec.describe DiscourseWorkflows::Nodes::TopicTagChanged::V1 do
       trigger = described_class.new(nil)
       expect(trigger).not_to be_valid
     end
+
+    it "returns false when no tags were added" do
+      trigger = described_class.new(topic, old_tag_names: %w[bug urgent], new_tag_names: ["bug"])
+      expect(trigger).not_to be_valid
+    end
+
+    it "returns false when the tag diff is empty" do
+      trigger = described_class.new(topic, old_tag_names: ["bug"], new_tag_names: ["bug"])
+      expect(trigger).not_to be_valid
+    end
   end
 
   describe "#output" do
