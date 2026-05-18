@@ -83,6 +83,67 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
       expect(result).to eq("id" => 1)
     end
 
+    it "sends fixed-collection query params resolved through the execution context" do
+      stub_request(:get, "https://api.example.com/search").with(
+        query: {
+          "q" => "discourse",
+          "page" => "2",
+        },
+      ).to_return(
+        status: 200,
+        body: { ok: true }.to_json,
+        headers: {
+          "content-type" => "application/json",
+        },
+      )
+
+      config = {
+        "method" => "GET",
+        "url" => "https://api.example.com/search",
+        "query_params" => {
+          "values" => [
+            { "key" => "q", "value" => "={{ $json.query }}" },
+            { "key" => "page", "value" => "2" },
+          ],
+        },
+      }
+
+      result = execute_node(configuration: config, item: { "json" => { "query" => "discourse" } })
+
+      expect(result).to eq("ok" => true)
+    end
+
+    it "sends fixed-collection form params resolved through the execution context" do
+      stub_request(:post, "https://api.example.com/form").with(
+        body: "name=Ada&role=admin",
+        headers: {
+          "Content-Type" => "application/x-www-form-urlencoded",
+        },
+      ).to_return(
+        status: 200,
+        body: { ok: true }.to_json,
+        headers: {
+          "content-type" => "application/json",
+        },
+      )
+
+      config = {
+        "method" => "POST",
+        "url" => "https://api.example.com/form",
+        "content_type" => "form_urlencoded",
+        "body_form" => {
+          "values" => [
+            { "key" => "name", "value" => "={{ $json.name }}" },
+            { "key" => "role", "value" => "admin" },
+          ],
+        },
+      }
+
+      result = execute_node(configuration: config, item: { "json" => { "name" => "Ada" } })
+
+      expect(result).to eq("ok" => true)
+    end
+
     it "raises an error for non-2xx status codes by default" do
       stub_request(:get, "https://api.example.com/fail").to_return(status: 404, body: "Not Found")
 

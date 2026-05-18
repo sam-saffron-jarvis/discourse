@@ -18,7 +18,7 @@ module DiscourseWorkflows
           end
 
           uri = build_uri(@config["url"], @config["query_params"])
-          headers = normalize_headers(@config["headers"])
+          headers = (@config["headers"] || {}).to_h.compact
           Authenticator.apply(@config, headers, @exec_ctx)
           body = @config.key?("body") ? @config["body"] : build_body(method, @config, headers)
           [method, uri, headers, body]
@@ -38,7 +38,6 @@ module DiscourseWorkflows
         end
 
         def append_query_params(uri, query_params)
-          query_params = CollectionParameters.rows_from_value(query_params)
           return if query_params.blank?
 
           existing = URI.decode_www_form(uri.query || "")

@@ -60,14 +60,14 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::RequestBuilder do
       expect(uri.query).to include("extra=yes")
     end
 
-    it "normalizes headers from array format" do
+    it "uses normalized headers" do
       config = {
         "method" => "GET",
         "url" => "https://example.com/api",
-        "headers" => [
-          { "key" => "X-Custom", "value" => "test" },
-          { "key" => "Accept", "value" => "application/json" },
-        ],
+        "headers" => {
+          "X-Custom" => "test",
+          "Accept" => "application/json",
+        },
       }
       _, _, headers, _ = described_class.new(config).build
 
