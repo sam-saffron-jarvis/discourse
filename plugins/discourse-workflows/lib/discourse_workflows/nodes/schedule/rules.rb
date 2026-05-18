@@ -30,18 +30,7 @@ module DiscourseWorkflows
           end
         end
 
-        def from_configuration(configuration)
-          configuration = configuration.is_a?(Hash) ? configuration.with_indifferent_access : {}
-          CollectionParameters.rows(configuration, :rule, group: "interval")
-        end
-
-        def from_rule_parameter(rule_parameter)
-          CollectionParameters.rows_from_value(rule_parameter, group: "interval")
-        end
-
-        def validate_configuration(configuration, errors)
-          rules = from_configuration(configuration)
-
+        def validate(rules, errors)
           if rules.empty?
             errors.add(:base, I18n.t("discourse_workflows.errors.schedule_rules_required"))
             return

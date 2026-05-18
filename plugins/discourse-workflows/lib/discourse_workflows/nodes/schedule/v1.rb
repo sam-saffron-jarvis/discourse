@@ -166,11 +166,12 @@ module DiscourseWorkflows
         end
 
         def self.validate_configuration(configuration, errors)
-          Rules.validate_configuration(configuration, errors)
+          Rules.validate(fixed_collection_rows(configuration, :rule, group: "interval"), errors)
         end
 
         def trigger(trigger_ctx)
-          rules = Rules.from_rule_parameter(trigger_ctx.get_node_parameter("rule", {}))
+          rules = trigger_ctx.get_fixed_collection_rows("rule", group: "interval")
+          timezone = trigger_ctx.get_timezone
           node_key = "#{trigger_ctx.workflow_id}:#{trigger_ctx.node_id}"
           schedules =
             rules.map.with_index do |rule, index|
@@ -193,6 +194,7 @@ module DiscourseWorkflows
                         trigger_ctx,
                         schedule[:recurrence],
                         rule_index: schedule[:rule_index],
+                        timezone:,
                         skip_recurrence_check: true,
                         deduplicate: false,
                       )
@@ -212,6 +214,7 @@ module DiscourseWorkflows
                   trigger_ctx,
                   schedule[:recurrence],
                   rule_index: schedule[:rule_index],
+                  timezone:,
                   scheduled_time:,
                 )
               end
@@ -220,21 +223,17 @@ module DiscourseWorkflows
           {}
         end
 
-        def output(time: Time.current, timezone: DiscourseWorkflows::WorkflowTimezone.default)
-          Payload.build(time:, timezone:)
-        end
-
         private
 
         def execute_trigger(
           trigger_ctx,
           recurrence,
           rule_index:,
+          timezone:,
           scheduled_time: Time.current.utc,
           skip_recurrence_check: false,
           deduplicate: true
         )
-          timezone = trigger_ctx.get_timezone
           static_data = trigger_ctx.get_workflow_static_data(:node)
           recurrence_rules = static_data["recurrenceRules"] ||= []
           if !skip_recurrence_check &&

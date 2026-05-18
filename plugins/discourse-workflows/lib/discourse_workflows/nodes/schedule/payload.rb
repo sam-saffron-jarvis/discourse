@@ -6,7 +6,7 @@ module DiscourseWorkflows
       module Payload
         module_function
 
-        def build(time: Time.current, timezone: DiscourseWorkflows::WorkflowTimezone.default)
+        def build(time: Time.current, timezone:)
           local_time = time.in_time_zone(timezone)
           hour = local_time.hour % 12
           hour = 12 if hour.zero?

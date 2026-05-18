@@ -3,6 +3,7 @@
 module DiscourseWorkflows
   class Executor
     class TriggerExecutionContext
+      MISSING = Object.new.freeze
       MAX_DEDUPLICATION_KEYS = 200
 
       attr_reader :published_trigger,
@@ -39,6 +40,13 @@ module DiscourseWorkflows
 
       def get_node_parameter(parameter_name, default = nil, _options = {})
         parameters.fetch(parameter_name.to_s) { parameters.fetch(parameter_name.to_sym, default) }
+      end
+
+      def get_fixed_collection_rows(path, group: CollectionParameters::DEFAULT_GROUP, default: [])
+        value = get_node_parameter(path, MISSING)
+        return default if value.equal?(MISSING)
+
+        CollectionParameters.rows_from_value(value, group:)
       end
 
       def get_timezone

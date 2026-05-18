@@ -122,6 +122,20 @@ RSpec.describe DiscourseWorkflows::NodeType do
     end
   end
 
+  describe ".fixed_collection_rows" do
+    it "reads fixed collection rows from a node configuration" do
+      config = { "rule" => { "interval" => [{ "field" => "days" }] } }
+
+      expect(described_class.fixed_collection_rows(config, :rule, group: "interval")).to eq(
+        [{ "field" => "days" }],
+      )
+    end
+
+    it "returns an empty array when configuration is not a hash" do
+      expect(described_class.fixed_collection_rows("invalid", :rule, group: "interval")).to eq([])
+    end
+  end
+
   describe ".exemplar_from_schema" do
     it "maps primitive types to their default values" do
       schema = {

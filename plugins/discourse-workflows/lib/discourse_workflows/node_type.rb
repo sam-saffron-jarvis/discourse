@@ -147,6 +147,15 @@ module DiscourseWorkflows
       exemplar_from_schema(output_schema)
     end
 
+    def self.fixed_collection_rows(
+      configuration,
+      field_name,
+      group: CollectionParameters::DEFAULT_GROUP
+    )
+      configuration = configuration.is_a?(Hash) ? configuration.with_indifferent_access : {}
+      CollectionParameters.rows(configuration, field_name, group:)
+    end
+
     def self.exemplar_from_schema(schema)
       schema.each_with_object({}) { |(key, value), hash| hash[key.to_s] = exemplar_value(value) }
     end

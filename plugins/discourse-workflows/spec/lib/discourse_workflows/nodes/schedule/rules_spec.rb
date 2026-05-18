@@ -1,14 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::Nodes::Schedule::Rules do
-  describe ".from_configuration" do
-    it "reads n8n-style fixed collection intervals" do
-      config = { "rule" => { "interval" => [{ "field" => "days" }] } }
-
-      expect(described_class.from_configuration(config)).to eq([{ "field" => "days" }])
-    end
-  end
-
   describe ".to_cron_expression" do
     it "converts minute intervals" do
       rule = { "field" => "minutes", "minutesInterval" => 5 }
