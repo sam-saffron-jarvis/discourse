@@ -83,8 +83,8 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          config = exec_ctx.get_node_parameters(0)
-          type = config.fetch("type") { "simple" }
+          type = exec_ctx.get_node_parameter("type", 0, default: "simple")
+          config = { "type" => type, "code" => exec_ctx.get_node_parameter("code", 0) }
 
           items =
             case type
@@ -103,7 +103,7 @@ module DiscourseWorkflows
         private
 
         def sort_simple(exec_ctx)
-          sort_fields = exec_ctx.get_fixed_collection_rows("sort_fields", 0)
+          sort_fields = exec_ctx.get_node_parameter("sort_fields.values", 0, default: [])
           return exec_ctx.input_items.dup if sort_fields.blank?
 
           exec_ctx.input_items.sort { |a, b| compare_items(a, b, sort_fields) }

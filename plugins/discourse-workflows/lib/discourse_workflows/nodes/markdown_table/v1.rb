@@ -80,11 +80,11 @@ module DiscourseWorkflows
         end
 
         def configured_table(exec_ctx)
-          columns = exec_ctx.get_fixed_collection_rows("columns", 0)
+          columns = exec_ctx.get_node_parameter("columns.values", 0, default: [])
           headers = columns.map { |c| c["header"].to_s }
           rows =
             exec_ctx.input_items.each_with_index.map do |_item, item_index|
-              resolved = exec_ctx.get_fixed_collection_rows("columns", item_index)
+              resolved = exec_ctx.get_node_parameter("columns.values", item_index, default: [])
               resolved.map { |c| format_cell(c["value"]) }
             end
           [headers, rows]

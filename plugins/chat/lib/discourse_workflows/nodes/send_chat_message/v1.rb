@@ -52,7 +52,10 @@ if defined?(DiscourseWorkflows)
           def execute(exec_ctx)
             items =
               exec_ctx.input_items.map.with_index do |_item, item_index|
-                config = exec_ctx.get_node_parameters(item_index)
+                config = {
+                  "channel_id" => exec_ctx.get_node_parameter("channel_id", item_index),
+                  "message" => exec_ctx.get_node_parameter("message", item_index),
+                }
                 result = process(config)
                 wrap(result)
               end

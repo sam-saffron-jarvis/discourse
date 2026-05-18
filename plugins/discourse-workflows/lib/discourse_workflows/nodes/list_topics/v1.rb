@@ -43,12 +43,12 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          config = exec_ctx.get_node_parameters(0)
+          query = exec_ctx.get_node_parameter("query", 0)
+          raw_limit = exec_ctx.get_node_parameter("limit", 0, default: DEFAULT_LIMIT)
+          limit = [[Integer(raw_limit), 1].max, MAX_LIMIT].min
 
-          query = config["query"]
-          limit = [[Integer(config.fetch("limit") { DEFAULT_LIMIT }), 1].max, MAX_LIMIT].min
-
-          actor = exec_ctx.find_user(username: config["actor_username"].presence || "system")
+          actor_username = exec_ctx.get_node_parameter("actor_username", 0, default: "system")
+          actor = exec_ctx.find_user(username: actor_username.presence || "system")
           topic_query = TopicQuery.new(actor, q: query, per_page: limit)
           topic_list = topic_query.list_filter
 

@@ -39,7 +39,7 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          entries = exec_ctx.get_fixed_collection_rows("entries", 0)
+          entries = exec_ctx.get_node_parameter("entries.values", 0, default: [])
           return [exec_ctx.input_items] if entries.empty?
 
           entries.each { |entry| exec_ctx.log.kv(entry["key"].to_s, entry["value"].to_s) }

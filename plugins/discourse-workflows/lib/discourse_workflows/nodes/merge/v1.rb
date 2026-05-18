@@ -179,8 +179,29 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          config = exec_ctx.get_node_parameters(0)
-          fields_to_match = exec_ctx.get_fixed_collection_rows("fields_to_match", 0)
+          config = {
+            "mode" => exec_ctx.get_node_parameter("mode", 0, default: "append"),
+            "number_inputs" => exec_ctx.get_node_parameter("number_inputs", 0, default: 2),
+            "combine_by" =>
+              exec_ctx.get_node_parameter("combine_by", 0, default: "matching_fields"),
+            "join_mode" => exec_ctx.get_node_parameter("join_mode", 0, default: "keep_matches"),
+            "output_data_from" =>
+              exec_ctx.get_node_parameter("output_data_from", 0, default: "both"),
+            "multiple_matches" =>
+              exec_ctx.get_node_parameter("multiple_matches", 0, default: "all"),
+            "use_data_of_input" =>
+              exec_ctx.get_node_parameter("use_data_of_input", 0, default: "input_1"),
+            "choose_output" =>
+              exec_ctx.get_node_parameter("choose_output", 0, default: "specified_input"),
+            "include_unpaired" =>
+              exec_ctx.get_node_parameter("include_unpaired", 0, default: false),
+            "resolve_clash" =>
+              exec_ctx.get_node_parameter("resolve_clash", 0, default: "prefer_last"),
+            "merge_mode" => exec_ctx.get_node_parameter("merge_mode", 0, default: "deep_merge"),
+            "override_empty" => exec_ctx.get_node_parameter("override_empty", 0, default: false),
+            "fuzzy_compare" => exec_ctx.get_node_parameter("fuzzy_compare", 0, default: false),
+          }
+          fields_to_match = exec_ctx.get_node_parameter("fields_to_match.values", 0, default: [])
           @input_item_indexes = item_indexes_by_input(exec_ctx.inputs)
 
           items =
@@ -315,8 +336,8 @@ module DiscourseWorkflows
 
         def match_fields(fields_to_match)
           fields_to_match.map.with_index do |field, index|
-            field_1 = field["field_1"].presence || field["field1"].presence
-            field_2 = field["field_2"].presence || field["field2"].presence || field_1
+            field_1 = field["field_1"].presence
+            field_2 = field["field_2"].presence || field_1
             if field_1.blank? || field_2.blank?
               raise_node_error!(
                 I18n.t("discourse_workflows.errors.merge.invalid_fields_to_match"),

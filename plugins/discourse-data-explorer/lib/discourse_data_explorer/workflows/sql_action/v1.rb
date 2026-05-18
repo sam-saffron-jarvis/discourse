@@ -153,7 +153,12 @@ module DiscourseDataExplorer
         end
 
         def execute(exec_ctx)
-          config = exec_ctx.get_node_parameters(0)
+          config = {
+            "operation" => exec_ctx.get_node_parameter("operation", 0, default: "queries"),
+            "query_id" => exec_ctx.get_node_parameter("query_id", 0),
+            "query_params" => exec_ctx.get_node_parameter("query_params", 0, default: {}),
+            "query" => exec_ctx.get_node_parameter("query", 0),
+          }
           operation = config.fetch("operation") { "queries" }
 
           if operation == "queries"
@@ -196,7 +201,7 @@ module DiscourseDataExplorer
 
           req_params = {}
           exec_ctx
-            .get_fixed_collection_rows("params", 0)
+            .get_node_parameter("params.values", 0, default: [])
             .each do |param|
               req_params[param["name"].to_sym] = param["value"] if param["name"].present?
             end

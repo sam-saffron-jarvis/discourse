@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::Nodes::Log::V1 do
+  def entries(*rows)
+    { "values" => rows }
+  end
+
   describe "#execute" do
     it "passes input items through unchanged" do
       items = [{ "json" => { "name" => "Alice" } }, { "json" => { "count" => 42 } }]
       result =
         execute_node_output(
           configuration: {
-            "entries" => [{ "key" => "tag", "value" => "hello" }],
+            "entries" => entries({ "key" => "tag", "value" => "hello" }),
           },
           input_items: items,
         )
@@ -16,8 +20,9 @@ RSpec.describe DiscourseWorkflows::Nodes::Log::V1 do
 
     it "records structured key/value logs" do
       items = [{ "json" => { "id" => 1 } }]
-      entries = [{ "key" => "user_id", "value" => "1" }, { "key" => "status", "value" => "ok" }]
-      execute_node_output(configuration: { "entries" => entries }, input_items: items) do |ctx|
+      log_entries =
+        entries({ "key" => "user_id", "value" => "1" }, { "key" => "status", "value" => "ok" })
+      execute_node_output(configuration: { "entries" => log_entries }, input_items: items) do |ctx|
         expect(ctx.log.entries.size).to eq(2)
         expect(ctx.log.entries.first).to include(
           "level" => "info",
@@ -37,7 +42,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Log::V1 do
       result =
         execute_node_output(
           configuration: {
-            "entries" => [{ "key" => "name", "value" => "={{ $json.user_name }}" }],
+            "entries" => entries({ "key" => "name", "value" => "={{ $json.user_name }}" }),
           },
           input_items: items,
         ) do |ctx|
@@ -53,7 +58,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Log::V1 do
     it "handles empty entries gracefully" do
       items = [{ "json" => { "x" => 1 } }]
       result =
-        execute_node_output(configuration: { "entries" => [] }, input_items: items) do |ctx|
+        execute_node_output(configuration: { "entries" => entries }, input_items: items) do |ctx|
           expect(ctx.log.entries).to be_empty
         end
       expect(result.first).to eq(items)

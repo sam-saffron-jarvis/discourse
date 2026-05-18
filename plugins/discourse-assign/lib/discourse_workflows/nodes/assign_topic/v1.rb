@@ -91,7 +91,14 @@ if defined?(DiscourseWorkflows)
             actor = exec_ctx.user
             items =
               exec_ctx.input_items.map.with_index do |_item, item_index|
-                config = exec_ctx.get_node_parameters(item_index)
+                config = {
+                  "operation" =>
+                    exec_ctx.get_node_parameter("operation", item_index, default: "assign"),
+                  "topic_id" => exec_ctx.get_node_parameter("topic_id", item_index),
+                  "assignee" => exec_ctx.get_node_parameter("assignee", item_index),
+                  "replace_existing" =>
+                    exec_ctx.get_node_parameter("replace_existing", item_index, default: true),
+                }
                 result = process(actor, config)
                 wrap(result)
               end

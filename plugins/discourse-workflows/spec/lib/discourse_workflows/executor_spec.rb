@@ -324,7 +324,9 @@ RSpec.describe DiscourseWorkflows::Executor do
           g.node "log-1",
                  "action:log",
                  configuration: {
-                   "entries" => [{ "key" => "topic", "value" => "={{ $json.topic_id }}" }],
+                   "entries" => {
+                     "values" => [{ "key" => "topic", "value" => "={{ $json.topic_id }}" }],
+                   },
                  }
           g.chain "trigger-1", "log-1"
         end

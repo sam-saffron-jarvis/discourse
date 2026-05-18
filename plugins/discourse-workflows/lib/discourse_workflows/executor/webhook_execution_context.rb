@@ -7,9 +7,6 @@ module DiscourseWorkflows
 
       delegate :input_items,
                :get_node_parameter,
-               :get_node_parameters,
-               :get_fixed_collection_rows,
-               :get_collection_options,
                :get_node,
                :get_workflow,
                :get_child_nodes,
@@ -42,10 +39,6 @@ module DiscourseWorkflows
         @snapshot = execution_snapshot
 
         build_context!
-      end
-
-      def node_parameter_data
-        @parameters
       end
 
       def trigger_data

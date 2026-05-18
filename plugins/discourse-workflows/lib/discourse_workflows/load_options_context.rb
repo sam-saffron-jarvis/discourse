@@ -66,27 +66,19 @@ module DiscourseWorkflows
       filter.blank? || value.downcase.include?(filter.downcase)
     end
 
-    def credential_reference(slot)
-      credentials[slot.to_s].presence || credentials[credential_definition(slot)&.fetch("name")]
-    end
-
-    def credential_reference?(slot)
-      credential_reference(slot).present?
-    end
-
     def get_credentials(slot)
       definition = credential_definition(slot)
-      reference = credential_reference(slot)
-      raise Discourse::InvalidAccess if definition.blank? || reference.blank?
+      credential = credential_for_slot(slot)
+      raise Discourse::InvalidAccess if definition.blank? || credential.blank?
 
-      credential = DiscourseWorkflows::Credential.find_by(id: reference["id"])
-      raise Discourse::InvalidAccess if credential.blank?
-      unless credential_type_allowed?(definition, credential.credential_type)
+      credential_record = DiscourseWorkflows::Credential.find_by(id: credential["id"])
+      raise Discourse::InvalidAccess if credential_record.blank?
+      unless credential_type_allowed?(definition, credential_record.credential_type)
         raise Discourse::InvalidAccess
       end
 
       DiscourseWorkflows::ExpressionResolver.resolve_hash(
-        credential.decrypted_data,
+        credential_record.decrypted_data,
         context: credential_resolver_context,
         user: user,
       )
@@ -138,6 +130,10 @@ module DiscourseWorkflows
         credential_definitions.find do |definition|
           NodeData.credential_types_for(definition).include?(slot.to_s)
         end
+    end
+
+    def credential_for_slot(slot)
+      credentials[slot.to_s].presence || credentials[credential_definition(slot)&.fetch("name")]
     end
 
     def credential_type_allowed?(definition, credential_type)

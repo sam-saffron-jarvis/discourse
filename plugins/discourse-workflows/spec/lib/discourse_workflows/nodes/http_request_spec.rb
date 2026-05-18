@@ -200,7 +200,9 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
       config = {
         "method" => "POST",
         "url" => "https://api.example.com/data",
-        "headers" => [{ "key" => "X-Custom-Header", "value" => "my-value" }],
+        "headers" => {
+          "values" => [{ "key" => "X-Custom-Header", "value" => "my-value" }],
+        },
         "body_json" => '{"name":"test"}',
       }
 

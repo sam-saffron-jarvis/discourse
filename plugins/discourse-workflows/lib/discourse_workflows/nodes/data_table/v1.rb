@@ -157,7 +157,22 @@ module DiscourseWorkflows
         def execute(exec_ctx)
           items =
             exec_ctx.input_items.flat_map.with_index do |item, item_index|
-              config = exec_ctx.get_node_parameters(item_index)
+              config = {
+                "operation" =>
+                  exec_ctx.get_node_parameter("operation", item_index, default: "insert"),
+                "data_table_id" => exec_ctx.get_node_parameter("data_table_id", item_index),
+                "mapping_mode" =>
+                  exec_ctx.get_node_parameter("mapping_mode", item_index, default: "manual"),
+                "columns" => exec_ctx.get_node_parameter("columns", item_index, default: {}),
+                "filter_combinator" =>
+                  exec_ctx.get_node_parameter("filter_combinator", item_index, default: "and"),
+                "filter" => exec_ctx.get_node_parameter("filter", item_index),
+                "limit" => exec_ctx.get_node_parameter("limit", item_index),
+                "sort_column" => exec_ctx.get_node_parameter("sort_column", item_index),
+                "sort_direction" =>
+                  exec_ctx.get_node_parameter("sort_direction", item_index, default: "asc"),
+                "output_fields" => exec_ctx.get_node_parameter("output_fields", item_index),
+              }
               pair_output_items(execute_with_config(config, item, exec_ctx), exec_ctx, item)
             end
 

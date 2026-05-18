@@ -6,6 +6,10 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
     execute_node_output(configuration: config, input_items: input_items).first
   end
 
+  def sort_fields(*fields)
+    { "values" => fields }
+  end
+
   describe "simple mode" do
     it "sorts items ascending by a single field" do
       input = [
@@ -13,7 +17,11 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
         { "json" => { "name" => "Alice" } },
         { "json" => { "name" => "Bob" } },
       ]
-      result = execute(input, "sort_fields" => [{ "field_name" => "name", "order" => "ascending" }])
+      result =
+        execute(
+          input,
+          "sort_fields" => sort_fields({ "field_name" => "name", "order" => "ascending" }),
+        )
 
       expect(result.map { |i| i["json"]["name"] }).to eq(%w[Alice Bob Charlie])
     end
@@ -25,7 +33,10 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
         { "json" => { "score" => 20 } },
       ]
       result =
-        execute(input, "sort_fields" => [{ "field_name" => "score", "order" => "descending" }])
+        execute(
+          input,
+          "sort_fields" => sort_fields({ "field_name" => "score", "order" => "descending" }),
+        )
 
       expect(result.map { |i| i["json"]["score"] }).to eq([30, 20, 10])
     end
@@ -36,7 +47,11 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
         { "json" => { "name" => "Apple" } },
         { "json" => { "name" => "cherry" } },
       ]
-      result = execute(input, "sort_fields" => [{ "field_name" => "name", "order" => "ascending" }])
+      result =
+        execute(
+          input,
+          "sort_fields" => sort_fields({ "field_name" => "name", "order" => "ascending" }),
+        )
 
       expect(result.map { |i| i["json"]["name"] }).to eq(%w[Apple banana cherry])
     end
@@ -47,7 +62,11 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
         { "json" => { "other" => "no name field" } },
         { "json" => { "name" => "Alice" } },
       ]
-      result = execute(input, "sort_fields" => [{ "field_name" => "name", "order" => "ascending" }])
+      result =
+        execute(
+          input,
+          "sort_fields" => sort_fields({ "field_name" => "name", "order" => "ascending" }),
+        )
 
       expect(result[0]["json"]).not_to have_key("name")
       expect(result[1]["json"]["name"]).to eq("Alice")
@@ -64,10 +83,11 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
       result =
         execute(
           input,
-          "sort_fields" => [
-            { "field_name" => "dept", "order" => "ascending" },
-            { "field_name" => "name", "order" => "ascending" },
-          ],
+          "sort_fields" =>
+            sort_fields(
+              { "field_name" => "dept", "order" => "ascending" },
+              { "field_name" => "name", "order" => "ascending" },
+            ),
         )
 
       expect(result.map { |i| [i["json"]["dept"], i["json"]["name"]] }).to eq(
@@ -84,7 +104,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
       result =
         execute(
           input,
-          "sort_fields" => [{ "field_name" => "address.city", "order" => "ascending" }],
+          "sort_fields" => sort_fields({ "field_name" => "address.city", "order" => "ascending" }),
         )
 
       expect(result.map { |i| i["json"]["address"]["city"] }).to eq(%w[Boston Chicago New\ York])
@@ -92,7 +112,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
 
     it "returns items unchanged when sort_fields is empty" do
       input = [{ "json" => { "a" => 2 } }, { "json" => { "a" => 1 } }]
-      result = execute(input, "sort_fields" => [])
+      result = execute(input, "sort_fields" => sort_fields)
 
       expect(result.map { |i| i["json"]["a"] }).to eq([2, 1])
     end
@@ -146,17 +166,16 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
           result: nil,
           error: "broken",
         )
+      parameters = { "type" => "code", "code" => "return 0;" }
       exec_ctx =
         double(
           input_items: [{ "json" => { "n" => 1 } }],
           get_mode: "manual",
           continue_on_fail: false,
-          get_node_parameters: {
-            "type" => "code",
-            "code" => "return 0;",
-          },
+          get_node: double(parameters: parameters),
           start_job: job_result,
         )
+      allow(exec_ctx).to receive(:get_node_parameter) { |key, _item_index| parameters[key] }
 
       expect { described_class.new.execute(exec_ctx) }.to raise_error(
         DiscourseWorkflows::NodeError,

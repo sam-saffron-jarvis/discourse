@@ -37,14 +37,6 @@ RSpec.describe DiscourseWorkflows::Executor::TriggerExecutionContext do
     )
   end
 
-  describe "#get_fixed_collection_rows" do
-    it "reads fixed collection rows from trigger node parameters" do
-      expect(ctx.get_fixed_collection_rows("rule", group: "interval")).to eq(
-        [{ "field" => "days" }],
-      )
-    end
-  end
-
   describe "#get_timezone" do
     it "returns the resolved workflow timezone" do
       expect(ctx.get_timezone).to eq("Europe/Paris")

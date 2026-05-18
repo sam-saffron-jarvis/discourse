@@ -99,7 +99,10 @@ if defined?(DiscourseWorkflows)
           def execute(exec_ctx)
             items =
               exec_ctx.input_items.map.with_index do |item, item_index|
-                config = exec_ctx.get_node_parameters(item_index)
+                config = {
+                  "agent_id" => exec_ctx.get_node_parameter("agent_id", item_index),
+                  "prompt" => exec_ctx.get_node_parameter("prompt", item_index),
+                }
                 result = run_agent(config, exec_ctx.log)
 
                 wrap({ "result" => result }, paired_item: exec_ctx.paired_item_for(item))

@@ -116,7 +116,9 @@ RSpec.describe DiscourseWorkflows::Executor do
                  configuration: {
                    "mode" => "combine",
                    "combine_by" => "matching_fields",
-                   "fields_to_match" => [{ "field_1" => "id", "field_2" => "topic_id" }],
+                   "fields_to_match" => {
+                     "values" => [{ "field_1" => "id", "field_2" => "topic_id" }],
+                   },
                  }
           g.connect "trigger-1", "left-1"
           g.connect "trigger-1", "right-1"

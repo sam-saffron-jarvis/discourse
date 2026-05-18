@@ -121,7 +121,9 @@ module DiscourseWorkflows
         end
 
         def webhook(webhook_ctx)
-          return status_response if webhook_ctx.http_method == "GET" && webhook_ctx.path == "status"
+          if webhook_ctx.http_method == "GET" && webhook_ctx.path == "status"
+            return status_response(webhook_ctx)
+          end
           return show_response(webhook_ctx) if webhook_ctx.http_method == "GET"
           return submit_response(webhook_ctx) if webhook_ctx.http_method == "POST"
 
@@ -135,7 +137,7 @@ module DiscourseWorkflows
 
         private
 
-        def status_response
+        def status_response(webhook_ctx)
           DiscourseWorkflows::WebhookResponse.respond(status: :ok, body: { status: "form_waiting" })
         end
 
@@ -169,12 +171,16 @@ module DiscourseWorkflows
                   "json" =>
                     DiscourseWorkflows::Forms::Payload.build(
                       form_validation.data,
+                      submitted_at: Time.current.utc.iso8601(3),
                       form_mode: webhook_ctx.form_mode,
                       query_parameters: webhook_ctx.form_query_parameters,
                     ),
                 },
               ],
             ],
+            status: :ok,
+            body: {
+            },
           )
         end
 
@@ -205,7 +211,9 @@ module DiscourseWorkflows
         end
 
         def form_fields(webhook_ctx)
-          Schemas::FormFields.with_keys(webhook_ctx.get_fixed_collection_rows("form_fields", 0))
+          Schemas::FormFields.with_keys(
+            webhook_ctx.get_node_parameter("form_fields.values", 0, default: []),
+          )
         end
       end
     end

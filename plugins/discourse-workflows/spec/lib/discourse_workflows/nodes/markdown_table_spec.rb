@@ -2,11 +2,15 @@
 
 RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
   def execute(input_items, configuration = {})
-    config = { "mapping_mode" => "manual", "columns" => [] }.merge(configuration)
+    config = { "mapping_mode" => "manual", "columns" => columns }.merge(configuration)
     execute_node_output(configuration: config, input_items: input_items).first.first&.dig(
       "json",
       "markdown",
     )
+  end
+
+  def columns(*rows)
+    { "values" => rows }
   end
 
   describe "#execute" do
@@ -16,10 +20,11 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
         { "json" => { "name" => "Bob", "age" => "25" } },
       ]
       config = {
-        "columns" => [
-          { "header" => "Name", "value" => "={{ $json.name }}" },
-          { "header" => "Age", "value" => "={{ $json.age }}" },
-        ],
+        "columns" =>
+          columns(
+            { "header" => "Name", "value" => "={{ $json.name }}" },
+            { "header" => "Age", "value" => "={{ $json.age }}" },
+          ),
       }
 
       markdown = execute(items, config)
@@ -34,7 +39,7 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
 
     it "JSON-encodes Hash cell values" do
       items = [{ "json" => { "h" => { "a" => 1, "b" => 2 } } }]
-      config = { "columns" => [{ "header" => "H", "value" => "={{ $json.h }}" }] }
+      config = { "columns" => columns({ "header" => "H", "value" => "={{ $json.h }}" }) }
 
       markdown = execute(items, config)
 
@@ -43,7 +48,7 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
 
     it "JSON-encodes Array cell values" do
       items = [{ "json" => { "arr" => [1, 2, 3] } }]
-      config = { "columns" => [{ "header" => "Arr", "value" => "={{ $json.arr }}" }] }
+      config = { "columns" => columns({ "header" => "Arr", "value" => "={{ $json.arr }}" }) }
 
       markdown = execute(items, config)
 
@@ -53,11 +58,12 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
     it "renders nil cells as empty and stringifies scalars" do
       items = [{ "json" => { "maybe_nil" => nil, "int_val" => 42, "bool_val" => true } }]
       config = {
-        "columns" => [
-          { "header" => "Nil", "value" => "={{ $json.maybe_nil }}" },
-          { "header" => "Int", "value" => "={{ $json.int_val }}" },
-          { "header" => "Bool", "value" => "={{ $json.bool_val }}" },
-        ],
+        "columns" =>
+          columns(
+            { "header" => "Nil", "value" => "={{ $json.maybe_nil }}" },
+            { "header" => "Int", "value" => "={{ $json.int_val }}" },
+            { "header" => "Bool", "value" => "={{ $json.bool_val }}" },
+          ),
       }
 
       markdown = execute(items, config)
@@ -67,7 +73,7 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
 
     it "escapes pipe characters in cell values" do
       items = [{ "json" => { "text" => "a | b | c" } }]
-      config = { "columns" => [{ "header" => "Text", "value" => "={{ $json.text }}" }] }
+      config = { "columns" => columns({ "header" => "Text", "value" => "={{ $json.text }}" }) }
 
       markdown = execute(items, config)
 
@@ -76,7 +82,7 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
 
     it "replaces newlines in cell values with <br>" do
       items = [{ "json" => { "text" => "line1\nline2\r\nline3" } }]
-      config = { "columns" => [{ "header" => "Text", "value" => "={{ $json.text }}" }] }
+      config = { "columns" => columns({ "header" => "Text", "value" => "={{ $json.text }}" }) }
 
       markdown = execute(items, config)
 
@@ -86,7 +92,7 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
     it "keeps headers literal while resolving cell values through the execution context" do
       items = [{ "json" => { "header" => "Resolved header", "name" => "Alice" } }]
       config = {
-        "columns" => [{ "header" => "={{ $json.header }}", "value" => "={{ $json.name }}" }],
+        "columns" => columns({ "header" => "={{ $json.header }}", "value" => "={{ $json.name }}" }),
       }
 
       markdown = execute(items, config)
@@ -101,10 +107,11 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
     it "renders headers and separator only when input items are empty" do
       items = []
       config = {
-        "columns" => [
-          { "header" => "Name", "value" => "={{ $json.name }}" },
-          { "header" => "Age", "value" => "={{ $json.age }}" },
-        ],
+        "columns" =>
+          columns(
+            { "header" => "Name", "value" => "={{ $json.name }}" },
+            { "header" => "Age", "value" => "={{ $json.age }}" },
+          ),
       }
 
       markdown = execute(items, config)
@@ -116,7 +123,7 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
     end
 
     it "returns an empty string when no columns are configured and no input items" do
-      markdown = execute([], { "columns" => [] })
+      markdown = execute([], { "columns" => columns })
 
       expect(markdown).to eq("")
     end

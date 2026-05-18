@@ -245,7 +245,9 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    configuration: {
                      "response_type" => "redirect",
                      "redirect_url" => "https://example.com/thanks",
-                     "allowed_redirect_domains" => [{ "domain" => "example.com" }],
+                     "allowed_redirect_domains" => {
+                       "values" => [{ "domain" => "example.com" }],
+                     },
                    }
             g.connect "wait-1", "respond-1"
           end
@@ -313,7 +315,9 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    configuration: {
                      "response_type" => "redirect",
                      "redirect_url" => "https://example.com/thanks",
-                     "allowed_redirect_domains" => [{ "domain" => "example.com" }],
+                     "allowed_redirect_domains" => {
+                       "values" => [{ "domain" => "example.com" }],
+                     },
                    }
           end
         setup_webhook_with_response(
@@ -366,7 +370,9 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    configuration: {
                      "response_type" => "redirect",
                      "redirect_url" => "https://docs.example.com/thanks",
-                     "allowed_redirect_domains" => [{ "domain" => "*.example.com" }],
+                     "allowed_redirect_domains" => {
+                       "values" => [{ "domain" => "*.example.com" }],
+                     },
                    }
           end
         setup_webhook_with_response(
@@ -393,7 +399,9 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    configuration: {
                      "response_type" => "redirect",
                      "redirect_url" => "https://example.com/thanks",
-                     "allowed_redirect_domains" => [{ "domain" => "*.example.com" }],
+                     "allowed_redirect_domains" => {
+                       "values" => [{ "domain" => "*.example.com" }],
+                     },
                    }
           end
         setup_webhook_with_response(

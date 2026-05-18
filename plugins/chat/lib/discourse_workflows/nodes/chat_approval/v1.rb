@@ -73,17 +73,15 @@ if defined?(DiscourseWorkflows)
           end
 
           def execute(exec_ctx)
-            config = exec_ctx.get_node_parameters(0)
-
-            message_text = config.fetch("message")
+            message_text = exec_ctx.get_node_parameter("message", 0)
             approve_label =
-              config["approve_label"].presence ||
+              exec_ctx.get_node_parameter("approve_label", 0).presence ||
                 I18n.t("discourse_workflows.chat_approval.default_approve_label")
             deny_label =
-              config["deny_label"].presence ||
+              exec_ctx.get_node_parameter("deny_label", 0).presence ||
                 I18n.t("discourse_workflows.chat_approval.default_deny_label")
-            channel_id = config.fetch("channel_id").to_i
-            timeout_minutes = config["timeout_minutes"].presence&.to_i
+            channel_id = exec_ctx.get_node_parameter("channel_id", 0).to_i
+            timeout_minutes = exec_ctx.get_node_parameter("timeout_minutes", 0).presence&.to_i
 
             approve_action_id = exec_ctx.resume_action_id("approve")
             deny_action_id = exec_ctx.resume_action_id("deny")

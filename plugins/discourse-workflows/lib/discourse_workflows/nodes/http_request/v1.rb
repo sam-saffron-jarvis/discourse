@@ -175,7 +175,28 @@ module DiscourseWorkflows
         def execute(exec_ctx)
           items =
             exec_ctx.input_items.flat_map.with_index do |item, item_index|
-              config = exec_ctx.get_node_parameters(item_index)
+              config = {
+                "method" => exec_ctx.get_node_parameter("method", item_index, default: "GET"),
+                "url" => exec_ctx.get_node_parameter("url", item_index),
+                "authentication" =>
+                  exec_ctx.get_node_parameter("authentication", item_index, default: "none"),
+                "content_type" =>
+                  exec_ctx.get_node_parameter("content_type", item_index, default: "json"),
+                "body_json" => exec_ctx.get_node_parameter("body_json", item_index),
+                "body_raw" => exec_ctx.get_node_parameter("body_raw", item_index),
+                "raw_content_type" =>
+                  exec_ctx.get_node_parameter(
+                    "raw_content_type",
+                    item_index,
+                    default: "text/plain",
+                  ),
+                "never_error" =>
+                  exec_ctx.get_node_parameter("never_error", item_index, default: false),
+                "full_response" =>
+                  exec_ctx.get_node_parameter("full_response", item_index, default: false),
+                "max_response_size_kb" =>
+                  exec_ctx.get_node_parameter("max_response_size_kb", item_index, default: 1024),
+              }
               result = process(config, item_index, exec_ctx)
               wrap_result(result, paired_item: exec_ctx.paired_item_for(item))
             end
@@ -186,13 +207,16 @@ module DiscourseWorkflows
 
         def process(config, item_index, exec_ctx)
           method = config.fetch("method") { "GET" }.downcase.to_sym
-          headers = normalize_headers(exec_ctx.get_fixed_collection_rows("headers", item_index))
+          headers =
+            normalize_headers(
+              exec_ctx.get_node_parameter("headers.values", item_index, default: []),
+            )
           body =
             build_body(
               method,
               config,
               headers,
-              form_params: exec_ctx.get_fixed_collection_rows("body_form", item_index),
+              form_params: exec_ctx.get_node_parameter("body_form.values", item_index, default: []),
             )
           log_request(exec_ctx.log, method, config["url"], headers, body)
           response =
@@ -205,7 +229,7 @@ module DiscourseWorkflows
               options:
                 request_options(
                   config,
-                  exec_ctx.get_fixed_collection_rows("query_params", item_index),
+                  exec_ctx.get_node_parameter("query_params.values", item_index, default: []),
                 ),
             )
           if full_response?(config)
@@ -221,7 +245,7 @@ module DiscourseWorkflows
         end
 
         def full_response?(config)
-          config["full_response"] == true || config["fullResponse"] == true
+          config["full_response"] == true
         end
 
         def wrap_result(result, paired_item:)

@@ -9,6 +9,10 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
     items.map { |entry| { "json" => entry["json"] } }
   end
 
+  def fields_to_match(*fields)
+    { "values" => fields }
+  end
+
   def execute_merge(configuration:, input_1:, input_2:, input_groups: {})
     execute_node_output(
       configuration: configuration,
@@ -115,7 +119,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
         configuration: {
           "mode" => "combine",
           "combine_by" => "matching_fields",
-          "fields_to_match" => [{ "field_1" => "id", "field_2" => "topic_id" }],
+          "fields_to_match" => fields_to_match({ "field_1" => "id", "field_2" => "topic_id" }),
         },
         input_1: [item("id" => 1, "title" => "One"), item("id" => 2, "title" => "Two")],
         input_2: [item("topic_id" => 1, "tag" => "bug")],
@@ -135,7 +139,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
         configuration: {
           "mode" => "combine",
           "combine_by" => "matching_fields",
-          "fields_to_match" => [{ "field_1" => "id", "field_2" => "topic_id" }],
+          "fields_to_match" => fields_to_match({ "field_1" => "id", "field_2" => "topic_id" }),
           "join_mode" => "keep_everything",
         },
         input_1: [item("id" => 1, "title" => "One")],
@@ -151,7 +155,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
         configuration: {
           "mode" => "combine",
           "combine_by" => "matching_fields",
-          "fields_to_match" => [{ "field_1" => "id", "field_2" => "topic_id" }],
+          "fields_to_match" => fields_to_match({ "field_1" => "id", "field_2" => "topic_id" }),
           "join_mode" => "keep_non_matches",
           "output_data_from" => "input_2",
         },
@@ -168,7 +172,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
         configuration: {
           "mode" => "combine",
           "combine_by" => "matching_fields",
-          "fields_to_match" => [{ "field_1" => "id", "field_2" => "topic_id" }],
+          "fields_to_match" => fields_to_match({ "field_1" => "id", "field_2" => "topic_id" }),
           "join_mode" => "keep_non_matches",
           "output_data_from" => "input_1",
         },
@@ -185,7 +189,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
         configuration: {
           "mode" => "combine",
           "combine_by" => "matching_fields",
-          "fields_to_match" => [],
+          "fields_to_match" => fields_to_match,
         },
         input_1: [item("id" => 1)],
         input_2: [item("id" => 1)],
@@ -202,7 +206,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
         configuration: {
           "mode" => "combine",
           "combine_by" => "matching_fields",
-          "fields_to_match" => [{ "field_1" => "", "field_2" => "topic_id" }],
+          "fields_to_match" => fields_to_match({ "field_1" => "", "field_2" => "topic_id" }),
         },
         input_1: [item("id" => 1)],
         input_2: [item("topic_id" => 1)],

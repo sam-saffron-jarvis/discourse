@@ -26,14 +26,6 @@ module DiscourseWorkflows
                     mode: auth_mode,
                   )
           end
-          if !exec_ctx.credential_reference?("auth")
-            raise ArgumentError,
-                  I18n.t(
-                    "discourse_workflows.errors.http_request.credential_required",
-                    mode: auth_mode,
-                  )
-          end
-
           exec_ctx.get_credentials("auth", item_index)
         end
 

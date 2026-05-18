@@ -147,15 +147,6 @@ module DiscourseWorkflows
       exemplar_from_schema(output_schema)
     end
 
-    def self.fixed_collection_rows(
-      configuration,
-      field_name,
-      group: CollectionParameters::DEFAULT_GROUP
-    )
-      configuration = configuration.is_a?(Hash) ? configuration.with_indifferent_access : {}
-      CollectionParameters.rows(configuration, field_name, group:)
-    end
-
     def self.exemplar_from_schema(schema)
       schema.each_with_object({}) { |(key, value), hash| hash[key.to_s] = exemplar_value(value) }
     end
@@ -214,14 +205,6 @@ module DiscourseWorkflows
     end
 
     private
-
-    def map_input_items(exec_ctx)
-      [
-        exec_ctx.input_items.map.with_index do |item, item_index|
-          wrap(yield(exec_ctx.get_node_parameters(item_index), item, item_index))
-        end,
-      ]
-    end
 
     def wrap(data, paired_item: nil)
       Item.wrap(data, paired_item:)

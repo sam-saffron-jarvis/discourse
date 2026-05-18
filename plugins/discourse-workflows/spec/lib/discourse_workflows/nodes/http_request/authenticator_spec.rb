@@ -18,14 +18,14 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::Authenticator do
 
     it "raises when the auth credential slot is missing for auth modes" do
       exec_ctx =
-        instance_double(
-          DiscourseWorkflows::Executor::NodeExecutionContext,
-          credential_reference?: false,
-        )
+        instance_double(DiscourseWorkflows::Executor::NodeExecutionContext, get_credentials: nil)
+      allow(exec_ctx).to receive(:get_credentials).with("auth", 0).and_raise(
+        Discourse::InvalidAccess,
+      )
 
       expect {
         described_class.apply({ "authentication" => "basic_auth" }, {}, exec_ctx)
-      }.to raise_error(ArgumentError, /Credential is required/)
+      }.to raise_error(Discourse::InvalidAccess)
     end
 
     context "with basic_auth" do
@@ -34,7 +34,6 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::Authenticator do
         exec_ctx =
           instance_double(
             DiscourseWorkflows::Executor::NodeExecutionContext,
-            credential_reference?: true,
             get_credentials: {
               "user" => "api_user",
               "password" => "api_pass",
@@ -54,7 +53,6 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::Authenticator do
         exec_ctx =
           instance_double(
             DiscourseWorkflows::Executor::NodeExecutionContext,
-            credential_reference?: true,
             get_credentials: {
               "token" => "my-secret-token",
             },

@@ -90,14 +90,25 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          map_input_items(exec_ctx) do |config, item, item_index|
-            process(exec_ctx, item, item_index, config)
-          end
+          items =
+            exec_ctx.input_items.map.with_index do |_item, item_index|
+              config = {
+                "response_type" =>
+                  exec_ctx.get_node_parameter("response_type", item_index, default: "json"),
+                "status_code" => exec_ctx.get_node_parameter("status_code", item_index),
+                "redirect_url" => exec_ctx.get_node_parameter("redirect_url", item_index),
+                "response_body" => exec_ctx.get_node_parameter("response_body", item_index),
+              }
+
+              wrap(process(exec_ctx, item_index, config))
+            end
+
+          [items]
         end
 
         private
 
-        def process(exec_ctx, _item, item_index, config)
+        def process(exec_ctx, item_index, config)
           response_type = config.fetch("response_type") { "json" }
           status_code = (config["status_code"].presence || DEFAULT_STATUS_CODES[response_type]).to_i
           status_code = DEFAULT_STATUS_CODES[response_type] if response_type == "redirect"
@@ -108,10 +119,17 @@ module DiscourseWorkflows
             redirect_url: config["redirect_url"],
             allowed_redirect_domains:
               normalize_allowed_redirect_domains(
-                exec_ctx.get_fixed_collection_rows("allowed_redirect_domains", item_index),
+                exec_ctx.get_node_parameter(
+                  "allowed_redirect_domains.values",
+                  item_index,
+                  default: [],
+                ),
               ),
             response_body: config["response_body"],
-            headers: normalize_headers(exec_ctx.get_fixed_collection_rows("headers", item_index)),
+            headers:
+              normalize_headers(
+                exec_ctx.get_node_parameter("headers.values", item_index, default: []),
+              ),
           }
         end
 

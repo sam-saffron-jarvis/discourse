@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::Nodes::RespondToWebhook::V1 do
+  def rows(*values)
+    { "values" => values }
+  end
+
   describe "#execute" do
     let(:item) { { "json" => { "user_id" => 42 } } }
 
@@ -18,11 +22,12 @@ RSpec.describe DiscourseWorkflows::Nodes::RespondToWebhook::V1 do
       config = {
         "response_type" => "redirect",
         "redirect_url" => "https://example.com/thanks",
-        "allowed_redirect_domains" => [
-          { "domain" => " Example.com " },
-          { "domain" => "*.Example.org" },
-          { "domain" => "" },
-        ],
+        "allowed_redirect_domains" =>
+          rows(
+            { "domain" => " Example.com " },
+            { "domain" => "*.Example.org" },
+            { "domain" => "" },
+          ),
       }
       result = execute_node(configuration: config, item: item)
 
@@ -70,7 +75,7 @@ RSpec.describe DiscourseWorkflows::Nodes::RespondToWebhook::V1 do
       config = {
         "response_type" => "json",
         "response_body" => "{}",
-        "headers" => [{ "key" => "X-Custom", "value" => "hello" }],
+        "headers" => rows({ "key" => "X-Custom", "value" => "hello" }),
       }
       result = execute_node(configuration: config, item: item)
 

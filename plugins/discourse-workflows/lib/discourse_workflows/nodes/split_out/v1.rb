@@ -5,11 +5,6 @@ module DiscourseWorkflows
     module SplitOut
       class V1 < NodeType
         MAX_SPLIT_ITEMS = 1_000
-        INCLUDE_MODE_ALIASES = {
-          "noOtherFields" => "no_other_fields",
-          "allOtherFields" => "all_other_fields",
-          "selectedOtherFields" => "selected_other_fields",
-        }.freeze
         BINARY_FIELD = "$binary"
 
         description(
@@ -49,7 +44,25 @@ module DiscourseWorkflows
           field_tracker = {}
           items =
             exec_ctx.input_items.flat_map.with_index do |item, item_index|
-              config = split_config(exec_ctx.get_node_parameters(item_index))
+              config =
+                split_config(
+                  {
+                    "field" => exec_ctx.get_node_parameter("field", item_index),
+                    "include" =>
+                      exec_ctx.get_node_parameter(
+                        "include",
+                        item_index,
+                        default: "no_other_fields",
+                      ),
+                    "fields_to_include" =>
+                      exec_ctx.get_node_parameter("fields_to_include", item_index),
+                    "destination_field_name" =>
+                      exec_ctx.get_node_parameter("destination_field_name", item_index),
+                    "disable_dot_notation" =>
+                      exec_ctx.get_node_parameter("disable_dot_notation", item_index),
+                    "include_binary" => exec_ctx.get_node_parameter("include_binary", item_index),
+                  },
+                )
 
               split_item(item, config, exec_ctx.paired_item_for(item), field_tracker)
             end
@@ -62,12 +75,8 @@ module DiscourseWorkflows
         private
 
         def split_config(config)
-          options = config["options"].is_a?(Hash) ? config["options"] : {}
-          field_names = parse_field_names(config_value(config, "field", "fieldToSplitOut"))
-          dest_names =
-            parse_field_names(
-              config["destination_field_name"].presence || options["destinationFieldName"],
-            )
+          field_names = parse_field_names(config["field"])
+          dest_names = parse_field_names(config["destination_field_name"])
 
           if dest_names.present? && dest_names.length != field_names.length
             raise ArgumentError,
@@ -76,23 +85,12 @@ module DiscourseWorkflows
 
           {
             field_names: field_names,
-            include_mode: normalize_include_mode(config.fetch("include") { "no_other_fields" }),
+            include_mode: config.fetch("include") { "no_other_fields" },
             dest_names: dest_names,
-            fields_to_include:
-              parse_field_names(config_value(config, "fields_to_include", "fieldsToInclude")),
-            disable_dot_notation:
-              truthy?(options.fetch("disableDotNotation") { config["disable_dot_notation"] }),
-            include_binary: truthy?(options.fetch("includeBinary") { config["include_binary"] }),
+            fields_to_include: parse_field_names(config["fields_to_include"]),
+            disable_dot_notation: truthy?(config["disable_dot_notation"]),
+            include_binary: truthy?(config["include_binary"]),
           }
-        end
-
-        def config_value(config, *keys)
-          keys.each do |key|
-            value = config[key]
-            return value if value.present?
-          end
-
-          nil
         end
 
         def parse_field_names(value)
@@ -102,10 +100,6 @@ module DiscourseWorkflows
 
         def truthy?(value)
           value == true || value.to_s == "true"
-        end
-
-        def normalize_include_mode(value)
-          INCLUDE_MODE_ALIASES.fetch(value) { value }
         end
 
         def binary_field?(field_name)

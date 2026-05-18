@@ -75,9 +75,10 @@ module DiscourseWorkflows
           params: @params,
           service_params: @service_params,
         )
+      node_parameters = NodeData.parameters(node)
       node =
         node_class.new(
-          parameters: webhook_context.node_parameter_data,
+          parameters: node_parameters,
           credentials: NodeData.credentials(node),
           settings: NodeData.read(node, "settings") || {},
           webhook_id: NodeData.read(node, "webhook_id"),
@@ -85,12 +86,7 @@ module DiscourseWorkflows
       response = node.webhook(webhook_context)
       return response_from(response, execution) unless response.resume?
 
-      resume_execution(
-        execution,
-        response.workflow_data,
-        node_class,
-        webhook_context.node_parameter_data,
-      )
+      resume_execution(execution, response.workflow_data, node_class, node_parameters)
     ensure
       webhook_context&.dispose
     end

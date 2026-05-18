@@ -55,7 +55,7 @@ module DiscourseWorkflows
         def initialize(
           form_data:,
           submitted_at: Time.current.utc.iso8601(3),
-          form_mode: DiscourseWorkflows::Forms::Payload::DEFAULT_MODE,
+          form_mode: nil,
           query_parameters: nil
         )
           super(parameters: {})

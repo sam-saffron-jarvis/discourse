@@ -39,14 +39,8 @@ module DiscourseWorkflows
       end
 
       def get_node_parameter(parameter_name, default = nil, _options = {})
-        parameters.fetch(parameter_name.to_s) { parameters.fetch(parameter_name.to_sym, default) }
-      end
-
-      def get_fixed_collection_rows(path, group: CollectionParameters::DEFAULT_GROUP, default: [])
-        value = get_node_parameter(path, MISSING)
-        return default if value.equal?(MISSING)
-
-        CollectionParameters.rows_from_value(value, group:)
+        value = parameter_value(parameter_name)
+        value.equal?(MISSING) ? default : value
       end
 
       def get_timezone
@@ -171,6 +165,24 @@ module DiscourseWorkflows
 
       def parameters
         @parameters ||= DiscourseWorkflows::NodeData.parameters(published_trigger.trigger_node)
+      end
+
+      def parameter_value(parameter_name)
+        segments = parameter_name.to_s.split(".").reject(&:blank?)
+        return MISSING if segments.empty?
+
+        segments.reduce(parameters) do |current, segment|
+          case current
+          when Hash
+            current.fetch(segment) { current.fetch(segment.to_sym, MISSING) }
+          when Array
+            return MISSING unless segment.match?(/\A\d+\z/)
+
+            current.fetch(segment.to_i) { return MISSING }
+          else
+            return MISSING
+          end
+        end
       end
 
       def node_value(key)

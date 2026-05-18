@@ -55,7 +55,21 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          map_input_items(exec_ctx) { |config| process(exec_ctx, config) }
+          items =
+            exec_ctx.input_items.map.with_index do |_item, item_index|
+              config = {
+                "title" => exec_ctx.get_node_parameter("title", item_index),
+                "raw" => exec_ctx.get_node_parameter("raw", item_index),
+                "category_id" => exec_ctx.get_node_parameter("category_id", item_index),
+                "tag_names" => exec_ctx.get_node_parameter("tag_names", item_index),
+                "username" =>
+                  exec_ctx.get_node_parameter("username", item_index, default: "system"),
+              }
+
+              wrap(process(exec_ctx, config))
+            end
+
+          [items]
         end
 
         private

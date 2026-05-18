@@ -139,6 +139,8 @@ module DiscourseWorkflows
             type: node_identifier,
             type_version: nil,
             webhook_id: @webhook_id,
+            parameters: @parameters,
+            credentials: @credentials,
           )
       end
 
@@ -170,41 +172,7 @@ module DiscourseWorkflows
       end
 
       def get_node_parameter(path, item_index = 0, default: nil, ensure_type: nil, options: {})
-        path_str = path.to_s
-        if raw_expressions?(options)
-          raw_value = raw_parameter_path(path_str)
-          value = raw_value.equal?(MISSING) ? default : raw_value
-          return ensure_parameter_type(value, ensure_type, path_str)
-        end
-
-        with_item_index(item_index) do
-          resolved = resolve_parameter_path(path_str)
-          value = resolved.equal?(MISSING) ? default : resolved
-          ensure_parameter_type(value, ensure_type, path_str)
-        end
-      end
-
-      def get_node_parameters(item_index = 0)
-        with_item_index(item_index) { resolve_all_parameters }
-      end
-
-      def get_fixed_collection_rows(
-        path,
-        item_index = 0,
-        group: CollectionParameters::DEFAULT_GROUP,
-        default: []
-      )
-        value = get_node_parameter(path, item_index, default: MISSING)
-        return default if value.equal?(MISSING)
-
-        CollectionParameters.rows_from_value(value, group: group)
-      end
-
-      def get_collection_options(path, item_index = 0, default: {})
-        value = get_node_parameter(path, item_index, default: MISSING)
-        return default if value.equal?(MISSING)
-
-        value.is_a?(Hash) ? value : default
+        resolve_node_parameter(path, item_index, default:, ensure_type:, options:)
       end
 
       def helpers
@@ -217,22 +185,8 @@ module DiscourseWorkflows
           )
       end
 
-      def credential_reference?(slot)
-        declared_credential_slot?(slot) && credential_id_for(slot).present?
-      end
-
       def get_credentials(slot, item_index = 0)
-        raise ArgumentError, "credential slot is required" if slot.blank?
-
-        credential_id = credential_id_for(slot)
-        ensure_credential_access!(slot, credential_id)
-        credential = DiscourseWorkflows::Credential.find_by(id: credential_id)
-        raise Discourse::InvalidAccess if credential.nil?
-        unless credential_type_allowed?(slot, credential.credential_type)
-          raise Discourse::InvalidAccess
-        end
-
-        with_item_index(item_index) { @resolver.resolve_hash(credential.decrypted_data) }
+        fetch_credentials(slot, item_index)
       end
 
       def find_user(username: nil, id: nil)
@@ -314,6 +268,35 @@ module DiscourseWorkflows
       end
 
       private
+
+      def resolve_node_parameter(path, item_index, default:, ensure_type:, options:)
+        path_str = path.to_s
+        if raw_expressions?(options)
+          raw_value = raw_parameter_path(path_str)
+          value = raw_value.equal?(MISSING) ? default : raw_value
+          return ensure_parameter_type(value, ensure_type, path_str)
+        end
+
+        with_item_index(item_index) do
+          resolved = resolve_parameter_path(path_str)
+          value = resolved.equal?(MISSING) ? default : resolved
+          ensure_parameter_type(value, ensure_type, path_str)
+        end
+      end
+
+      def fetch_credentials(slot, item_index)
+        raise ArgumentError, "credential slot is required" if slot.blank?
+
+        credential_id = credential_id_for(slot)
+        ensure_credential_access!(slot, credential_id)
+        credential = DiscourseWorkflows::Credential.find_by(id: credential_id)
+        raise Discourse::InvalidAccess if credential.nil?
+        unless credential_type_allowed?(slot, credential.credential_type)
+          raise Discourse::InvalidAccess
+        end
+
+        with_item_index(item_index) { @resolver.resolve_hash(credential.decrypted_data) }
+      end
 
       def current_snapshot_node
         @workflow_snapshot&.find_node(node_id)
@@ -775,14 +758,6 @@ module DiscourseWorkflows
         return nil unless schema.respond_to?(:[])
 
         schema[key] || schema[key.to_s]
-      end
-
-      def resolve_all_parameters
-        @parameters.transform_values.with_index do |_value, index|
-          name = @parameters.keys[index]
-          schema = @property_schema[name.to_sym] || @property_schema[name]
-          resolve_parameter(name, schema)
-        end
       end
 
       def credential_id_for(slot)

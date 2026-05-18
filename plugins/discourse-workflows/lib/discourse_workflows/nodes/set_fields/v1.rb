@@ -89,16 +89,29 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          map_input_items(exec_ctx) do |config, item, item_index|
-            process(exec_ctx, item, item_index, config)
-          end
+          items =
+            exec_ctx.input_items.map.with_index do |item, item_index|
+              config = {
+                "mode" => exec_ctx.get_node_parameter("mode", item_index, default: "manual"),
+                "json_output" => exec_ctx.get_node_parameter("json_output", item_index),
+                "include_other_fields" =>
+                  exec_ctx.get_node_parameter("include_other_fields", item_index, default: true),
+                "include" => exec_ctx.get_node_parameter("include", item_index, default: "all"),
+                "include_fields" => exec_ctx.get_node_parameter("include_fields", item_index),
+                "exclude_fields" => exec_ctx.get_node_parameter("exclude_fields", item_index),
+              }
+
+              wrap(process(exec_ctx, item, item_index, config))
+            end
+
+          [items]
         end
 
         private
 
         def process(exec_ctx, item, item_index, config)
           item_json = item.fetch("json") { {} }
-          options = exec_ctx.get_collection_options("options", item_index)
+          options = exec_ctx.get_node_parameter("options", item_index, default: {})
           result = included_fields(item_json, config, options)
 
           if config["mode"] == "raw"
@@ -106,7 +119,7 @@ module DiscourseWorkflows
           else
             apply_assignments(
               result,
-              exec_ctx.get_fixed_collection_rows("assignments", item_index, group: "assignments"),
+              exec_ctx.get_node_parameter("assignments.assignments", item_index, default: []),
               options,
             )
           end

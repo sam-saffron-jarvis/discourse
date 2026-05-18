@@ -75,13 +75,6 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       expect(hints).to eq([])
     end
 
-    it "falls back to imported field names when local fields are blank" do
-      input = [{ "json" => { "items" => [1] } }]
-      result = execute(input, "field" => "", "fieldToSplitOut" => "items")
-
-      expect(result.first["json"]).to eq("items" => 1)
-    end
-
     it "resolves split field and destination expressions for each input item" do
       input = [
         { "json" => { "field" => "items", "destination" => "item", "items" => [1] } },
@@ -140,19 +133,6 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       expect(result.first["json"]).to eq("company" => "Acme", "items" => 1)
     end
 
-    it "falls back to imported fields to include when local fields are blank" do
-      input = [{ "json" => { "company" => "Acme", "items" => [1] } }]
-      result =
-        execute(
-          input,
-          "include" => "selected_other_fields",
-          "fields_to_include" => "",
-          "fieldsToInclude" => "company",
-        )
-
-      expect(result.first["json"]).to eq("items" => 1, "company" => "Acme")
-    end
-
     it "raises ArgumentError when selected fields are blank" do
       input = [{ "json" => { "items" => [{ "n" => 1 }] } }]
 
@@ -187,8 +167,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
 
     it "can disable dot notation for literal field names" do
       input = [{ "json" => { "data.items" => [1] } }]
-      result =
-        execute(input, "field" => "data.items", "options" => { "disableDotNotation" => true })
+      result = execute(input, "field" => "data.items", "disable_dot_notation" => true)
 
       expect(result.first["json"]).to eq("data.items" => 1)
     end
@@ -220,20 +199,6 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
 
       expect(result[0]["json"]).to have_key("result")
     end
-
-    it "falls back to imported destination field names when local destination is blank" do
-      input = [{ "json" => { "items" => [1] } }]
-      result =
-        execute(
-          input,
-          "destination_field_name" => "",
-          "options" => {
-            "destinationFieldName" => "result",
-          },
-        )
-
-      expect(result.first["json"]).to eq("result" => 1)
-    end
   end
 
   describe "binary data" do
@@ -261,7 +226,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
     it "includes binary data when requested" do
       binary = { "data" => { "fileName" => "a.txt" } }
       input = [{ "json" => { "items" => [1, 2] }, "binary" => binary }]
-      result = execute(input, "options" => { "includeBinary" => true })
+      result = execute(input, "include_binary" => true)
 
       expect(result.map { |item| item["binary"] }).to eq([binary, binary])
     end
@@ -269,7 +234,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
     it "resolves include binary expressions" do
       binary = { "data" => { "fileName" => "a.txt" } }
       input = [{ "json" => { "items" => [1], "include_binary" => true }, "binary" => binary }]
-      result = execute(input, "options" => { "includeBinary" => "={{ $json.include_binary }}" })
+      result = execute(input, "include_binary" => "={{ $json.include_binary }}")
 
       expect(result.first["binary"]).to eq(binary)
     end

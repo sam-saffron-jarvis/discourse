@@ -166,11 +166,11 @@ module DiscourseWorkflows
         end
 
         def self.validate_configuration(configuration, errors)
-          Rules.validate(fixed_collection_rows(configuration, :rule, group: "interval"), errors)
+          Rules.validate(CollectionParameters.rows(configuration, :rule, group: "interval"), errors)
         end
 
         def trigger(trigger_ctx)
-          rules = trigger_ctx.get_fixed_collection_rows("rule", group: "interval")
+          rules = trigger_ctx.get_node_parameter("rule.interval", [])
           timezone = trigger_ctx.get_timezone
           node_key = "#{trigger_ctx.workflow_id}:#{trigger_ctx.node_id}"
           schedules =
