@@ -37,6 +37,7 @@ RSpec.describe "Wait for Approval end-to-end" do
                  "approve_label" => "LGTM",
                  "deny_label" => "Reject",
                  "channel_id" => channel.id.to_s,
+                 "timeout_minutes" => "30",
                }
         g.node "final-1",
                "action:set_fields",
@@ -52,8 +53,11 @@ RSpec.describe "Wait for Approval end-to-end" do
     workflow = Fabricate(:discourse_workflows_workflow, created_by: user, **graph)
     publish_workflow!(workflow)
 
-    execution = DiscourseWorkflows::Executor.new(workflow, "trigger-1", { "topic_id" => 1 }).run
-    expect(execution.status).to eq("waiting")
+    execution = nil
+    freeze_time do
+      execution = DiscourseWorkflows::Executor.new(workflow, "trigger-1", { "topic_id" => 1 }).run
+      expect(execution).to have_attributes(status: "waiting", waiting_until: 30.minutes.from_now)
+    end
 
     chat_message = Chat::Message.where(chat_channel_id: channel.id).last
     buttons = chat_message.blocks.first["elements"]

@@ -36,19 +36,20 @@ module DiscourseWorkflows
 
         published_trigger =
           PublishedTrigger.new(workflow:, workflow_version:, trigger_node: trigger_node)
+        runtime_state = runtime_state_for(published_trigger)
         ctx =
           Executor::TriggerExecutionContext.new(
             published_trigger:,
-            node_type_class:,
             mode: :manual,
             activation_mode: :manual,
             dispatch: :collect,
             user:,
+            runtime_state:,
           )
         result = instantiate(node_type_class, trigger_node).trigger(ctx)
         result[:manual_trigger_function]&.call if result.is_a?(Hash)
-        ctx.persist_static_data!
-        ctx.emitted_trigger_data.first || {}
+        commit_static_data!(published_trigger, runtime_state)
+        runtime_state.collected_trigger_data.first || {}
       end
 
       private
@@ -73,19 +74,34 @@ module DiscourseWorkflows
         return unless trigger_node?(node_type_class)
 
         published_trigger.workflow.with_lock do
+          runtime_state = runtime_state_for(published_trigger, tick:)
           ctx =
             Executor::TriggerExecutionContext.new(
               published_trigger:,
-              node_type_class:,
               mode:,
               activation_mode:,
               now:,
-              tick:,
               dispatch:,
+              runtime_state:,
             )
           instantiate(node_type_class, published_trigger.trigger_node).trigger(ctx)
-          ctx.persist_static_data!
+          commit_static_data!(published_trigger, runtime_state)
         end
+      end
+
+      def runtime_state_for(published_trigger, tick: false)
+        Executor::TriggerExecutionContext::RuntimeState.new(
+          static_data:
+            published_trigger.workflow.node_static_data(published_trigger.trigger_node_id).deep_dup,
+          tick:,
+        )
+      end
+
+      def commit_static_data!(published_trigger, runtime_state)
+        published_trigger.workflow.update_node_static_data!(
+          published_trigger.trigger_node_id,
+          runtime_state.static_data,
+        )
       end
 
       def node_type_for(node)

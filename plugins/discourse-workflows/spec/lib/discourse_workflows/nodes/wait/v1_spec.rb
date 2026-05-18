@@ -17,30 +17,25 @@ RSpec.describe DiscourseWorkflows::Nodes::Wait::V1 do
   end
 
   describe "#execute" do
-    it "requests a timer wait for interval mode" do
+    it "returns input items for interval mode" do
       config = { "resume" => "time_interval", "wait_amount" => 2, "wait_unit" => "hours" }
       exec_ctx = build_exec_ctx(config)
 
-      freeze_time do
-        result = described_class.new(parameters: config).execute(exec_ctx)
+      result = described_class.new(parameters: config).execute(exec_ctx)
 
-        expect(exec_ctx).to be_waiting
-        expect(exec_ctx.waiting_until).to eq(2.hours.from_now)
-        expect(result.first).to eq(exec_ctx.input_items)
-      end
+      expect(result.first).to eq(exec_ctx.input_items)
     end
 
-    it "requests an indefinite webhook wait when limit_wait_time is false" do
+    it "returns input items for webhook mode" do
       config = { "resume" => "webhook" }
       exec_ctx = build_exec_ctx(config, resume_token: "tok-abc")
 
-      described_class.new(parameters: config).execute(exec_ctx)
+      result = described_class.new(parameters: config).execute(exec_ctx)
 
-      expect(exec_ctx).to be_waiting
-      expect(exec_ctx.waiting_until).to be_nil
+      expect(result.first).to eq(exec_ctx.input_items)
     end
 
-    it "requests a bounded webhook wait when limit_wait_time is true" do
+    it "returns input items for bounded webhook waits" do
       config = {
         "resume" => "webhook",
         "limit_wait_time" => true,
@@ -49,12 +44,9 @@ RSpec.describe DiscourseWorkflows::Nodes::Wait::V1 do
       }
       exec_ctx = build_exec_ctx(config, resume_token: "tok-abc")
 
-      freeze_time do
-        described_class.new(parameters: config).execute(exec_ctx)
+      result = described_class.new(parameters: config).execute(exec_ctx)
 
-        expect(exec_ctx).to be_waiting
-        expect(exec_ctx.waiting_until).to eq(3.hours.from_now)
-      end
+      expect(result.first).to eq(exec_ctx.input_items)
     end
 
     it "raises on a non-positive wait amount" do

@@ -21,19 +21,44 @@ module DiscourseWorkflows
           end
           .freeze
       JobResult = Data.define(:ok, :result, :error)
+      WaitRequest = Data.define(:waiting_until)
 
-      attr_reader :user,
-                  :vars,
-                  :expression_errors,
-                  :condition_details,
-                  :log,
-                  :execution_hints,
-                  :metadata,
-                  :execution_id,
-                  :resume_token,
-                  :node_id,
-                  :node_identifier,
-                  :waiting_until
+      class RuntimeState
+        attr_reader :condition_step_details, :execution_hints, :log, :metadata, :wait_request
+
+        def initialize
+          @condition_step_details = []
+          @execution_hints = []
+          @log = StepLog.new
+          @metadata = {}
+          @wait_request = nil
+        end
+
+        def request_wait(waiting_until)
+          @wait_request = WaitRequest.new(waiting_until)
+        end
+
+        def add_condition_details(details)
+          @condition_step_details.concat(details)
+        end
+
+        def add_execution_hints(hints)
+          @execution_hints.concat(hints.map(&:deep_stringify_keys))
+        end
+
+        def merge_metadata(metadata)
+          @metadata.merge!(metadata.deep_stringify_keys)
+        end
+
+        def step_metadata
+          metadata = @metadata.dup
+          metadata["conditions"] = @condition_step_details if @condition_step_details.any?
+          metadata["hints"] = @execution_hints if @execution_hints.any?
+          metadata
+        end
+      end
+
+      attr_reader :user, :vars, :execution_id, :node_id
 
       def initialize(
         input_items:,
@@ -57,7 +82,8 @@ module DiscourseWorkflows
         flow_context: nil,
         resolver_context: nil,
         workflow_dependencies: nil,
-        workflow_snapshot: nil
+        workflow_snapshot: nil,
+        runtime_state: RuntimeState.new
       )
         @input_groups = normalize_input_groups(input_groups, input_items)
         @input_items = @input_groups[0] || []
@@ -85,13 +111,7 @@ module DiscourseWorkflows
         @execution_mode = execution_mode
         @flow_context = flow_context || {}
         @resolver_context = resolver_context || {}
-        @expression_errors = []
-        @condition_details = []
-        @log = StepLog.new
-        @execution_hints = []
-        @metadata = {}
-        @waiting = false
-        @waiting_until = nil
+        @runtime_state = runtime_state
         @workflow_dependencies = workflow_dependencies
         @workflow_snapshot = workflow_snapshot
       end
@@ -136,7 +156,7 @@ module DiscourseWorkflows
           DiscourseWorkflows::NodeView.new(
             id: node_id,
             name: nil,
-            type: node_identifier,
+            type: @node_identifier,
             type_version: nil,
             webhook_id: @webhook_id,
             parameters: @parameters,
@@ -178,7 +198,7 @@ module DiscourseWorkflows
       def helpers
         @helpers ||=
           ContextHelpers.new(
-            node_identifier: node_identifier,
+            node_identifier: @node_identifier,
             data_table_access_validator: ->(data_table_id) do
               ensure_data_table_access!(data_table_id)
             end,
@@ -209,37 +229,40 @@ module DiscourseWorkflows
         HttpClient.new(self, item_index).request(method:, url:, headers:, body:, options:)
       end
 
-      def collect_errors!
-        @expression_errors = @resolver&.expression_errors || []
-      end
-
       def put_execution_to_wait(waiting_until = nil)
-        @waiting = true
-        @waiting_until = waiting_until
+        @runtime_state.request_wait(waiting_until)
       end
 
       def resume_action_id(action)
         DiscourseWorkflows::InteractiveResume.action_id(
           execution_id: execution_id,
-          resume_token: resume_token,
+          resume_token: @resume_token,
           action: action,
         )
       end
 
       def set_metadata(metadata)
-        @metadata.merge!(metadata.deep_stringify_keys)
+        @runtime_state.merge_metadata(metadata)
       end
 
       def add_execution_hints(*hints)
-        @execution_hints.concat(hints.map(&:deep_stringify_keys))
-      end
-
-      def waiting?
-        @waiting
+        @runtime_state.add_execution_hints(hints)
       end
 
       def evaluate_expression(expression, item_index = 0)
         with_item_index(item_index) { @resolver.resolve(expression) }
+      end
+
+      def log
+        @runtime_state.log
+      end
+
+      def execution_hints
+        @runtime_state.execution_hints
+      end
+
+      def metadata
+        @runtime_state.metadata
       end
 
       def get_child_nodes(node_name, options = {})
@@ -441,7 +464,7 @@ module DiscourseWorkflows
           )
         yield sandbox
       ensure
-        @log.merge(sandbox.log) if capture_logs && sandbox&.log
+        @runtime_state.log.merge(sandbox.log) if capture_logs && sandbox&.log
         sandbox&.dispose
       end
 
@@ -637,7 +660,7 @@ module DiscourseWorkflows
           options = @parameters.fetch("options") { {} }
           result =
             Executor::FilterParameter.execute_filter(conditions, combinator, options, @resolver)
-          @condition_details.concat(result["details"])
+          @runtime_state.add_condition_details(result["details"])
           result["passed"]
         else
           resolve_parameter_value(@parameters[name], schema)

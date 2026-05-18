@@ -33,7 +33,7 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
       )
     end
 
-    it "sends a chat message and puts the execution to wait" do
+    it "sends a chat message and returns input items" do
       config = {
         "message" => "Please approve this",
         "approve_label" => "Yes",
@@ -45,13 +45,10 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
       instance = described_class.new(parameters: config)
       exec_ctx = build_exec_ctx(config)
 
-      freeze_time do
-        result = instance.execute(exec_ctx)
+      result = instance.execute(exec_ctx)
 
-        expect(exec_ctx.waiting?).to be true
-        expect(exec_ctx.waiting_until).to eq(30.minutes.from_now)
-        expect(result).to eq([exec_ctx.input_items])
-      end
+      expect(Chat::Message.last.message).to eq("Please approve this")
+      expect(result).to eq([exec_ctx.input_items])
     end
 
     it "creates buttons with signed action IDs" do
@@ -93,8 +90,9 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
       exec_ctx = build_exec_ctx(config)
       instance.execute(exec_ctx)
 
-      expect(exec_ctx.waiting?).to be true
-      expect(exec_ctx.waiting_until).to be_nil
+      buttons = Chat::Message.last.blocks.first["elements"]
+      expect(buttons.first["text"]["text"]).to eq("Approve")
+      expect(buttons.last["text"]["text"]).to eq("Deny")
     end
   end
 end

@@ -17,7 +17,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Form::V1 do
   end
 
   describe "#execute" do
-    it "signals a wait via exec_ctx for non-completion forms" do
+    it "returns input items for non-completion forms" do
       config = {
         "form_title" => "Approval",
         "form_description" => "Please approve",
@@ -27,8 +27,6 @@ RSpec.describe DiscourseWorkflows::Nodes::Form::V1 do
 
       result = described_class.new(parameters: config).execute(exec_ctx)
 
-      expect(exec_ctx).to be_waiting
-      expect(exec_ctx.waiting_until).to be_nil
       expect(result).to eq([exec_ctx.input_items])
     end
 
@@ -42,7 +40,6 @@ RSpec.describe DiscourseWorkflows::Nodes::Form::V1 do
 
       result = described_class.new(parameters: config).execute(exec_ctx)
 
-      expect(exec_ctx).not_to be_waiting
       expect(result).to eq([exec_ctx.input_items])
     end
   end

@@ -94,6 +94,30 @@ RSpec.describe DiscourseWorkflows::Executor do
       end
     end
 
+    it "persists explicit timer waits" do
+      graph =
+        build_workflow_graph do |g|
+          g.node "trigger-1", "trigger:manual"
+          g.node "wait-1",
+                 "flow:wait",
+                 configuration: {
+                   "resume" => "time_interval",
+                   "wait_amount" => 2,
+                   "wait_unit" => "hours",
+                 }
+          g.chain "trigger-1", "wait-1"
+        end
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
+
+      freeze_time do
+        execution = described_class.new(workflow, "trigger-1", {}).run
+
+        expect(execution).to have_attributes(status: "waiting", waiting_node_id: "wait-1")
+        expect(execution.waiting_until).to eq(2.hours.from_now)
+      end
+    end
+
     it "caps explicit webhook waits at the executor ceiling" do
       graph =
         build_workflow_graph do |g|
@@ -118,6 +142,31 @@ RSpec.describe DiscourseWorkflows::Executor do
         expect(execution.waiting_until).to eq(
           described_class::MAX_WAIT_DURATION_SECONDS.seconds.from_now,
         )
+      end
+    end
+
+    it "persists bounded webhook waits" do
+      graph =
+        build_workflow_graph do |g|
+          g.node "trigger-1", "trigger:manual"
+          g.node "wait-1",
+                 "flow:wait",
+                 configuration: {
+                   "resume" => "webhook",
+                   "limit_wait_time" => true,
+                   "timeout_amount" => 3,
+                   "timeout_unit" => "hours",
+                 }
+          g.chain "trigger-1", "wait-1"
+        end
+      workflow =
+        Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
+
+      freeze_time do
+        execution = described_class.new(workflow, "trigger-1", {}).run
+
+        expect(execution).to have_attributes(status: "waiting", waiting_node_id: "wait-1")
+        expect(execution.waiting_until).to eq(3.hours.from_now)
       end
     end
   end

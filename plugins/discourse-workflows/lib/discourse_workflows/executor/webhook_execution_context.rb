@@ -3,7 +3,7 @@
 module DiscourseWorkflows
   class Executor
     class WebhookExecutionContext
-      attr_reader :http_method, :path, :params, :webhook, :user, :node_id, :node_identifier
+      attr_reader :http_method, :path, :params, :webhook, :user, :node_id
 
       delegate :input_items,
                :get_node_parameter,

@@ -174,6 +174,7 @@ module DiscourseWorkflows
       node_context = @context.node_context_for(node)
       resolver_ctx = build_resolver_context(node, input_groups, node_context, input_sources)
       resolver = build_resolver(resolver_ctx)
+      runtime_state = NodeExecutionContext::RuntimeState.new
 
       exec_ctx = nil
       begin
@@ -185,6 +186,7 @@ module DiscourseWorkflows
             node_type_class,
             resolver,
             resolver_ctx,
+            runtime_state,
           )
         result =
           node_type_class.new(
@@ -196,14 +198,15 @@ module DiscourseWorkflows
 
         attach_form_completion(step, node, resolver)
 
-        if exec_ctx.waiting?
+        wait_request = runtime_state.wait_request
+        if wait_request
           step.mark_waiting!
           @waiting_node = node
           @waiting_step = step
-          raise WaitRequested, exec_ctx.waiting_until
+          raise WaitRequested, wait_request.waiting_until
         end
 
-        step_log = collect_step_log(exec_ctx)
+        step_log = collect_step_log(exec_ctx, resolver)
         attach_step_log(step, step_log)
         if step_log&.errors?
           step.fail!(step_log.error_summary)
@@ -233,26 +236,23 @@ module DiscourseWorkflows
         raise
       rescue => e
         step.fail!(e.message) unless step.error?
-        attach_step_log(step, collect_step_log(exec_ctx)) unless step.metadata&.key?("logs")
+        unless step.metadata&.key?("logs")
+          attach_step_log(step, collect_step_log(exec_ctx, resolver))
+        end
         raise
       ensure
         resolver&.dispose
         js_elapsed = (sandbox_budget_tracker.current_elapsed_ms - js_elapsed_before).round(1)
         step.add_metadata("js_elapsed_ms", js_elapsed) if js_elapsed > 0
-        if exec_ctx&.condition_details&.any?
-          step.add_metadata("conditions", exec_ctx.condition_details)
-        end
-        exec_ctx&.metadata&.each { |key, value| step.add_metadata(key, value) }
-        step.add_metadata("hints", exec_ctx.execution_hints) if exec_ctx&.execution_hints&.any?
+        runtime_state.step_metadata.each { |key, value| step.add_metadata(key, value) }
       end
     end
 
-    def collect_step_log(exec_ctx)
+    def collect_step_log(exec_ctx, resolver)
       return unless exec_ctx
 
-      exec_ctx.collect_errors!
       log = exec_ctx.log || StepLog.new
-      errors = exec_ctx.expression_errors || []
+      errors = resolver&.expression_errors || []
       errors.each { |err| log.error("#{err[:expression]}: #{err[:error]}") } if errors.present?
       log
     end
@@ -308,7 +308,8 @@ module DiscourseWorkflows
       node_context,
       node_type_class,
       resolver,
-      resolver_ctx
+      resolver_ctx,
+      runtime_state
     )
       NodeExecutionContext.new(
         input_items: primary_input_items(input_groups),
@@ -333,6 +334,7 @@ module DiscourseWorkflows
         resolver_context: resolver_ctx,
         workflow_dependencies: preloaded_workflow_dependencies,
         workflow_snapshot: @snapshot,
+        runtime_state: runtime_state,
       )
     end
 

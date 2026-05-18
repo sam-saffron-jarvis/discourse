@@ -6,36 +6,56 @@ module DiscourseWorkflows
       MISSING = Object.new.freeze
       MAX_DEDUPLICATION_KEYS = 200
 
-      attr_reader :published_trigger,
-                  :node_type_class,
-                  :now,
-                  :emitted_trigger_data,
-                  :node_id,
-                  :node_identifier
+      class RuntimeState
+        attr_reader :collected_trigger_data, :static_data
+
+        def initialize(static_data:, tick: false)
+          @collected_trigger_data = []
+          @static_data = static_data
+          @tick = tick
+        end
+
+        def tick?
+          @tick
+        end
+
+        def deduplicated?(deduplication_key)
+          deduplication_key.present? &&
+            Array.wrap(@static_data["triggered_occurrences"]).include?(deduplication_key)
+        end
+
+        def record_deduplication_key(deduplication_key, now:)
+          keys = Array.wrap(@static_data["triggered_occurrences"])
+          @static_data["triggered_occurrences"] = keys.last(MAX_DEDUPLICATION_KEYS - 1) +
+            [deduplication_key]
+          @static_data["last_triggered_at"] = now.utc.iso8601
+        end
+
+        def collect_trigger_data(trigger_data)
+          @collected_trigger_data << trigger_data
+        end
+      end
+
+      attr_reader :now, :node_id
 
       def initialize(
         published_trigger:,
-        node_type_class:,
         mode: :normal,
         activation_mode: :init,
         now: Time.current.utc,
         dispatch: :enqueue,
-        tick: false,
-        user: nil
+        user: nil,
+        runtime_state:
       )
         @published_trigger = published_trigger
-        @node_type_class = node_type_class
         @mode = mode.to_s
         @activation_mode = activation_mode.to_s
         @now = now
         @dispatch = dispatch
-        @tick = tick
         @user = user
         @node_id = published_trigger.trigger_node_id.to_s
-        @node_identifier = node_value("type").to_s
         @snapshot = WorkflowSnapshot.from_version(workflow, workflow_version)
-        @static_data = workflow.node_static_data(node_id).deep_dup
-        @emitted_trigger_data = []
+        @runtime_state = runtime_state
       end
 
       def get_node_parameter(parameter_name, default = nil, _options = {})
@@ -50,7 +70,7 @@ module DiscourseWorkflows
       def get_workflow_static_data(type)
         raise ArgumentError, "Only node static data is supported" unless type.to_s == "node"
 
-        @static_data
+        @runtime_state.static_data
       end
 
       def get_mode
@@ -96,58 +116,43 @@ module DiscourseWorkflows
         workflow.id
       end
 
-      def workflow_version_id
-        workflow_version.id
-      end
-
       def helpers
-        @helpers ||= Helpers.new(self)
-      end
-
-      def tick?
-        @tick
+        @helpers ||= Helpers.new(self, @runtime_state)
       end
 
       def emit(data, deduplication_key: nil)
         trigger_data = trigger_data_from(data)
         return if trigger_data.blank?
-        return if deduplicated?(deduplication_key)
+        return if @runtime_state.deduplicated?(deduplication_key)
 
         if deduplication_key.present?
-          keys = Array.wrap(@static_data["triggered_occurrences"])
-          @static_data["triggered_occurrences"] = keys.last(MAX_DEDUPLICATION_KEYS - 1) +
-            [deduplication_key]
-          @static_data["last_triggered_at"] = now.utc.iso8601
+          @runtime_state.record_deduplication_key(deduplication_key, now: now)
         end
 
         case @dispatch
         when :enqueue
-          DiscourseWorkflows::TriggerDispatcher.enqueue(published_trigger, trigger_data:)
+          DiscourseWorkflows::TriggerDispatcher.enqueue(@published_trigger, trigger_data:)
         when :execute
           DiscourseWorkflows::TriggerDispatcher.execute(
-            published_trigger,
+            @published_trigger,
             trigger_data:,
             user: @user,
           )
         when :collect
-          @emitted_trigger_data << trigger_data
+          @runtime_state.collect_trigger_data(trigger_data)
         when :none
           nil
         end
       end
 
-      def persist_static_data!
-        workflow.update_node_static_data!(node_id, @static_data)
-      end
-
       private
 
       def workflow
-        published_trigger.workflow
+        @published_trigger.workflow
       end
 
       def workflow_version
-        published_trigger.workflow_version
+        @published_trigger.workflow_version
       end
 
       def graph_nodes(nodes, include_node_parameters:)
@@ -164,7 +169,7 @@ module DiscourseWorkflows
       end
 
       def parameters
-        @parameters ||= DiscourseWorkflows::NodeData.parameters(published_trigger.trigger_node)
+        @parameters ||= DiscourseWorkflows::NodeData.parameters(@published_trigger.trigger_node)
       end
 
       def parameter_value(parameter_name)
@@ -185,15 +190,6 @@ module DiscourseWorkflows
         end
       end
 
-      def node_value(key)
-        DiscourseWorkflows::NodeData.read(published_trigger.trigger_node, key)
-      end
-
-      def deduplicated?(deduplication_key)
-        deduplication_key.present? &&
-          Array.wrap(@static_data["triggered_occurrences"]).include?(deduplication_key)
-      end
-
       def trigger_data_from(data)
         output_arrays = Array.wrap(data)
         first_output = output_arrays.first
@@ -209,8 +205,9 @@ module DiscourseWorkflows
       end
 
       class Helpers
-        def initialize(context)
+        def initialize(context, runtime_state)
           @context = context
+          @runtime_state = runtime_state
         end
 
         def return_json_array(json_data)
@@ -218,7 +215,7 @@ module DiscourseWorkflows
         end
 
         def register_cron(cron)
-          return unless @context.tick?
+          return unless @runtime_state.tick?
 
           expression = cron[:expression] || cron["expression"]
           scheduled_time = @context.now.in_time_zone(@context.get_timezone)

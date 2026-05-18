@@ -30,12 +30,12 @@ RSpec.describe DiscourseWorkflows::Executor::TriggerExecutionContext do
       trigger_node:,
     )
   end
-  let(:ctx) do
-    described_class.new(
-      published_trigger:,
-      node_type_class: DiscourseWorkflows::Nodes::Schedule::V1,
+  let(:runtime_state) do
+    described_class::RuntimeState.new(
+      static_data: workflow.node_static_data(trigger_node["id"]).deep_dup,
     )
   end
+  let(:ctx) { described_class.new(published_trigger:, runtime_state:) }
 
   describe "#get_timezone" do
     it "returns the resolved workflow timezone" do
