@@ -1,5 +1,5 @@
 import Component from "@glimmer/component";
-import { tracked } from "@glimmer/tracking";
+import { cached, tracked } from "@glimmer/tracking";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
 import ConditionalLoadingSpinner from "discourse/components/conditional-loading-spinner";
@@ -9,21 +9,12 @@ import autoFocus from "discourse/modifiers/auto-focus";
 import { eq } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 
-function isFieldType(field, type) {
-  return field.field_type === type;
+function isFormKitType(field, type) {
+  return field.type === type;
 }
 
-function controlType(field) {
-  return field.field_type === "number" ? "number" : "text";
-}
-
-function parseDropdownOptions(field) {
-  const options = Array.isArray(field.options)
-    ? field.options
-    : field.options?.values || [];
-  return options
-    .filter((opt) => opt.value)
-    .map((opt) => ({ id: opt.value, name: opt.value }));
+function fieldOptions(field) {
+  return field.options || [];
 }
 
 export default class WorkflowsForm extends Component {
@@ -49,23 +40,20 @@ export default class WorkflowsForm extends Component {
     this.formSchemaOverride = value;
   }
 
-  get formData() {
-    const data = {};
-    (this.formSchema.form_fields || []).forEach((field) => {
-      const key = field.key;
-      if (field.field_type === "checkbox") {
-        data[key] = field.default_value === "true" || false;
-      } else {
-        data[key] = field.default_value || "";
-      }
-    });
-    return data;
+  @cached
+  get formKitSchema() {
+    return this.formSchema.form_kit_schema;
   }
 
+  @cached
+  get formData() {
+    return this.formKitSchema?.data || {};
+  }
+
+  @cached
   get fields() {
-    return (this.formSchema.form_fields || []).map((field, index) => ({
+    return (this.formKitSchema?.fields || []).map((field, index) => ({
       ...field,
-      key: field.key,
       autofocus: index === 0,
     }));
   }
@@ -216,25 +204,26 @@ export default class WorkflowsForm extends Component {
 
         <Form @data={{this.formData}} @onSubmit={{this.handleSubmit}} as |form|>
           {{#each this.fields as |field|}}
-            {{#if (isFieldType field "checkbox")}}
+            {{#if (isFormKitType field "checkbox")}}
               <form.Field
-                @name={{field.key}}
-                @title={{field.field_label}}
-                @description={{field.description}}
                 @type="checkbox"
+                @name={{field.name}}
+                @title={{field.title}}
+                @description={{field.description}}
                 @format="full"
                 as |f|
               >
                 <f.Control {{(if field.autofocus (modifier autoFocus))}} />
               </form.Field>
-            {{else if (isFieldType field "textarea")}}
+            {{else if (isFormKitType field "textarea")}}
               <form.Field
-                @name={{field.key}}
-                @title={{field.field_label}}
-                @description={{field.description}}
                 @type="textarea"
+                @name={{field.name}}
+                @title={{field.title}}
+                @description={{field.description}}
                 @format="full"
-                @validation={{if field.required "required"}}
+                @validation={{field.validation}}
+                @placeholder={{field.placeholder}}
                 as |f|
               >
                 <f.Control
@@ -242,37 +231,34 @@ export default class WorkflowsForm extends Component {
                   {{(if field.autofocus (modifier autoFocus))}}
                 />
               </form.Field>
-            {{else if (isFieldType field "dropdown")}}
+            {{else if (isFormKitType field "select")}}
               <form.Field
-                @name={{field.key}}
-                @title={{field.field_label}}
-                @description={{field.description}}
                 @type="select"
+                @name={{field.name}}
+                @title={{field.title}}
+                @description={{field.description}}
                 @format="full"
-                @validation={{if field.required "required"}}
+                @validation={{field.validation}}
                 as |f|
               >
                 <f.Control {{(if field.autofocus (modifier autoFocus))}} as |c|>
-                  {{#each (parseDropdownOptions field) as |opt|}}
-                    <c.Option @value={{opt.id}}>{{opt.name}}</c.Option>
+                  {{#each (fieldOptions field) as |opt|}}
+                    <c.Option @value={{opt.value}}>{{opt.label}}</c.Option>
                   {{/each}}
                 </f.Control>
               </form.Field>
             {{else}}
               <form.Field
-                @name={{field.key}}
-                @title={{field.field_label}}
+                @type={{field.type}}
+                @name={{field.name}}
+                @title={{field.title}}
                 @description={{field.description}}
-                @type="input"
                 @format="full"
-                @validation={{if field.required "required"}}
+                @validation={{field.validation}}
+                @placeholder={{field.placeholder}}
                 as |f|
               >
-                <f.Control
-                  @type={{controlType field}}
-                  placeholder={{field.placeholder}}
-                  {{(if field.autofocus (modifier autoFocus))}}
-                />
+                <f.Control {{(if field.autofocus (modifier autoFocus))}} />
               </form.Field>
             {{/if}}
           {{/each}}

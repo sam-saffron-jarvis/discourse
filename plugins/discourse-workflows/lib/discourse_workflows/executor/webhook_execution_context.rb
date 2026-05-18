@@ -53,11 +53,11 @@ module DiscourseWorkflows
       end
 
       def form_mode
-        trigger_data["formMode"] || DiscourseWorkflows::Nodes::Form::Payload::DEFAULT_FORM_MODE
+        DiscourseWorkflows::Forms::Payload.form_mode_from(trigger_data)
       end
 
       def form_query_parameters
-        trigger_data["formQueryParameters"] || {}
+        DiscourseWorkflows::Forms::Payload.query_parameters_from(trigger_data)
       end
 
       def get_request_object

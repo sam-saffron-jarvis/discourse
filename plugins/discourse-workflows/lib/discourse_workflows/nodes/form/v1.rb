@@ -163,7 +163,15 @@ module DiscourseWorkflows
 
           DiscourseWorkflows::WebhookResponse.resume(
             workflow_data: [
-              [{ "json" => Payload.build(form_validation.data, form_mode: webhook_ctx.form_mode) }],
+              [
+                {
+                  "json" =>
+                    DiscourseWorkflows::Forms::Payload.build(
+                      form_validation.data,
+                      form_mode: webhook_ctx.form_mode,
+                    ),
+                },
+              ],
             ],
           )
         end
@@ -174,15 +182,15 @@ module DiscourseWorkflows
         end
 
         def form_data(webhook_ctx)
+          fields =
+            fields_with_query_defaults(form_fields(webhook_ctx), webhook_ctx.form_query_parameters)
+
           {
             uuid: webhook_ctx.trigger_node_webhook_id,
             form_title: webhook_ctx.get_node_parameter("form_title", 0),
             form_description: webhook_ctx.get_node_parameter("form_description", 0),
-            form_fields:
-              fields_with_query_defaults(
-                form_fields(webhook_ctx),
-                webhook_ctx.form_query_parameters,
-              ),
+            form_fields: fields,
+            form_kit_schema: DiscourseWorkflows::Forms::FormKitSchema.build(fields),
             response_mode: "on_received",
             has_downstream_form:
               webhook_ctx

@@ -95,6 +95,20 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         )
         expect(form_data[:response_mode]).to eq("on_received")
         expect(form_data[:has_downstream_form]).to be(false)
+        expect(form_data[:form_kit_schema]).to include(
+          data: {
+            "name" => "",
+          },
+          fields: [
+            {
+              name: "name",
+              title: "Name",
+              type: "input",
+              validation: "required",
+              autofocus: false,
+            },
+          ],
+        )
       end
 
       it "returns a signed submission token without creating a waiting execution" do
@@ -118,6 +132,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
 
         it "uses matching query parameters as field defaults" do
           expect(result[:form_data][:form_fields].first["default_value"]).to eq("Query User")
+          expect(result[:form_data][:form_kit_schema][:data]["name"]).to eq("Query User")
         end
 
         it "persists query parameters in the signed submission token" do

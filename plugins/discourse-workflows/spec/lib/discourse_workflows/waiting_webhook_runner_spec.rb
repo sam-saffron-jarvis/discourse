@@ -79,6 +79,20 @@ RSpec.describe DiscourseWorkflows::WaitingWebhookRunner do
       expect(result.body[:form_title]).to eq("Published workflow")
       expect(result.body[:form_description]).to eq("Counter was 42")
       expect(result.body[:form_fields].first["key"]).to eq("feedback")
+      expect(result.body[:form_kit_schema]).to include(
+        data: {
+          "feedback" => "",
+        },
+        fields: [
+          {
+            name: "feedback",
+            title: "Feedback",
+            type: "input",
+            validation: "required",
+            autofocus: false,
+          },
+        ],
+      )
       expect(result.body[:form_waiting_url]).to be_present
       expect(result.body[:form_submit_url]).to be_present
       expect(result.body[:form_status_url]).to be_present

@@ -82,7 +82,7 @@ module DiscourseWorkflows
 
     def run_workflow(published_trigger:, form_validation:, submission_token_payload:, guardian:)
       trigger_data =
-        DiscourseWorkflows::Nodes::Form::Payload.build(
+        DiscourseWorkflows::Forms::Payload.build(
           form_validation.data,
           query_parameters: submission_token_payload["form_query_parameters"],
         )

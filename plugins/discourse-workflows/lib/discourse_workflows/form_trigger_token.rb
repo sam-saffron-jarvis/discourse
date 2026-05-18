@@ -16,7 +16,7 @@ module DiscourseWorkflows
       }
 
       normalized_query_parameters =
-        DiscourseWorkflows::Nodes::Form::Payload.normalize_query_parameters(form_query_parameters)
+        DiscourseWorkflows::Forms::Payload.normalize_query_parameters(form_query_parameters)
       if normalized_query_parameters.present?
         payload["form_query_parameters"] = normalized_query_parameters
       end

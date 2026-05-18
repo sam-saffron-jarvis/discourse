@@ -71,15 +71,18 @@ module DiscourseWorkflows
           user: guardian.user,
         )
 
+      fields =
+        fields_with_query_defaults(
+          Schemas::FormFields.with_keys(CollectionParameters.rows(config, "form_fields")),
+          params.form_query_parameters,
+        )
+
       {
         uuid: params.uuid,
         form_title: config["form_title"],
         form_description: config["form_description"],
-        form_fields:
-          fields_with_query_defaults(
-            Schemas::FormFields.with_keys(CollectionParameters.rows(config, "form_fields")),
-            params.form_query_parameters,
-          ),
+        form_fields: fields,
+        form_kit_schema: DiscourseWorkflows::Forms::FormKitSchema.build(fields),
         response_mode: config["response_mode"] || "on_received",
         has_downstream_form:
           workflow.node_has_reachable_downstream_of_type?(
