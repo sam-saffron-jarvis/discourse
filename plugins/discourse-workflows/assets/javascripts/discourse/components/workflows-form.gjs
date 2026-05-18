@@ -19,6 +19,10 @@ function fieldOptions(field) {
   return field.options || [];
 }
 
+function responseErrorMessage(responseJSON) {
+  return responseJSON?.error || i18n("discourse_workflows.form.error_message");
+}
+
 export default class WorkflowsForm extends Component {
   @service messageBus;
 
@@ -103,15 +107,14 @@ export default class WorkflowsForm extends Component {
       this.#handleSubmissionResult(result);
     } catch (e) {
       this.state = "error";
-      this.errorMessage =
-        e?.jqXHR?.responseJSON?.error ||
-        i18n("discourse_workflows.form.error_message");
+      this.errorMessage = responseErrorMessage(e?.jqXHR?.responseJSON);
     }
   }
 
   #handleSubmissionResult(result) {
     if (result.status === "error") {
       this.state = "error";
+      this.errorMessage = responseErrorMessage(result);
       return;
     }
 
@@ -124,14 +127,6 @@ export default class WorkflowsForm extends Component {
 
     if (result.form_waiting_url) {
       this.#loadWaitingForm(result.form_waiting_url);
-      return;
-    }
-
-    if (
-      result.response_mode === "workflow_finishes" &&
-      result.status === "waiting"
-    ) {
-      this.state = "waiting";
       return;
     }
 
@@ -165,12 +160,14 @@ export default class WorkflowsForm extends Component {
     } else if (message.status === "error") {
       this.#unsubscribe();
       this.state = "error";
+      this.errorMessage = responseErrorMessage(message);
     }
   }
 
   async #loadWaitingForm(url) {
     if (!url) {
       this.state = "error";
+      this.errorMessage = i18n("discourse_workflows.form.error_message");
       return;
     }
 
@@ -182,6 +179,7 @@ export default class WorkflowsForm extends Component {
       this.#unsubscribe();
     } catch {
       this.state = "error";
+      this.errorMessage = i18n("discourse_workflows.form.error_message");
     }
   }
 

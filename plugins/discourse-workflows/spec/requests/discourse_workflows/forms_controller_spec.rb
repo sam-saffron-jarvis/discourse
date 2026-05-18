@@ -126,6 +126,116 @@ RSpec.describe DiscourseWorkflows::FormsController do
       expect(execution.trigger_data).not_to have_key("form_data")
     end
 
+    context "when response mode waits for the workflow to finish" do
+      before do
+        update_workflow_node(workflow, "trigger-1") do |node|
+          node["parameters"]["response_mode"] = "workflow_finishes"
+        end
+        publish_workflow!(workflow)
+      end
+
+      it "returns after a successful execution without exposing node output" do
+        post form_path,
+             params: {
+               resume_token: initial_resume_token,
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).to include(
+          "response_mode" => "workflow_finishes",
+          "status" => "success",
+        )
+        expect(response.parsed_body).not_to have_key("form_completion")
+        expect(response.parsed_body).not_to have_key("form_waiting_url")
+      end
+
+      it "returns an error response when the workflow fails" do
+        extra =
+          build_workflow_graph do |g|
+            g.node "wait-1",
+                   "flow:wait",
+                   configuration: {
+                     "resume" => "time_interval",
+                     "wait_amount" => 0,
+                     "wait_unit" => "seconds",
+                   }
+          end
+        workflow.update!(
+          nodes: workflow.nodes + extra[:nodes],
+          connections: [
+            {
+              "source_node_id" => "trigger-1",
+              "target_node_id" => "wait-1",
+              "source_output_index" => 0,
+              "target_input_index" => 0,
+            },
+          ],
+        )
+        publish_workflow!(workflow)
+
+        post form_path,
+             params: {
+               resume_token: initial_resume_token,
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:internal_server_error)
+        expect(response.parsed_body).to include(
+          "response_mode" => "workflow_finishes",
+          "status" => "error",
+          "error" => I18n.t("discourse_workflows.errors.workflow_failed"),
+        )
+        expect(DiscourseWorkflows::Execution.last).to have_attributes(status: "error")
+      end
+
+      it "does not hold the form open for non-form waits" do
+        extra =
+          build_workflow_graph do |g|
+            g.node "wait-1",
+                   "flow:wait",
+                   configuration: {
+                     "resume" => "time_interval",
+                     "wait_amount" => 1,
+                     "wait_unit" => "hours",
+                   }
+          end
+        workflow.update!(
+          nodes: workflow.nodes + extra[:nodes],
+          connections: [
+            {
+              "source_node_id" => "trigger-1",
+              "target_node_id" => "wait-1",
+              "source_output_index" => 0,
+              "target_input_index" => 0,
+            },
+          ],
+        )
+        publish_workflow!(workflow)
+
+        post form_path,
+             params: {
+               resume_token: initial_resume_token,
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).to include(
+          "response_mode" => "workflow_finishes",
+          "status" => "waiting",
+        )
+        expect(response.parsed_body).not_to have_key("form_waiting_url")
+        expect(response.parsed_body).not_to have_key("form_completion")
+        expect(DiscourseWorkflows::Execution.last).to have_attributes(status: "waiting")
+      end
+    end
+
     it "returns 422 when the initial submission token is missing" do
       post form_path, params: { form_data: { name: "Test User" } }, headers: origin_headers
 
@@ -312,6 +422,60 @@ RSpec.describe DiscourseWorkflows::FormsController do
         expect(completion_step.dig("metadata", "form_completion")).to include(
           "completion_title" => "test@example.com",
           "completion_message" => "Test User",
+        )
+      end
+
+      it "returns an error when a waiting form resumes into a failing workflow" do
+        extra =
+          build_workflow_graph do |g|
+            g.node "wait-1",
+                   "flow:wait",
+                   configuration: {
+                     "resume" => "time_interval",
+                     "wait_amount" => 0,
+                     "wait_unit" => "seconds",
+                   }
+          end
+        workflow.update!(
+          nodes: workflow.nodes + extra[:nodes],
+          connections: [
+            {
+              "source_node_id" => "trigger-1",
+              "target_node_id" => "form-action-1",
+              "source_output_index" => 0,
+              "target_input_index" => 0,
+            },
+            {
+              "source_node_id" => "form-action-1",
+              "target_node_id" => "wait-1",
+              "source_output_index" => 0,
+              "target_input_index" => 0,
+            },
+          ],
+        )
+        publish_workflow!(workflow)
+
+        post form_path,
+             params: {
+               resume_token: initial_resume_token,
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+
+        post response.parsed_body["form_submit_url"],
+             params: {
+               form_data: {
+                 email: "test@example.com",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:internal_server_error)
+        expect(response.parsed_body).to include(
+          "status" => "error",
+          "error" => I18n.t("discourse_workflows.errors.workflow_failed"),
         )
       end
 

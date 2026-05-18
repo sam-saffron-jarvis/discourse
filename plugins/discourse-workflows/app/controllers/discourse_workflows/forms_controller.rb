@@ -36,8 +36,10 @@ module DiscourseWorkflows
     def create
       DiscourseWorkflows::Form::Submit.call(service_params) do
         on_success do |execution:, response_metadata:|
-          render json:
-                   DiscourseWorkflows::FormResponse.initial_submission(execution, response_metadata)
+          body = DiscourseWorkflows::FormResponse.initial_submission(execution, response_metadata)
+          status =
+            DiscourseWorkflows::FormResponse.initial_submission_status(execution, response_metadata)
+          render json: body, status: status
         end
         on_failed_policy(:authenticated_if_required) { raise Discourse::NotLoggedIn }
         on_failed_step(:ensure_form_valid) do |form_validation:|

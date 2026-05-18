@@ -124,13 +124,24 @@ module DiscourseWorkflows
           user: guardian_user,
         ).reload
 
-      Response.new(status: :ok, body: response_body_for(resumed_execution))
+      Response.new(
+        status: response_status_for(resumed_execution),
+        body: response_body_for(resumed_execution),
+      )
     end
 
     def response_body_for(execution)
       return DiscourseWorkflows::FormResponse.resumed_submission(execution) if @node_type == "form"
 
       { status: execution.status }
+    end
+
+    def response_status_for(execution)
+      if @node_type == "form"
+        return DiscourseWorkflows::FormResponse.resumed_submission_status(execution)
+      end
+
+      :ok
     end
 
     def response_from(response, execution)

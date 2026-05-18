@@ -3,6 +3,7 @@ import { module, test } from "qunit";
 import { setupRenderingTest } from "discourse/tests/helpers/component-test";
 import pretender, { response } from "discourse/tests/helpers/create-pretender";
 import formKit from "discourse/tests/helpers/form-kit-helper";
+import { i18n } from "discourse-i18n";
 import WorkflowsForm from "discourse/plugins/discourse-workflows/discourse/components/workflows-form";
 
 module("Integration | Component | workflows-form", function (hooks) {
@@ -137,5 +138,57 @@ module("Integration | Component | workflows-form", function (hooks) {
     assert
       .dom(".workflows-form__completion-text")
       .doesNotIncludeText("<strong>");
+  });
+
+  test("renders workflow errors returned by submit", async function (assert) {
+    pretender.post(
+      "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      () =>
+        response(500, {
+          status: "error",
+          error: "Error in workflow",
+        })
+    );
+
+    this.set("model", {
+      uuid: "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
+      form_title: "Intake",
+      form_kit_schema: {
+        data: {},
+        fields: [],
+      },
+    });
+
+    await render(<template><WorkflowsForm @model={{this.model}} /></template>);
+    await formKit().submit();
+
+    assert.dom(".workflows-form__error").hasText("Error in workflow");
+  });
+
+  test("completes workflow_finishes submissions that enter a non-form wait", async function (assert) {
+    pretender.post(
+      "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      () =>
+        response(200, {
+          response_mode: "workflow_finishes",
+          status: "waiting",
+        })
+    );
+
+    this.set("model", {
+      uuid: "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
+      form_title: "Intake",
+      form_kit_schema: {
+        data: {},
+        fields: [],
+      },
+    });
+
+    await render(<template><WorkflowsForm @model={{this.model}} /></template>);
+    await formKit().submit();
+
+    assert
+      .dom(".workflows-form__complete")
+      .hasText(i18n("discourse_workflows.form.thank_you"));
   });
 });

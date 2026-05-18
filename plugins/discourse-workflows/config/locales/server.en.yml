@@ -9,6 +9,7 @@ en:
       no_permission_to_manage: "You don't have permission to manage workflows."
       invalid_form_submission: "The form submission has invalid or missing fields."
       invalid_form_token: "The form token is invalid or has expired."
+      workflow_failed: "Error in workflow"
       already_resumed: "This execution has already been resumed."
       javascript_execution_failed: "JavaScript execution failed"
       storage_limit_exceeded: "Data table storage limit exceeded."
