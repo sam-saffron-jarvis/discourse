@@ -77,7 +77,7 @@ module DiscourseWorkflows
         form_description: config["form_description"],
         form_fields:
           fields_with_query_defaults(
-            Workflow.resolve_field_keys(CollectionParameters.rows(config, "form_fields")),
+            Schemas::FormFields.with_keys(CollectionParameters.rows(config, "form_fields")),
             params.form_query_parameters,
           ),
         response_mode: config["response_mode"] || "on_received",

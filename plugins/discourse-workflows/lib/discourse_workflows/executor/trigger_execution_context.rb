@@ -32,6 +32,7 @@ module DiscourseWorkflows
         @user = user
         @node_id = published_trigger.trigger_node_id.to_s
         @node_identifier = node_value("type").to_s
+        @snapshot = WorkflowSnapshot.from_version(workflow, workflow_version)
         @static_data = workflow.node_static_data(node_id).deep_dup
         @emitted_trigger_data = []
       end
@@ -59,11 +60,34 @@ module DiscourseWorkflows
       end
 
       def get_workflow
-        { "id" => workflow.id.to_s, "name" => workflow.name }
+        WorkflowView.from_workflow(workflow, name: workflow_version.name)
       end
 
       def get_node
-        published_trigger.trigger_node
+        NodeView.from_snapshot_node(
+          @snapshot.find_node(node_id),
+          include_node_parameters: true,
+          include_credentials: true,
+          include_webhook_id: true,
+        )
+      end
+
+      def get_child_nodes(node_name, options = {})
+        graph_nodes(
+          @snapshot.child_nodes(node_name, connection_type: "main", depth: -1),
+          include_node_parameters: graph_option(options, :include_node_parameters, false),
+        )
+      end
+
+      def get_parent_nodes(node_name, options = {})
+        graph_nodes(
+          @snapshot.parent_nodes(
+            node_name,
+            connection_type: graph_option(options, :connection_type, "main"),
+            depth: graph_option(options, :depth, -1),
+          ),
+          include_node_parameters: graph_option(options, :include_node_parameters, false),
+        )
       end
 
       def workflow_id
@@ -122,6 +146,19 @@ module DiscourseWorkflows
 
       def workflow_version
         published_trigger.workflow_version
+      end
+
+      def graph_nodes(nodes, include_node_parameters:)
+        Array
+          .wrap(nodes)
+          .filter_map do |node|
+            NodeView.from_snapshot_node(node, include_node_parameters: include_node_parameters)
+          end
+      end
+
+      def graph_option(options, key, default)
+        options = {} unless options.respond_to?(:[])
+        options[key] || options[key.to_s] || default
       end
 
       def parameters

@@ -4,6 +4,21 @@ Workflow nodes and external integrations use public execution APIs only. The nod
 tracks the `IExecuteFunctions` contract by behavior and lifecycle semantics, translated into Ruby
 naming and Ruby call patterns.
 
+## n8n API Map
+
+| n8n concept | Discourse Workflows concept |
+| --- | --- |
+| `IExecuteFunctions` | `DiscourseWorkflows::Executor::NodeExecutionContext` |
+| `IWebhookFunctions` | `DiscourseWorkflows::Executor::WebhookExecutionContext` |
+| `ITriggerFunctions` | `DiscourseWorkflows::Executor::TriggerExecutionContext` |
+| `ILoadOptionsFunctions` | `DiscourseWorkflows::LoadOptionsContext` |
+| `INode` / node metadata | `DiscourseWorkflows::NodeView` |
+| workflow metadata | `DiscourseWorkflows::WorkflowView` |
+| `IWebhookResponseData` | `DiscourseWorkflows::WebhookResponse` |
+
+`NodeView` and `WorkflowView` are immutable runtime views over the execution snapshot. Node code
+must not depend on the persisted workflow JSON shape.
+
 Nodes resolve parameters by input item index, not by passing item objects around:
 
 ```ruby
@@ -20,6 +35,15 @@ Runtime facilities are exposed through the execution context:
 - Task runners: `start_job`, `continue_on_fail`, `helpers`
 - Waiting/resume: `put_execution_to_wait`, `resume_action_id`
 - Expressions, metadata, and hints: `evaluate_expression`, `set_metadata`, `add_execution_hints`
+- Runtime views and graph traversal: `get_node`, `get_workflow`, `get_parent_nodes`,
+  `get_child_nodes`
+
+Graph traversal follows n8n's shape with Ruby naming:
+
+```ruby
+children = exec_ctx.get_child_nodes(exec_ctx.get_node.name)
+parents = exec_ctx.get_parent_nodes(exec_ctx.get_node.name, depth: 1)
+```
 
 Helpers stay Ruby-idiomatic under `exec_ctx.helpers`, for example `normalize_items` and
 `get_data_table_proxy`. Do not introduce camelCase Ruby APIs just to mirror TypeScript spelling.
@@ -28,11 +52,23 @@ Nodes can ask `exec_ctx` for runtime-provided handles such as resume action IDs 
 
 The workflow runtime owns waiting execution lookup, signature validation, atomic claiming, resume dispatch, and final HTTP response assembly. Node webhook methods own only node-local work such as rendering a node-specific response, validating submitted node data, and returning output items for the runtime to resume with.
 
+Webhook nodes use `webhook_ctx` for request data and graph access:
+
+- Request data: `get_request_object`, `get_body_data`, `get_query_data`, `get_header_data`
+- Node data: `get_node_parameter`, `get_node_parameters`, `get_fixed_collection_rows`
+- Runtime views and graph traversal: `get_node`, `get_workflow`, `get_parent_nodes`,
+  `get_child_nodes`
+
 External integrations that receive an interactive response use `DiscourseWorkflows::InteractiveResume`. That class owns action token parsing, signature validation, waiting node checks, atomic claiming, and resuming the execution.
 
 Runtime internals such as `DiscourseWorkflows::WaitingExecution`,
 `DiscourseWorkflows::Execution.claim_for_resume`, and `DiscourseWorkflows::Executor.resume`
 remain implementation details for workflow core services, jobs, controllers, and stores.
+
+Workflow storage internals such as `DiscourseWorkflows::Workflow` and
+`DiscourseWorkflows::NodeData` are not node-authoring APIs. If node code needs workflow topology,
+current-node metadata, resolved parameters, credentials, waiting handles, or request data, expose
+that through the relevant context first.
 
 Trigger nodes follow the same boundary through `trigger_ctx`, which tracks n8n's
 `ITriggerFunctions` contract in Ruby naming. Trigger nodes implement `trigger(trigger_ctx)` and

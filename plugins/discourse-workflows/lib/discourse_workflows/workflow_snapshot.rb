@@ -52,6 +52,7 @@ module DiscourseWorkflows
             ).freeze
           end
       @nodes_by_id = @nodes.index_by(&:id)
+      @nodes_by_name = @nodes.index_by(&:name)
 
       @connections =
         data
@@ -78,6 +79,28 @@ module DiscourseWorkflows
       @nodes_by_id[node_id.to_s]
     end
 
+    def find_node_by_name(node_name)
+      @nodes_by_name[node_name.to_s]
+    end
+
+    def child_nodes(node_name, connection_type: "main", depth: -1)
+      connected_nodes(
+        node_name,
+        direction: :downstream,
+        connection_type: connection_type,
+        depth: depth,
+      )
+    end
+
+    def parent_nodes(node_name, connection_type: "main", depth: -1)
+      connected_nodes(
+        node_name,
+        direction: :upstream,
+        connection_type: connection_type,
+        depth: depth,
+      )
+    end
+
     def connections_from_output_index(node, output_index)
       @connections_by_source_output_index.fetch([node.id, output_index.to_i]) { [] }
     end
@@ -88,6 +111,10 @@ module DiscourseWorkflows
 
     def target_node(connection)
       @nodes_by_id[connection.target_node_id]
+    end
+
+    def source_node(connection)
+      @nodes_by_id[connection.source_node_id]
     end
 
     def node_has_reachable_downstream_of_type?(node_id, type)
@@ -110,6 +137,19 @@ module DiscourseWorkflows
       end
 
       false
+    end
+
+    def connected_nodes(node_name, direction:, connection_type: "main", depth: -1)
+      start_node = find_node_by_name(node_name) || find_node(node_name)
+      return [] if start_node.blank?
+
+      collect_connected_nodes(
+        start_node.id,
+        direction: direction,
+        connection_type: connection_type.to_s,
+        depth: depth.to_i,
+        checked_nodes: Set.new,
+      )
     end
 
     def to_h
@@ -137,6 +177,62 @@ module DiscourseWorkflows
         "connections" => version.connections,
         "workflow_name" => version.name || workflow.name,
       )
+    end
+
+    private
+
+    def collect_connected_nodes(node_id, direction:, connection_type:, depth:, checked_nodes:)
+      return [] if depth.zero?
+      return [] if checked_nodes.include?(node_id)
+
+      next_depth = depth.negative? ? depth : depth - 1
+      next_checked_nodes = checked_nodes.dup
+      next_checked_nodes << node_id
+      connected = []
+
+      connections_for(node_id, direction).each do |connection|
+        next unless connection_type_matches?(connection, connection_type)
+
+        node = direction == :downstream ? target_node(connection) : source_node(connection)
+        next if node.blank? || next_checked_nodes.include?(node.id)
+
+        connected.unshift(node)
+        collect_connected_nodes(
+          node.id,
+          direction: direction,
+          connection_type: connection_type,
+          depth: next_depth,
+          checked_nodes: next_checked_nodes,
+        ).reverse_each do |connected_node|
+          index = connected.index { |existing_node| existing_node.id == connected_node.id }
+          connected.delete_at(index) if index
+          connected.unshift(connected_node)
+        end
+      end
+
+      connected
+    end
+
+    def connections_for(node_id, direction)
+      case direction
+      when :downstream
+        @connections_by_source.fetch(node_id) { [] }
+      when :upstream
+        @connections_by_target.fetch(node_id) { [] }
+      else
+        raise ArgumentError, "Unknown connection direction: #{direction}"
+      end
+    end
+
+    def connection_type_matches?(connection, connection_type)
+      case connection_type
+      when "ALL"
+        true
+      when "ALL_NON_MAIN"
+        connection.connection_type != "main"
+      else
+        connection.connection_type == connection_type
+      end
     end
   end
 end

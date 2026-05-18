@@ -3,13 +3,17 @@
 module DiscourseWorkflows
   class Executor
     class WebhookExecutionContext
-      attr_reader :http_method, :path, :params, :webhook, :user, :node, :node_id, :node_identifier
+      attr_reader :http_method, :path, :params, :webhook, :user, :node_id, :node_identifier
 
       delegate :input_items,
                :get_node_parameter,
                :get_node_parameters,
                :get_fixed_collection_rows,
                :get_collection_options,
+               :get_node,
+               :get_workflow,
+               :get_child_nodes,
+               :get_parent_nodes,
                :helpers,
                to: :@node_execution_context
 
@@ -56,12 +60,30 @@ module DiscourseWorkflows
         trigger_data["formQueryParameters"] || {}
       end
 
-      def trigger_node_webhook_id
-        snapshot_node(@execution.trigger_node_id)&.webhook_id
+      def get_request_object
+        {
+          "method" => http_method,
+          "path" => path,
+          "body" => get_body_data,
+          "query" => get_query_data,
+          "headers" => get_header_data,
+        }
       end
 
-      def node_has_reachable_downstream_of_type?(type)
-        @snapshot.node_has_reachable_downstream_of_type?(@node_id, type)
+      def get_body_data
+        params
+      end
+
+      def get_query_data
+        params[:query] || params["query"] || {}
+      end
+
+      def get_header_data
+        params[:headers] || params["headers"] || {}
+      end
+
+      def trigger_node_webhook_id
+        snapshot_node(@execution.trigger_node_id)&.webhook_id
       end
 
       def resolve(value, item_index = 0)
@@ -133,6 +155,7 @@ module DiscourseWorkflows
             execution_mode: @execution.execution_mode.to_sym,
             flow_context: @execution_context.context,
             resolver_context: resolver_context,
+            workflow_snapshot: @snapshot,
           )
       end
 

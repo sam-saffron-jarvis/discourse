@@ -56,7 +56,8 @@ module DiscourseWorkflows
         execution_mode: :normal,
         flow_context: nil,
         resolver_context: nil,
-        workflow_dependencies: nil
+        workflow_dependencies: nil,
+        workflow_snapshot: nil
       )
         @input_groups = normalize_input_groups(input_groups, input_items)
         @input_items = @input_groups[0] || []
@@ -80,6 +81,7 @@ module DiscourseWorkflows
         @resume_token = resume_token
         @node_id = node_id
         @node_identifier = node_identifier.presence&.to_s
+        @webhook_id = split["webhook_id"]
         @execution_mode = execution_mode
         @flow_context = flow_context || {}
         @resolver_context = resolver_context || {}
@@ -91,6 +93,7 @@ module DiscourseWorkflows
         @waiting = false
         @waiting_until = nil
         @workflow_dependencies = workflow_dependencies
+        @workflow_snapshot = workflow_snapshot
       end
 
       def get_context(scope = :node)
@@ -121,6 +124,29 @@ module DiscourseWorkflows
 
       def get_mode
         @execution_mode.to_s
+      end
+
+      def get_node
+        DiscourseWorkflows::NodeView.from_snapshot_node(
+          current_snapshot_node,
+          include_node_parameters: true,
+          include_credentials: true,
+          include_webhook_id: true,
+        ) ||
+          DiscourseWorkflows::NodeView.new(
+            id: node_id,
+            name: nil,
+            type: node_identifier,
+            type_version: nil,
+            webhook_id: @webhook_id,
+          )
+      end
+
+      def get_workflow
+        DiscourseWorkflows::WorkflowView.from_workflow(
+          @workflow,
+          name: @workflow_snapshot&.workflow_name,
+        )
       end
 
       def get_input_data(input_index = 0, _connection_type = nil)
@@ -262,6 +288,24 @@ module DiscourseWorkflows
         with_item_index(item_index) { @resolver.resolve(expression) }
       end
 
+      def get_child_nodes(node_name, options = {})
+        graph_nodes(
+          @workflow_snapshot&.child_nodes(node_name, connection_type: "main", depth: -1),
+          include_node_parameters: graph_option(options, :include_node_parameters, false),
+        )
+      end
+
+      def get_parent_nodes(node_name, options = {})
+        graph_nodes(
+          @workflow_snapshot&.parent_nodes(
+            node_name,
+            connection_type: graph_option(options, :connection_type, "main"),
+            depth: graph_option(options, :depth, -1),
+          ),
+          include_node_parameters: graph_option(options, :include_node_parameters, false),
+        )
+      end
+
       def paired_item_for(item, input: 0)
         input_index = input_index(input)
         paired_item = { "item" => item_index_for(item, input_index:) }
@@ -270,6 +314,26 @@ module DiscourseWorkflows
       end
 
       private
+
+      def current_snapshot_node
+        @workflow_snapshot&.find_node(node_id)
+      end
+
+      def graph_nodes(nodes, include_node_parameters:)
+        Array
+          .wrap(nodes)
+          .filter_map do |node|
+            DiscourseWorkflows::NodeView.from_snapshot_node(
+              node,
+              include_node_parameters: include_node_parameters,
+            )
+          end
+      end
+
+      def graph_option(options, key, default)
+        options = {} unless options.respond_to?(:[])
+        options[key] || options[key.to_s] || default
+      end
 
       def with_item_index(item_index = 0)
         normalized_item_index = normalize_item_index(item_index)

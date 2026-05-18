@@ -332,6 +332,7 @@ module DiscourseWorkflows
         flow_context: @context.context,
         resolver_context: resolver_ctx,
         workflow_dependencies: preloaded_workflow_dependencies,
+        workflow_snapshot: @snapshot,
       )
     end
 

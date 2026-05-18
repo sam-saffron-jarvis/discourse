@@ -36,7 +36,11 @@ module DiscourseWorkflows
     end
 
     def validate_form(trigger_node:, params:)
-      FormSchema.validate(trigger_node, params.form_data)
+      fields =
+        Schemas::FormFields.with_keys(
+          CollectionParameters.rows(NodeData.parameters(trigger_node), "form_fields"),
+        )
+      Schemas::FormFields.validate_submission(fields, params.form_data)
     end
 
     def ensure_form_valid(form_validation:)

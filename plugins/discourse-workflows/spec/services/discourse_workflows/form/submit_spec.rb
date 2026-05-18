@@ -184,7 +184,9 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
           result
 
           stored_name = result[:execution].trigger_data["name"]
-          expect(stored_name.length).to eq(DiscourseWorkflows::FormSchema::MAX_FIELD_VALUE_LENGTH)
+          expect(stored_name.length).to eq(
+            DiscourseWorkflows::Schemas::FormFields::MAX_FIELD_VALUE_LENGTH,
+          )
         end
       end
 

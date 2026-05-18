@@ -39,6 +39,80 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
   end
 
+  describe "node and graph views" do
+    let(:snapshot) do
+      graph =
+        build_workflow_graph do |g|
+          g.node "trigger-1", "trigger:manual", name: "Manual"
+          g.node "set-1", "action:set_fields", name: "Prepare"
+          g.node "form-1",
+                 "action:form",
+                 name: "Review",
+                 configuration: {
+                   "form_fields" => [{ "field_label" => "Reason", "field_type" => "text" }],
+                 }
+          g.chain "trigger-1", "set-1", "form-1"
+        end
+
+      DiscourseWorkflows::WorkflowSnapshot.new(graph.merge(workflow_name: "Runtime workflow"))
+    end
+
+    it "exposes the current node as a public view" do
+      ctx =
+        described_class.new(
+          input_items: [],
+          resolver: nil,
+          node_id: "form-1",
+          node_identifier: "action:form",
+          workflow_snapshot: snapshot,
+        )
+
+      expect(ctx.get_node).to have_attributes(
+        id: "form-1",
+        name: "Review",
+        type: "action:form",
+        type_version: 1.0,
+        disabled: false,
+      )
+      expect(ctx.get_node.parameters).to include(
+        "form_fields" => [{ "field_label" => "Reason", "field_type" => "text" }],
+      )
+      expect(ctx.get_node.to_h).to include("typeVersion" => 1.0, "disabled" => false)
+    end
+
+    it "returns recursive parent and child node views from the workflow snapshot" do
+      ctx =
+        described_class.new(
+          input_items: [],
+          resolver: nil,
+          node_id: "set-1",
+          node_identifier: "action:set_fields",
+          workflow_snapshot: snapshot,
+        )
+
+      expect(ctx.get_parent_nodes(ctx.get_node.name).map(&:name)).to eq(["Manual"])
+      expect(ctx.get_child_nodes(ctx.get_node.name).map(&:name)).to eq(["Review"])
+      expect(ctx.get_parent_nodes("Review").map(&:name)).to eq(%w[Manual Prepare])
+    end
+
+    it "only includes node parameters when requested" do
+      ctx =
+        described_class.new(
+          input_items: [],
+          resolver: nil,
+          node_id: "set-1",
+          node_identifier: "action:set_fields",
+          workflow_snapshot: snapshot,
+        )
+
+      child = ctx.get_child_nodes(ctx.get_node.name, include_node_parameters: true).first
+
+      expect(child.parameters).to include(
+        "form_fields" => [{ "field_label" => "Reason", "field_type" => "text" }],
+      )
+    end
+  end
+
   describe "#helpers" do
     it "normalizes runtime-compatible items through execution helpers" do
       ctx = described_class.new(input_items: [], resolver: nil)

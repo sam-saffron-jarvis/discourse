@@ -145,7 +145,10 @@ module DiscourseWorkflows
 
         def submit_response(webhook_ctx)
           form_validation =
-            DiscourseWorkflows::FormSchema.validate(webhook_ctx.node, form_data_param(webhook_ctx))
+            Schemas::FormFields.validate_submission(
+              form_fields(webhook_ctx),
+              form_data_param(webhook_ctx),
+            )
 
           unless form_validation.valid?
             return(
@@ -166,7 +169,8 @@ module DiscourseWorkflows
         end
 
         def form_data_param(webhook_ctx)
-          webhook_ctx.params[:form_data] || webhook_ctx.params["form_data"] || {}
+          body_data = webhook_ctx.get_body_data
+          body_data[:form_data] || body_data["form_data"] || {}
         end
 
         def form_data(webhook_ctx)
@@ -176,14 +180,19 @@ module DiscourseWorkflows
             form_description: webhook_ctx.get_node_parameter("form_description", 0),
             form_fields:
               fields_with_query_defaults(
-                Workflow.resolve_field_keys(
-                  webhook_ctx.get_fixed_collection_rows("form_fields", 0),
-                ),
+                form_fields(webhook_ctx),
                 webhook_ctx.form_query_parameters,
               ),
             response_mode: "on_received",
-            has_downstream_form: webhook_ctx.node_has_reachable_downstream_of_type?("action:form"),
+            has_downstream_form:
+              webhook_ctx
+                .get_child_nodes(webhook_ctx.get_node.name)
+                .any? { |node| node.type == "action:form" },
           }.compact
+        end
+
+        def form_fields(webhook_ctx)
+          Schemas::FormFields.with_keys(webhook_ctx.get_fixed_collection_rows("form_fields", 0))
         end
 
         def fields_with_query_defaults(fields, query_parameters)

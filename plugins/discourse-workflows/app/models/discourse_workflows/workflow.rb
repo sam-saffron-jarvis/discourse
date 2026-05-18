@@ -187,14 +187,6 @@ module DiscourseWorkflows
       false
     end
 
-    def self.form_field_key(field)
-      field["field_name"].presence || field["field_label"].to_s.parameterize(separator: "_")
-    end
-
-    def self.resolve_field_keys(fields)
-      fields.map { |f| f.merge("key" => form_field_key(f)) }
-    end
-
     private
 
     def error_workflow_must_exist
