@@ -103,8 +103,8 @@ RSpec.describe DiscourseWorkflows::Workflow::Create do
         expect(log.subject).to eq("My Workflow")
       end
 
-      it "clears the site cache" do
-        Site.expects(:clear_cache).once
+      it "does not clear the site cache" do
+        Site.expects(:clear_cache).never
         result
       end
     end

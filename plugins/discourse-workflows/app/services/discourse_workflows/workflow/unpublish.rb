@@ -35,7 +35,6 @@ module DiscourseWorkflows
     end
 
     def expire_workflow_caches
-      Site.clear_cache
       DiscourseWorkflows::WorkflowDependency.clear_cache!
     end
   end

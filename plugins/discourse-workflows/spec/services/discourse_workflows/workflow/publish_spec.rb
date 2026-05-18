@@ -43,7 +43,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Publish do
       end
 
       it "clears workflow caches" do
-        Site.expects(:clear_cache).once
+        Site.expects(:clear_cache).never
         DiscourseWorkflows::WorkflowDependency.expects(:clear_cache!).once
         result
       end

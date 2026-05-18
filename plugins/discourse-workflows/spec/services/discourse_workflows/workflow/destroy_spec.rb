@@ -46,8 +46,9 @@ RSpec.describe DiscourseWorkflows::Workflow::Destroy do
         }.by(1)
       end
 
-      it "clears the site cache" do
-        Site.expects(:clear_cache).once
+      it "clears workflow caches" do
+        Site.expects(:clear_cache).never
+        DiscourseWorkflows::WorkflowDependency.expects(:clear_cache!).once
         result
       end
     end

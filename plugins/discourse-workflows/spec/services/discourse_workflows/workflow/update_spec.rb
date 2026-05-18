@@ -220,8 +220,8 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
         result
       end
 
-      it "clears the site cache" do
-        Site.expects(:clear_cache).once
+      it "does not clear the site cache" do
+        Site.expects(:clear_cache).never
         result
       end
 
