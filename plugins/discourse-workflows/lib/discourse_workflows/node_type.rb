@@ -114,10 +114,6 @@ module DiscourseWorkflows
       end
     end
 
-    def self.handle_waiting_webhook(_webhook, _request)
-      raise NotImplementedError
-    end
-
     def self.property_schema
       properties
     end
@@ -188,6 +184,10 @@ module DiscourseWorkflows
     end
 
     def execute(exec_ctx)
+      raise NotImplementedError
+    end
+
+    def webhook(webhook_ctx)
       raise NotImplementedError
     end
 

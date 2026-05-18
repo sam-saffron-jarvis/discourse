@@ -91,7 +91,6 @@ module DiscourseWorkflows
               response_mode: "on_received",
               restart_webhook: true,
               node_type: "form",
-              handler: "waiting_show",
             },
             {
               name: "default",
@@ -100,7 +99,6 @@ module DiscourseWorkflows
               response_mode: "response_node",
               restart_webhook: true,
               node_type: "form",
-              handler: "waiting_submit",
             },
             {
               name: "status",
@@ -109,53 +107,9 @@ module DiscourseWorkflows
               response_mode: "on_received",
               restart_webhook: true,
               node_type: "form",
-              handler: "waiting_status",
             },
           ],
         )
-
-        def self.handle_waiting_webhook(webhook, request)
-          public_send(webhook.fetch(:handler), request)
-        end
-
-        def self.waiting_status(request)
-          WaitingDispatch::Response.new(status: :ok, body: { status: "form_waiting" })
-        end
-
-        def self.waiting_show(request)
-          result =
-            DiscourseWorkflows::Form::Show.call(
-              request.service_params.deep_merge(
-                params: {
-                  execution_id: request.execution_id,
-                  signature: request.signature,
-                },
-              ),
-            )
-          return form_show_response(result, request.execution) if result.success?
-          raise Discourse::NotLoggedIn if failed?(result, "result.policy.authenticated_if_required")
-
-          not_found_or_unprocessable(result)
-        end
-
-        def self.waiting_submit(request)
-          result =
-            DiscourseWorkflows::Form::Resume.call(
-              request.service_params.deep_merge(
-                params: {
-                  execution_id: request.execution_id,
-                  signature: request.signature,
-                  form_data: request.params[:form_data] || {},
-                },
-              ),
-            )
-
-          return form_resume_response(result[:claimed_execution].reload) if result.success?
-          return invalid_form_response(result) if failed?(result, "result.step.ensure_form_valid")
-          return already_resumed_response if failed?(result, "result.model.claimed_execution")
-
-          not_found_or_unprocessable(result)
-        end
 
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }
@@ -167,68 +121,84 @@ module DiscourseWorkflows
           [exec_ctx.input_items]
         end
 
-        def self.form_show_response(result, execution)
-          WaitingDispatch::Response.new(
-            status: :ok,
-            body: result[:form_data].merge(WaitingExecution.form_urls(execution)),
-          )
-        end
-        private_class_method :form_show_response
+        def webhook(webhook_ctx)
+          return status_response if webhook_ctx.http_method == "GET" && webhook_ctx.path == "status"
+          return show_response(webhook_ctx) if webhook_ctx.http_method == "GET"
+          return submit_response(webhook_ctx) if webhook_ctx.http_method == "POST"
 
-        def self.form_resume_response(execution)
-          body = { status: execution.status }
-
-          if WaitingDispatch.waiting_for?(execution, node_type: "form")
-            body.merge!(WaitingExecution.form_urls(execution))
-          elsif execution.success?
-            body[:form_completion] = FormCompletion.from_execution(execution)
-          end
-
-          WaitingDispatch::Response.new(status: :ok, body: body.compact)
-        end
-        private_class_method :form_resume_response
-
-        def self.invalid_form_response(result)
-          WaitingDispatch::Response.new(
-            status: :unprocessable_entity,
+          DiscourseWorkflows::WebhookResponse.respond(
+            status: :not_found,
             body: {
-              errors: result[:form_validation].errors.map(&:to_h),
+              error: "not_found",
             },
           )
         end
-        private_class_method :invalid_form_response
 
-        def self.already_resumed_response
-          WaitingDispatch::Response.new(
-            status: :conflict,
-            body: {
-              error: I18n.t("discourse_workflows.errors.already_resumed"),
-            },
-          )
+        private
+
+        def status_response
+          DiscourseWorkflows::WebhookResponse.respond(status: :ok, body: { status: "form_waiting" })
         end
-        private_class_method :already_resumed_response
 
-        def self.not_found_or_unprocessable(result)
-          if failed?(
-               result,
-               "result.policy.valid_waiting_request",
-               "result.policy.action_form",
-               "result.model.waiting_execution",
-               "result.model.form_node",
-               "result.model.execution",
-               "result.model.waiting_node",
-             )
-            return WaitingDispatch::Response.new(status: :not_found, body: { error: "not_found" })
+        def show_response(webhook_ctx)
+          DiscourseWorkflows::WebhookResponse.respond(status: :ok, body: form_data(webhook_ctx))
+        end
+
+        def submit_response(webhook_ctx)
+          form_validation =
+            DiscourseWorkflows::FormSchema.validate(webhook_ctx.node, form_data_param(webhook_ctx))
+
+          unless form_validation.valid?
+            return(
+              DiscourseWorkflows::WebhookResponse.respond(
+                status: :unprocessable_entity,
+                body: {
+                  errors: form_validation.errors.map(&:to_h),
+                },
+              )
+            )
           end
 
-          WaitingDispatch::Response.new(status: :unprocessable_entity, body: { success: false })
+          DiscourseWorkflows::WebhookResponse.resume(
+            workflow_data: [
+              [{ "json" => Payload.build(form_validation.data, form_mode: webhook_ctx.form_mode) }],
+            ],
+          )
         end
-        private_class_method :not_found_or_unprocessable
 
-        def self.failed?(result, *keys)
-          keys.any? { |key| result[key]&.failure? }
+        def form_data_param(webhook_ctx)
+          webhook_ctx.params[:form_data] || webhook_ctx.params["form_data"] || {}
         end
-        private_class_method :failed?
+
+        def form_data(webhook_ctx)
+          item = webhook_ctx.input_items.first || { "json" => {} }
+
+          {
+            uuid: webhook_ctx.trigger_node_webhook_id,
+            form_title: webhook_ctx.get_node_parameter("form_title", item),
+            form_description: webhook_ctx.get_node_parameter("form_description", item),
+            form_fields:
+              fields_with_query_defaults(
+                Workflow.resolve_field_keys(
+                  webhook_ctx.get_fixed_collection_rows("form_fields", item),
+                ),
+                webhook_ctx.form_query_parameters,
+              ),
+            response_mode: "on_received",
+            has_downstream_form: webhook_ctx.node_has_reachable_downstream_of_type?("action:form"),
+          }.compact
+        end
+
+        def fields_with_query_defaults(fields, query_parameters)
+          normalized_query_parameters = query_parameters.with_indifferent_access
+
+          fields.map do |field|
+            key = field["key"]
+            next field unless normalized_query_parameters.key?(key)
+
+            field.merge("default_value" => normalized_query_parameters[key])
+          end
+        end
       end
     end
   end

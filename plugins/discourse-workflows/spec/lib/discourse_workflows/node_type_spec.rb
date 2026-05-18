@@ -53,15 +53,7 @@ RSpec.describe DiscourseWorkflows::NodeType do
       klass =
         Class.new(described_class) do
           description(
-            webhooks: [
-              {
-                path: "",
-                http_method: "POST",
-                restart_webhook: true,
-                node_type: "form",
-                handler: "waiting_submit",
-              },
-            ],
+            webhooks: [{ path: "", http_method: "POST", restart_webhook: true, node_type: "form" }],
           )
         end
 
@@ -70,7 +62,6 @@ RSpec.describe DiscourseWorkflows::NodeType do
         http_method: "POST",
         restart_webhook: true,
         node_type: "form",
-        handler: "waiting_submit",
       )
     end
 

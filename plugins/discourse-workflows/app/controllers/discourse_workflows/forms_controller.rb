@@ -36,7 +36,8 @@ module DiscourseWorkflows
     def create
       DiscourseWorkflows::Form::Submit.call(service_params) do
         on_success do |execution:, response_metadata:|
-          render json: form_submission_response(execution, response_metadata)
+          render json:
+                   DiscourseWorkflows::FormResponse.initial_submission(execution, response_metadata)
         end
         on_failed_policy(:authenticated_if_required) { raise Discourse::NotLoggedIn }
         on_failed_step(:ensure_form_valid) do |form_validation:|
@@ -48,15 +49,15 @@ module DiscourseWorkflows
     end
 
     def waiting_status
-      render_waiting_dispatch(path: "status")
+      render_waiting_webhook(path: "status")
     end
 
     def waiting_show
-      render_waiting_dispatch(path: "")
+      render_waiting_webhook(path: "")
     end
 
     def waiting_create
-      render_waiting_dispatch(path: "", dispatch_params: { form_data: submitted_form_data })
+      render_waiting_webhook(path: "", dispatch_params: { form_data: submitted_form_data })
     end
 
     private
@@ -104,9 +105,9 @@ module DiscourseWorkflows
       form_data
     end
 
-    def render_waiting_dispatch(path:, dispatch_params: {})
+    def render_waiting_webhook(path:, dispatch_params: {})
       result =
-        DiscourseWorkflows::WaitingDispatch.call(
+        DiscourseWorkflows::WaitingWebhookRunner.call(
           execution_id: params[:execution_id].to_i,
           signature: waiting_signature,
           http_method: request.method,
@@ -117,26 +118,6 @@ module DiscourseWorkflows
         )
 
       render json: result.body, status: result.status
-    end
-
-    def form_submission_response(execution, response_metadata)
-      payload = {
-        has_downstream_form: response_metadata[:has_downstream_form],
-        response_mode: response_metadata[:response_mode],
-        status: execution&.status,
-      }
-
-      if DiscourseWorkflows::WaitingDispatch.waiting_for?(execution, node_type: "form")
-        payload.merge!(DiscourseWorkflows::WaitingExecution.form_urls(execution))
-      elsif execution&.success?
-        payload[:form_completion] = form_completion(execution)
-      end
-
-      payload.compact
-    end
-
-    def form_completion(execution)
-      DiscourseWorkflows::FormCompletion.from_execution(execution)
     end
   end
 end
