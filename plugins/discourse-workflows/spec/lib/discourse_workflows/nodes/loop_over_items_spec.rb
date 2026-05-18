@@ -120,5 +120,14 @@ RSpec.describe DiscourseWorkflows::Nodes::LoopOverItems::V1 do
 
       expect(node_context["max_run_index"]).to eq(2)
     end
+
+    it "resolves batch_size expressions through the execution context" do
+      node_context = {}
+      items = make_items({ id: 1, batch_size: 2 }, { id: 2 }, { id: 3 })
+
+      result = run_loop(items, node_context: node_context, batch_size: "={{ $json.batch_size }}")
+
+      expect(result[1].map { |item| item["json"]["id"] }).to eq([1, 2])
+    end
   end
 end

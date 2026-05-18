@@ -54,33 +54,21 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
     end
 
     it "rejects legacy snake_case modes" do
-      action =
-        described_class.new(
-          parameters: {
-            "code" => "return { name: $json.name };",
-            "mode" => "run_once_for_each_item",
-          },
-        )
+      parameters = { "code" => "return { name: $json.name };", "mode" => "run_once_for_each_item" }
+      action = described_class.new(parameters: parameters)
 
-      expect { action.execute(build_exec_ctx([{ "json" => {} }])) }.to raise_error(
-        DiscourseWorkflows::NodeError,
-        /Invalid Code mode/,
-      )
+      expect {
+        action.execute(build_exec_ctx([{ "json" => {} }], parameters: parameters))
+      }.to raise_error(DiscourseWorkflows::NodeError, /Invalid Code mode/)
     end
 
     it "rejects unsupported modes" do
-      action =
-        described_class.new(
-          parameters: {
-            "code" => "return $input.all();",
-            "mode" => "run_sometimes",
-          },
-        )
+      parameters = { "code" => "return $input.all();", "mode" => "run_sometimes" }
+      action = described_class.new(parameters: parameters)
 
-      expect { action.execute(build_exec_ctx([{ "json" => {} }])) }.to raise_error(
-        DiscourseWorkflows::NodeError,
-        /Invalid Code mode/,
-      )
+      expect {
+        action.execute(build_exec_ctx([{ "json" => {} }], parameters: parameters))
+      }.to raise_error(DiscourseWorkflows::NodeError, /Invalid Code mode/)
     end
 
     it "executes JavaScript and returns the result" do

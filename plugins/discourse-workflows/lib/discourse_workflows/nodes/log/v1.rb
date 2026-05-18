@@ -25,9 +25,7 @@ module DiscourseWorkflows
                     key: {
                       type: :string,
                       required: true,
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     value: {
                       type: :string,

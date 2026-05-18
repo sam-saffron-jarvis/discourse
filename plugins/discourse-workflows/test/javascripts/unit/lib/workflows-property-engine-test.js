@@ -173,7 +173,7 @@ module("Unit | Utility | workflows property engine", function () {
     assert.true(fieldSupportsExpression({ type: "icon" }));
     assert.false(fieldSupportsExpression({ type: "multi_options" }));
     assert.false(
-      fieldSupportsExpression({ type: "string", ui: { expression: false } })
+      fieldSupportsExpression({ type: "string", no_data_expression: true })
     );
     assert.true(
       fieldSupportsExpression({ type: "options", ui: { expression: true } })

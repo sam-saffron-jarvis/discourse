@@ -34,9 +34,7 @@ module DiscourseWorkflows
                       required: true,
                       default: "days",
                       options: %w[seconds minutes hours days weeks months cron],
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     seconds_between_triggers: {
                       type: :integer,
@@ -46,9 +44,7 @@ module DiscourseWorkflows
                       visible_if: {
                         interval: %w[seconds],
                       },
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     minutes_between_triggers: {
                       type: :integer,
@@ -58,9 +54,7 @@ module DiscourseWorkflows
                       visible_if: {
                         interval: %w[minutes],
                       },
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     hours_between_triggers: {
                       type: :integer,
@@ -70,9 +64,7 @@ module DiscourseWorkflows
                       visible_if: {
                         interval: %w[hours],
                       },
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     days_between_triggers: {
                       type: :integer,
@@ -82,9 +74,7 @@ module DiscourseWorkflows
                       visible_if: {
                         interval: %w[days],
                       },
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     weeks_between_triggers: {
                       type: :integer,
@@ -94,9 +84,7 @@ module DiscourseWorkflows
                       visible_if: {
                         interval: %w[weeks],
                       },
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     months_between_triggers: {
                       type: :integer,
@@ -106,9 +94,7 @@ module DiscourseWorkflows
                       visible_if: {
                         interval: %w[months],
                       },
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     trigger_on_weekdays: {
                       type: :multi_options,
@@ -129,9 +115,7 @@ module DiscourseWorkflows
                       visible_if: {
                         interval: %w[months],
                       },
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     trigger_at_hour: {
                       type: :options,
@@ -140,9 +124,9 @@ module DiscourseWorkflows
                       visible_if: {
                         interval: %w[days weeks months],
                       },
+                      no_data_expression: true,
                       ui: {
                         control: :combo_box,
-                        expression: false,
                       },
                       control_options: {
                         option_format: :hour_of_day,
@@ -156,9 +140,7 @@ module DiscourseWorkflows
                       visible_if: {
                         interval: %w[hours days weeks months],
                       },
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     cron: {
                       type: :string,

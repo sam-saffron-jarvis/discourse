@@ -35,9 +35,7 @@ module DiscourseWorkflows
                     field_name: {
                       type: :string,
                       required: true,
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     order: {
                       type: :options,
@@ -55,6 +53,7 @@ module DiscourseWorkflows
               visible_if: {
                 type: "code",
               },
+              no_data_expression: true,
               default: <<~JS.strip,
                 // The two items to compare are in the variables a and b
                 // Access the fields via a.json and b.json
@@ -72,7 +71,6 @@ module DiscourseWorkflows
               JS
               ui: {
                 control: :code,
-                expression: false,
               },
               control_options: {
                 height: 200,
@@ -84,7 +82,7 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }
-          config = exec_ctx.get_parameters(item)
+          config = exec_ctx.get_node_parameters(item)
           type = config.fetch("type") { "simple" }
 
           items =

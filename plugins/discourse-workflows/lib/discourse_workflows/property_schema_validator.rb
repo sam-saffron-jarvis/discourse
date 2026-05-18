@@ -32,6 +32,7 @@ module DiscourseWorkflows
       validate
       visible_if
       visible_unless
+      no_data_expression
       display_options
       item_schema
       extra_item_schema

@@ -31,9 +31,7 @@ module DiscourseWorkflows
               type: :options,
               options: %w[none basic_auth bearer_token],
               default: "none",
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             headers: {
               type: :fixed_collection,
@@ -178,7 +176,7 @@ module DiscourseWorkflows
           items =
             exec_ctx.input_items.flat_map do |item|
               exec_ctx.with_item(item) do
-                config = exec_ctx.get_parameters(item)
+                config = exec_ctx.get_node_parameters(item)
                 result = process(config, item, exec_ctx)
                 wrap_result(result, paired_item: exec_ctx.paired_item_for(item))
               end

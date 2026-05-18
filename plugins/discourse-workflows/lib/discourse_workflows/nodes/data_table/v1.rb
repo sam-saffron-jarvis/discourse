@@ -47,9 +47,7 @@ module DiscourseWorkflows
               visible_if: {
                 operation: "insert",
               },
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             columns_case_sensitive_hint: {
               type: :notice,
@@ -81,9 +79,7 @@ module DiscourseWorkflows
               visible_if: {
                 operation: %w[get update delete upsert],
               },
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             filter: {
               type: :array,
@@ -160,7 +156,7 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }
-          config = exec_ctx.get_parameters(item)
+          config = exec_ctx.get_node_parameters(item)
 
           [Array.wrap(execute_with_config(config, item, exec_ctx))]
         end

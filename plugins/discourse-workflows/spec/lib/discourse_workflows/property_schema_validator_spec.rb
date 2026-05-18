@@ -13,9 +13,7 @@ RSpec.describe DiscourseWorkflows::PropertySchemaValidator do
           required: true,
           default: "GET",
           options: %w[GET POST],
-          ui: {
-            expression: false,
-          },
+          no_data_expression: true,
         },
         url: {
           type: :string,

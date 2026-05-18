@@ -91,7 +91,7 @@ if defined?(DiscourseWorkflows)
             actor = exec_ctx.user
             items =
               exec_ctx.input_items.map do |item|
-                config = exec_ctx.get_parameters(item)
+                config = exec_ctx.get_node_parameters(item)
                 result = process(actor, config)
                 wrap(result)
               end

@@ -20,9 +20,7 @@ module DiscourseWorkflows
               type: :options,
               options: %w[and or],
               default: "and",
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             conditions: {
               type: :array,
@@ -40,7 +38,7 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          exec_ctx.input_items.partition { |item| exec_ctx.get_parameter(:conditions, item) }
+          exec_ctx.input_items.partition { |item| exec_ctx.get_node_parameter(:conditions, item) }
         end
       end
     end

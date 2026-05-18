@@ -45,9 +45,9 @@ if defined?(DiscourseWorkflows)
                 type_options: {
                   load_options_method: "agents",
                 },
+                no_data_expression: true,
                 ui: {
                   control: :combo_box,
-                  expression: false,
                 },
                 control_options: {
                   filterable: true,
@@ -99,7 +99,7 @@ if defined?(DiscourseWorkflows)
           def execute(exec_ctx)
             log = exec_ctx.log
             item = exec_ctx.input_items.first || { "json" => {} }
-            config = exec_ctx.get_parameters(item)
+            config = exec_ctx.get_node_parameters(item)
 
             agent_id = config["agent_id"]
             prompt = config["prompt"]

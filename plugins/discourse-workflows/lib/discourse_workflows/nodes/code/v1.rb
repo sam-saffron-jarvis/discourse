@@ -39,17 +39,15 @@ module DiscourseWorkflows
               type: :options,
               default: RUN_ONCE_FOR_ALL_ITEMS,
               options: [RUN_ONCE_FOR_EACH_ITEM, RUN_ONCE_FOR_ALL_ITEMS],
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             code: {
               type: :string,
               required: true,
               default: DEFAULT_CODE,
+              no_data_expression: true,
               ui: {
                 control: :code,
-                expression: false,
               },
               control_options: {
                 height: 300,
@@ -67,8 +65,17 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          code = @configuration["code"].to_s
-          mode = @configuration["mode"] || RUN_ONCE_FOR_ALL_ITEMS
+          item = exec_ctx.input_items.first || { "json" => {} }
+          code =
+            exec_ctx.get_node_parameter(
+              "code",
+              item,
+              default: DEFAULT_CODE,
+              options: {
+                raw_expressions: true,
+              },
+            ).to_s
+          mode = exec_ctx.get_node_parameter("mode", item, default: RUN_ONCE_FOR_ALL_ITEMS)
           validate_mode!(mode)
 
           sandbox = DiscourseWorkflows::JsTaskRunnerSandbox.new(exec_ctx.get_mode, exec_ctx)

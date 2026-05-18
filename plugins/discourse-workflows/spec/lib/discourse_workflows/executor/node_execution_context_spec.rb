@@ -55,7 +55,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
   end
 
-  describe "#get_parameters" do
+  describe "#get_node_parameters" do
     it "resolves $json expressions against the item passed in, not a cached first item" do
       config = { "value" => "={{ $json.x }}" }
       schema = { value: { type: :string } }
@@ -70,8 +70,8 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
           resolver: resolver,
         )
 
-      first = ctx.get_parameters({ "json" => { "x" => "ITEM_ONE" } })
-      second = ctx.get_parameters({ "json" => { "x" => "ITEM_TWO" } })
+      first = ctx.get_node_parameters({ "json" => { "x" => "ITEM_ONE" } })
+      second = ctx.get_node_parameters({ "json" => { "x" => "ITEM_TWO" } })
 
       expect(first).to eq("value" => "ITEM_ONE")
       expect(second).to eq("value" => "ITEM_TWO")
@@ -81,12 +81,12 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
   end
 
-  describe "#get_parameter" do
+  describe "#get_node_parameter" do
     it "resolves a nested parameter path against the current item" do
       ctx, resolver, sandbox =
         build_parameter_context({ "outer" => { "inner" => "={{ $json.value }}" } })
 
-      value = ctx.get_parameter("outer.inner", { "json" => { "value" => "resolved" } })
+      value = ctx.get_node_parameter("outer.inner", { "json" => { "value" => "resolved" } })
 
       expect(value).to eq("resolved")
     ensure
@@ -97,7 +97,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     it "returns the default for a missing parameter path" do
       ctx, resolver, sandbox = build_parameter_context({ "outer" => {} })
 
-      value = ctx.get_parameter("outer.inner", { "json" => {} }, default: "default-value")
+      value = ctx.get_node_parameter("outer.inner", { "json" => {} }, default: "default-value")
 
       expect(value).to eq("default-value")
     ensure
@@ -109,9 +109,61 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx, resolver, sandbox =
         build_parameter_context({}, schema: { conditions: { ui: { control: :condition_builder } } })
 
-      value = ctx.get_parameter(:conditions, { "json" => {} })
+      value = ctx.get_node_parameter(:conditions, { "json" => {} })
 
       expect(value).to eq(true)
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "returns literal values for no_data_expression fields" do
+      ctx, resolver, sandbox =
+        build_parameter_context(
+          { "code" => "={{ $json.value }}" },
+          schema: {
+            code: {
+              type: :string,
+              no_data_expression: true,
+            },
+          },
+        )
+
+      value = ctx.get_node_parameter("code", { "json" => { "value" => "resolved" } })
+
+      expect(value).to eq("={{ $json.value }}")
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "returns raw stored values when raw_expressions is requested" do
+      ctx, resolver, sandbox = build_parameter_context({ "message" => "={{ $json.value }}" })
+
+      resolved = ctx.get_node_parameter("message", { "json" => { "value" => "resolved" } })
+      raw =
+        ctx.get_node_parameter(
+          "message",
+          { "json" => { "value" => "resolved" } },
+          options: {
+            raw_expressions: true,
+          },
+        )
+
+      expect(resolved).to eq("resolved")
+      expect(raw).to eq("={{ $json.value }}")
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "coerces resolved values when an ensure_type is provided" do
+      ctx, resolver, sandbox = build_parameter_context({ "count" => "={{ $json.count }}" })
+
+      value =
+        ctx.get_node_parameter("count", { "json" => { "count" => "4" } }, ensure_type: :integer)
+
+      expect(value).to eq(4)
     ensure
       resolver&.dispose
       sandbox&.dispose
@@ -128,6 +180,47 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       rows = ctx.get_fixed_collection_rows("params", { "json" => { "id" => 42 } })
 
       expect(rows).to eq([{ "name" => "user_id", "value" => 42 }])
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "keeps nested no_data_expression fields literal while resolving other row fields" do
+      ctx, resolver, sandbox =
+        build_parameter_context(
+          {
+            "columns" => {
+              "values" => [{ "header" => "={{ $json.label }}", "value" => "={{ $json.value }}" }],
+            },
+          },
+          schema: {
+            columns: {
+              type: :fixed_collection,
+              options: [
+                {
+                  name: "values",
+                  values: {
+                    header: {
+                      type: :string,
+                      no_data_expression: true,
+                    },
+                    value: {
+                      type: :string,
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        )
+
+      rows =
+        ctx.get_fixed_collection_rows(
+          "columns",
+          { "json" => { "label" => "Name", "value" => "Ada" } },
+        )
+
+      expect(rows).to eq([{ "header" => "={{ $json.label }}", "value" => "Ada" }])
     ensure
       resolver&.dispose
       sandbox&.dispose

@@ -54,7 +54,7 @@ export default class AssignmentCollection extends Component {
     return {
       type: "string",
       required: true,
-      ui: { expression: false },
+      no_data_expression: true,
     };
   }
 
@@ -64,7 +64,7 @@ export default class AssignmentCollection extends Component {
       required: true,
       default: "string",
       options: this.assignment_types,
-      ui: { expression: false },
+      no_data_expression: true,
     };
   }
 

@@ -107,7 +107,7 @@ module("Integration | Component | workflows boolean control", function (hooks) {
   test("renders plain toggle without mode control when expressions disabled", async function (assert) {
     this.setProperties({
       configuration: { enabled: false },
-      schema: { type: "boolean", ui: { expression: false } },
+      schema: { type: "boolean", no_data_expression: true },
     });
 
     await render(

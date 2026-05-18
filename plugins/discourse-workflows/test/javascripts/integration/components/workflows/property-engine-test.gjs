@@ -123,9 +123,7 @@ module("Integration | Component | workflows property engine", function (hooks) {
                 key: {
                   type: "string",
                   required: true,
-                  ui: {
-                    expression: false,
-                  },
+                  no_data_expression: true,
                 },
                 value: {
                   type: "string",
@@ -341,9 +339,7 @@ module("Integration | Component | workflows property engine", function (hooks) {
           type: "options",
           options: ["and", "or"],
           default: "and",
-          ui: {
-            expression: false,
-          },
+          no_data_expression: true,
         },
       },
     });
@@ -388,9 +384,9 @@ module("Integration | Component | workflows property engine", function (hooks) {
           type_options: {
             load_options_method: "agents",
           },
+          no_data_expression: true,
           ui: {
             control: "combo_box",
-            expression: false,
           },
           control_options: {
             filterable: true,

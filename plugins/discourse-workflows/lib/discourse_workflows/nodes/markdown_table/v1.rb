@@ -20,9 +20,7 @@ module DiscourseWorkflows
               required: true,
               options: MAPPING_MODES,
               default: "manual",
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             columns: {
               type: :fixed_collection,
@@ -40,9 +38,7 @@ module DiscourseWorkflows
                     header: {
                       type: :string,
                       required: true,
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     value: {
                       type: :string,
@@ -59,8 +55,9 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
+          item = exec_ctx.input_items.first || { "json" => {} }
           headers, rows =
-            if @configuration["mapping_mode"] == "auto"
+            if exec_ctx.get_node_parameter("mapping_mode", item, default: "manual") == "auto"
               auto_table(exec_ctx.input_items)
             else
               configured_table(exec_ctx)

@@ -26,7 +26,9 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          batch_size = @configuration.fetch("batch_size") { 1 }.to_i
+          item = exec_ctx.input_items.first || { "json" => {} }
+          batch_size =
+            exec_ctx.get_node_parameter("batch_size", item, default: 1, ensure_type: :integer)
           batch_size = 1 if batch_size < 1
 
           if exec_ctx.get_context(:node)["items"].nil?

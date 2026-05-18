@@ -34,18 +34,14 @@ module DiscourseWorkflows
               required: true,
               default: "none",
               options: %w[none login_required],
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             response_mode: {
               type: :options,
               required: true,
               default: "on_received",
               options: %w[on_received workflow_finishes],
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
           },
           output_schema: Schemas::FormFields::FORM_TRIGGER_OUTPUT_SCHEMA,

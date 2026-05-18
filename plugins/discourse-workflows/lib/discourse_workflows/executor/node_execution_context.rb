@@ -136,15 +136,24 @@ module DiscourseWorkflows
         JobResult.new(ok: false, result: nil, error: e)
       end
 
-      def get_parameter(path, item, default: nil)
+      def get_node_parameter(path, item = nil, default: nil, ensure_type: nil, options: {})
         path_str = path.to_s
+        if raw_expressions?(options)
+          raw_value = raw_parameter_path(path_str)
+          value = raw_value.equal?(MISSING) ? default : raw_value
+          return ensure_parameter_type(value, ensure_type, path_str)
+        end
+
+        item ||= input_items.first || { "json" => {} }
         with_item(item) do
           resolved = resolve_parameter_path(path_str)
-          resolved.equal?(MISSING) ? default : resolved
+          value = resolved.equal?(MISSING) ? default : resolved
+          ensure_parameter_type(value, ensure_type, path_str)
         end
       end
 
-      def get_parameters(item)
+      def get_node_parameters(item = nil)
+        item ||= input_items.first || { "json" => {} }
         with_item(item) { resolve_all_parameters }
       end
 
@@ -154,14 +163,14 @@ module DiscourseWorkflows
         group: CollectionParameters::DEFAULT_GROUP,
         default: []
       )
-        value = get_parameter(path, item, default: MISSING)
+        value = get_node_parameter(path, item, default: MISSING)
         return default if value.equal?(MISSING)
 
         CollectionParameters.rows_from_value(value, group: group)
       end
 
       def get_collection_options(path, item, default: {})
-        value = get_parameter(path, item, default: MISSING)
+        value = get_node_parameter(path, item, default: MISSING)
         return default if value.equal?(MISSING)
 
         value.is_a?(Hash) ? value : default
@@ -505,7 +514,42 @@ module DiscourseWorkflows
         value.to_i
       end
 
+      def raw_expressions?(options)
+        options&.fetch(:raw_expressions, false)
+      end
+
+      def raw_parameter_path(path)
+        segments = path.split(".").reject(&:blank?)
+        return MISSING if segments.empty?
+        return MISSING unless @parameters.key?(segments.first)
+
+        if segments.one?
+          @parameters[segments.first]
+        else
+          dig_parameter_path(@parameters[segments.first], segments.drop(1))
+        end
+      end
+
+      def ensure_parameter_type(value, type, parameter_name)
+        return value if type.nil? || value.nil? || value.equal?(MISSING)
+
+        case type
+        when :integer
+          value.to_i
+        when :float, :number
+          value.to_f
+        when :string
+          value.to_s
+        when :boolean
+          ActiveModel::Type::Boolean.new.cast(value)
+        else
+          raise ArgumentError, "Unsupported parameter type for #{parameter_name}: #{type.inspect}"
+        end
+      end
+
       def resolve_parameter(name, schema)
+        return @parameters[name] if no_data_expression?(schema)
+
         if condition_builder_schema?(schema)
           conditions = @parameters.fetch("conditions") { [] }
           combinator = @parameters.fetch("combinator") { "and" }
@@ -515,19 +559,71 @@ module DiscourseWorkflows
           @condition_details.concat(result["details"])
           result["passed"]
         else
-          resolve_parameter_value(@parameters[name])
+          resolve_parameter_value(@parameters[name], schema)
         end
       end
 
-      def resolve_parameter_value(value)
+      def resolve_parameter_value(value, schema = nil)
+        return value if no_data_expression?(schema)
+        return resolve_fixed_collection_value(value, schema) if fixed_collection_schema?(schema)
+
         case value
         when Hash
-          @resolver.resolve_hash(value)
+          resolve_hash_parameter_value(value, schema)
         when Array
-          value.map { |entry| resolve_parameter_value(entry) }
+          item_schema = schema_value(schema, :item_schema)
+          value.map { |entry| resolve_parameter_value(entry, item_schema) }
         else
           @resolver.resolve(value)
         end
+      end
+
+      def resolve_hash_parameter_value(value, schema)
+        fields = schema_value(schema, :fields) || {}
+
+        value.transform_values.with_index do |nested_value, index|
+          key = value.keys[index]
+          nested_schema = fields[key.to_sym] || fields[key.to_s]
+          resolve_parameter_value(nested_value, nested_schema)
+        end
+      end
+
+      def resolve_fixed_collection_value(value, schema)
+        unless value.is_a?(Hash)
+          return(
+            resolve_fixed_collection_group_value(value, first_fixed_collection_row_schema(schema))
+          )
+        end
+
+        value.transform_values.with_index do |group_value, index|
+          group_name = value.keys[index]
+          row_schema = fixed_collection_row_schema(schema, group_name)
+          resolve_fixed_collection_group_value(group_value, row_schema)
+        end
+      end
+
+      def resolve_fixed_collection_group_value(value, row_schema)
+        case value
+        when Array
+          value.map { |row| resolve_parameter_value(row, { type: :object, fields: row_schema }) }
+        when Hash
+          resolve_parameter_value(value, { type: :object, fields: row_schema })
+        else
+          resolve_parameter_value(value)
+        end
+      end
+
+      def fixed_collection_row_schema(schema, group_name)
+        group =
+          Array(schema_value(schema, :options)).find do |option|
+            (schema_value(option, :name) || "").to_s == group_name.to_s
+          end
+
+        schema_value(group, :values) || {}
+      end
+
+      def first_fixed_collection_row_schema(schema)
+        schema_value(Array(schema_value(schema, :options)).first, :values) || {}
       end
 
       def resolve_parameter_path(path)
@@ -569,8 +665,26 @@ module DiscourseWorkflows
         schema.is_a?(Hash) && schema.dig(:ui, :control) == :condition_builder
       end
 
+      def fixed_collection_schema?(schema)
+        schema_value(schema, :type) == :fixed_collection
+      end
+
+      def no_data_expression?(schema)
+        schema_value(schema, :no_data_expression) == true
+      end
+
+      def schema_value(schema, key)
+        return nil unless schema.respond_to?(:[])
+
+        schema[key] || schema[key.to_s]
+      end
+
       def resolve_all_parameters
-        @resolver.resolve_hash(@parameters)
+        @parameters.transform_values.with_index do |_value, index|
+          name = @parameters.keys[index]
+          schema = @property_schema[name.to_sym] || @property_schema[name]
+          resolve_parameter(name, schema)
+        end
       end
 
       def credential_id_for(slot)

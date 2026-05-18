@@ -83,6 +83,21 @@ RSpec.describe DiscourseWorkflows::Nodes::MarkdownTable::V1 do
       expect(markdown.split("\n").last).to eq("| line1<br>line2<br>line3 |")
     end
 
+    it "keeps headers literal while resolving cell values through the execution context" do
+      items = [{ "json" => { "header" => "Resolved header", "name" => "Alice" } }]
+      config = {
+        "columns" => [{ "header" => "={{ $json.header }}", "value" => "={{ $json.name }}" }],
+      }
+
+      markdown = execute(items, config)
+
+      expect(markdown).to eq(<<~MD.strip)
+        | ={{ $json.header }} |
+        | --- |
+        | Alice |
+      MD
+    end
+
     it "renders headers and separator only when input items are empty" do
       items = []
       config = {

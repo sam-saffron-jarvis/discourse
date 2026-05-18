@@ -38,9 +38,9 @@ module DiscourseWorkflows
               visible_if: {
                 mode: "raw",
               },
+              no_data_expression: true,
               ui: {
                 control: :code,
-                expression: false,
               },
               control_options: {
                 height: 200,

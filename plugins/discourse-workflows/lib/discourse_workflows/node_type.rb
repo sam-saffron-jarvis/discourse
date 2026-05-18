@@ -184,17 +184,7 @@ module DiscourseWorkflows
       description.dig(:capabilities, key) == true
     end
 
-    def initialize(parameters: nil, credentials: {}, settings: {}, webhook_id: nil)
-      split =
-        NodeData.split(
-          parameters: parameters || {},
-          credentials: credentials,
-          settings: settings,
-          webhook_id: webhook_id,
-        )
-      @parameters = split["parameters"]
-      @credentials = split["credentials"]
-      @configuration = @parameters
+    def initialize(**)
     end
 
     def execute(exec_ctx)
@@ -212,7 +202,7 @@ module DiscourseWorkflows
     private
 
     def map_input_items(exec_ctx)
-      [exec_ctx.input_items.map { |item| wrap(yield(exec_ctx.get_parameters(item), item)) }]
+      [exec_ctx.input_items.map { |item| wrap(yield(exec_ctx.get_node_parameters(item), item)) }]
     end
 
     def wrap(data, paired_item: nil)

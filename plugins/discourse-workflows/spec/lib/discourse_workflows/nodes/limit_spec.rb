@@ -59,5 +59,14 @@ RSpec.describe DiscourseWorkflows::Nodes::Limit::V1 do
       expect(result.length).to eq(1)
       expect(result[0]["json"]["index"]).to eq(4)
     end
+
+    it "resolves max_items expressions through the execution context" do
+      items = make_indexed_items(5)
+      items.first["json"]["limit"] = 2
+
+      result = execute(items, "max_items" => "={{ $json.limit }}")
+
+      expect(result.map { |item| item["json"]["index"] }).to eq([0, 1])
+    end
   end
 end

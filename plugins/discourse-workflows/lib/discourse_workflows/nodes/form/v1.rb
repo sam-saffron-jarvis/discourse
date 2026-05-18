@@ -17,9 +17,7 @@ module DiscourseWorkflows
               type: :options,
               default: "page",
               options: %w[page completion],
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             form_title: {
               type: :string,
@@ -44,9 +42,7 @@ module DiscourseWorkflows
               visible_if: {
                 page_type: %w[completion],
               },
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             completion_title: {
               type: :string,
@@ -163,7 +159,7 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }
-          page_type = exec_ctx.get_parameter("page_type", item, default: "page")
+          page_type = exec_ctx.get_node_parameter("page_type", item, default: "page")
 
           return [exec_ctx.input_items] if page_type == "completion"
 

@@ -67,16 +67,14 @@ if defined?(DiscourseWorkflows)
                 required: false,
                 options: %w[deny fail],
                 default: "deny",
-                ui: {
-                  expression: false,
-                },
+                no_data_expression: true,
               },
             }
           end
 
           def execute(exec_ctx)
             item = exec_ctx.input_items.first || { "json" => {} }
-            config = exec_ctx.get_parameters(item)
+            config = exec_ctx.get_node_parameters(item)
 
             message_text = config.fetch("message")
             approve_label =

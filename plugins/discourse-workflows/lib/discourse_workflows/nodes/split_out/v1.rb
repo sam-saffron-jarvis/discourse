@@ -24,9 +24,7 @@ module DiscourseWorkflows
             field: {
               type: :string,
               required: true,
-              ui: {
-                expression: false,
-              },
+              no_data_expression: true,
             },
             include: {
               type: :options,
@@ -52,7 +50,7 @@ module DiscourseWorkflows
           field_tracker = {}
           items =
             exec_ctx.input_items.flat_map do |item|
-              config = split_config(exec_ctx.get_parameters(item))
+              config = split_config(exec_ctx.get_node_parameters(item))
 
               split_item(item, config, exec_ctx.paired_item_for(item), field_tracker)
             end

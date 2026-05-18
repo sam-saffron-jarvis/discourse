@@ -94,13 +94,15 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          resume_mode = @configuration.fetch("resume")
+          item = exec_ctx.input_items.first || { "json" => {} }
+          resume_mode = exec_ctx.get_node_parameter("resume", item, default: "time_interval")
 
           if resume_mode == "webhook"
-            waiting_until = webhook_waiting_until
+            waiting_until = webhook_waiting_until(exec_ctx, item)
           else
-            amount = @configuration.fetch("wait_amount") { 1 }.to_i
-            unit = @configuration.fetch("wait_unit") { "hours" }
+            amount =
+              exec_ctx.get_node_parameter("wait_amount", item, default: 1, ensure_type: :integer)
+            unit = exec_ctx.get_node_parameter("wait_unit", item, default: "hours")
 
             if amount <= 0
               raise ArgumentError, I18n.t("discourse_workflows.errors.wait.amount_must_be_positive")
@@ -119,11 +121,18 @@ module DiscourseWorkflows
 
         private
 
-        def webhook_waiting_until
-          return nil unless @configuration["limit_wait_time"]
+        def webhook_waiting_until(exec_ctx, item)
+          return nil unless exec_ctx.get_node_parameter("limit_wait_time", item, default: false)
 
-          timeout_amount = @configuration["timeout_amount"].presence&.to_i
-          timeout_unit = @configuration["timeout_unit"].presence || "hours"
+          timeout_amount =
+            exec_ctx.get_node_parameter(
+              "timeout_amount",
+              item,
+              default: nil,
+              ensure_type: :integer,
+            ).presence
+          timeout_unit =
+            exec_ctx.get_node_parameter("timeout_unit", item, default: "hours").presence
 
           if WAIT_UNITS.exclude?(timeout_unit)
             raise ArgumentError,

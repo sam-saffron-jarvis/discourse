@@ -101,9 +101,9 @@ module DiscourseDataExplorer
               visible_if: {
                 operation: "raw",
               },
+              no_data_expression: true,
               ui: {
                 control: :code,
-                expression: false,
               },
               control_options: {
                 height: 200,
@@ -154,7 +154,7 @@ module DiscourseDataExplorer
 
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }
-          config = exec_ctx.get_parameters(item)
+          config = exec_ctx.get_node_parameters(item)
           operation = config.fetch("operation") { "queries" }
 
           if operation == "queries"

@@ -224,6 +224,10 @@ export function fieldControl(schema = {}) {
 }
 
 export function fieldSupportsExpression(schema = {}) {
+  if (schema.no_data_expression) {
+    return false;
+  }
+
   const ui = fieldUi(schema);
 
   if (Object.hasOwn(ui, "expression")) {

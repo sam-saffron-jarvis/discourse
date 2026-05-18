@@ -18,9 +18,7 @@ module DiscourseWorkflows
         type: :options,
         options: %w[none basic_auth],
         default: "none",
-        ui: {
-          expression: false,
-        },
+        no_data_expression: true,
       },
       http_method: {
         type: :options,

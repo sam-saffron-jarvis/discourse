@@ -67,16 +67,12 @@ module DiscourseWorkflows
                     field_1: {
                       type: :string,
                       required: true,
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                     field_2: {
                       type: :string,
                       required: true,
-                      ui: {
-                        expression: false,
-                      },
+                      no_data_expression: true,
                     },
                   },
                 },
@@ -184,7 +180,7 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           empty_item = { "json" => {} }
-          config = exec_ctx.get_parameters(empty_item)
+          config = exec_ctx.get_node_parameters(empty_item)
           fields_to_match = exec_ctx.get_fixed_collection_rows("fields_to_match", empty_item)
           @input_item_indexes = item_indexes_by_input(exec_ctx.inputs)
 
