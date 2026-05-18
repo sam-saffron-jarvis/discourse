@@ -22,6 +22,9 @@ RSpec.describe DiscourseWorkflows::Template::Show do
     let(:template_id) { "auto-tag-topics" }
     let(:dependencies) { { guardian: admin.guardian } }
 
+    before { DiscourseWorkflows::TemplateStore.reset_cache! }
+    after { DiscourseWorkflows::TemplateStore.reset_cache! }
+
     context "when contract is invalid" do
       let(:template_id) { nil }
 

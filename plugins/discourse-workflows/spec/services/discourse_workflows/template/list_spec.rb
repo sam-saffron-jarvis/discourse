@@ -7,6 +7,9 @@ RSpec.describe DiscourseWorkflows::Template::List do
     fab!(:admin)
     let(:dependencies) { { guardian: admin.guardian } }
 
+    before { DiscourseWorkflows::TemplateStore.reset_cache! }
+    after { DiscourseWorkflows::TemplateStore.reset_cache! }
+
     context "when user is not admin" do
       fab!(:user)
       let(:dependencies) { { guardian: user.guardian } }

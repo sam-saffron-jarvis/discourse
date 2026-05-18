@@ -16,11 +16,7 @@ module DiscourseWorkflows
     private
 
     def fetch_template(params:)
-      path = File.join(DiscourseWorkflows::TEMPLATES_PATH, "#{params.template_id}.json")
-      return unless File.exist?(path)
-      JSON.parse(File.read(path))
-    rescue JSON::ParserError
-      nil
+      DiscourseWorkflows::TemplateStore.find(params.template_id)
     end
   end
 end
