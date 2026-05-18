@@ -215,4 +215,20 @@ RSpec.describe DiscourseWorkflows::NodeType do
       expect(exemplar["body"]).to eq({})
     end
   end
+
+  describe "#with_paired_item" do
+    it "adds normalized paired item metadata to an item" do
+      node = described_class.new
+      item = { "json" => { "name" => "Ada" } }
+
+      expect(node.send(:with_paired_item, item, { item: 1 })).to eq(
+        "json" => {
+          "name" => "Ada",
+        },
+        "pairedItem" => {
+          "item" => 1,
+        },
+      )
+    end
+  end
 end

@@ -97,9 +97,20 @@ if defined?(DiscourseWorkflows)
           end
 
           def execute(exec_ctx)
-            log = exec_ctx.log
-            config = exec_ctx.get_node_parameters(0)
+            items =
+              exec_ctx.input_items.map.with_index do |item, item_index|
+                config = exec_ctx.get_node_parameters(item_index)
+                result = run_agent(config, exec_ctx.log)
 
+                wrap({ "result" => result }, paired_item: exec_ctx.paired_item_for(item))
+              end
+
+            [items]
+          end
+
+          private
+
+          def run_agent(config, log)
             agent_id = config["agent_id"]
             prompt = config["prompt"]
 
@@ -139,8 +150,7 @@ if defined?(DiscourseWorkflows)
             log.info("Tool calls: #{tool_calls}") if tool_calls > 0
             log.info("Result length: #{result.size} chars")
 
-            items = exec_ctx.input_items.map { |_item| { "json" => { "result" => result } } }
-            [items]
+            result
           end
         end
       end

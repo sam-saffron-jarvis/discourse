@@ -165,6 +165,79 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
         expect(items[0]["json"]).to include("email" => "ok@example.com")
         expect(items[0]["json"]).not_to have_key("Email")
       end
+
+      it "inserts each input item and preserves item pairing" do
+        items =
+          execute_node_output(
+            configuration: {
+              "operation" => "insert",
+              "data_table_id" => data_table.id.to_s,
+              "mapping_mode" => "auto",
+            },
+            input_items: [
+              { "json" => { "email" => "first@example.com", "score" => 1 } },
+              { "json" => { "email" => "second@example.com", "score" => 2 } },
+            ],
+          ).first
+
+        expect(items.map { |item| item["json"].slice("email", "score") }).to eq(
+          [
+            { "email" => "first@example.com", "score" => 1 },
+            { "email" => "second@example.com", "score" => 2 },
+          ],
+        )
+        expect(items.map { |item| item["pairedItem"] }).to eq([{ "item" => 0 }, { "item" => 1 }])
+        expect(count_data_table_rows(data_table)).to eq(2)
+      end
+    end
+  end
+
+  describe "get operation" do
+    before do
+      insert_data_table_row(data_table, "email" => "alice@example.com", "score" => 10)
+      insert_data_table_row(data_table, "email" => "bob@test.com", "score" => 20)
+    end
+
+    it "resolves filters for each input item and preserves item pairing" do
+      items =
+        execute_node_output(
+          configuration: {
+            "operation" => "get",
+            "data_table_id" => data_table.id.to_s,
+            "filter" => [
+              {
+                "columnName" => "email",
+                "condition" => "contains",
+                "value" => "={{ $json.domain }}",
+              },
+            ],
+            "sort_column" => "email",
+            "sort_direction" => "asc",
+          },
+          input_items: [
+            { "json" => { "domain" => "example.com" } },
+            { "json" => { "domain" => "test.com" } },
+          ],
+        ).first
+
+      expect(items.map { |item| item["json"]["email"] }).to eq(%w[alice@example.com bob@test.com])
+      expect(items.map { |item| item["pairedItem"] }).to eq([{ "item" => 0 }, { "item" => 1 }])
+    end
+
+    it "preserves item pairing when one input item returns multiple rows" do
+      items =
+        execute_node_output(
+          configuration: {
+            "operation" => "get",
+            "data_table_id" => data_table.id.to_s,
+            "sort_column" => "email",
+            "sort_direction" => "asc",
+          },
+          input_items: [{ "json" => {} }],
+        ).first
+
+      expect(items.map { |item| item["json"]["email"] }).to eq(%w[alice@example.com bob@test.com])
+      expect(items.map { |item| item["pairedItem"] }).to eq([{ "item" => 0 }, { "item" => 0 }])
     end
   end
 

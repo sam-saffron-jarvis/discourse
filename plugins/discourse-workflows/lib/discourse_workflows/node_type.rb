@@ -218,6 +218,10 @@ module DiscourseWorkflows
       Item.wrap(data, paired_item:)
     end
 
+    def with_paired_item(item, paired_item)
+      Item.with_paired_item(item, paired_item)
+    end
+
     def skip_workflows?(opts)
       opts.is_a?(Hash) && opts.with_indifferent_access[:skip_workflows]
     end

@@ -155,13 +155,22 @@ module DiscourseWorkflows
         end
 
         def execute(exec_ctx)
-          item = exec_ctx.input_items.first || { "json" => {} }
-          config = exec_ctx.get_node_parameters(0)
+          items =
+            exec_ctx.input_items.flat_map.with_index do |item, item_index|
+              config = exec_ctx.get_node_parameters(item_index)
+              pair_output_items(execute_with_config(config, item, exec_ctx), exec_ctx, item)
+            end
 
-          [Array.wrap(execute_with_config(config, item, exec_ctx))]
+          [items]
         end
 
         private
+
+        def pair_output_items(output_items, exec_ctx, item)
+          paired_item = exec_ctx.paired_item_for(item)
+
+          Array.wrap(output_items).map { |output_item| with_paired_item(output_item, paired_item) }
+        end
 
         def execute_with_config(config, item, exec_ctx)
           node_proxy = exec_ctx.helpers.get_data_table_proxy(config.fetch("data_table_id"))
