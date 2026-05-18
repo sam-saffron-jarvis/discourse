@@ -8,6 +8,7 @@ import {
   fieldValue,
   fieldVisible,
   getPropertySchema,
+  localeKeyPart,
   normalizeOptions,
   propertyDescription,
   propertyI18nPrefix,
@@ -37,12 +38,20 @@ module("Unit | Utility | workflows property engine", function () {
     assert.strictEqual(propertyLabel("action:create_topic", "title"), "Title");
     assert.strictEqual(propertyLabel(ifNodeType, "combinator"), "Match mode");
     assert.strictEqual(
+      propertyLabel("trigger:schedule", "minutesInterval"),
+      "Minutes between triggers"
+    );
+    assert.strictEqual(
       propertyDescription("action:create_topic", "raw"),
       "Raw content for the first post"
     );
     assert.strictEqual(
       propertyDescription("action:code", "code"),
       "Access the previous step's output via $json. Return an object to pass data to the next step."
+    );
+    assert.strictEqual(
+      propertyDescription("trigger:schedule", "minutesInterval"),
+      "Must be in range 1-59"
     );
     assert.strictEqual(
       propertyPlaceholder("trigger:webhook", "path"),
@@ -120,6 +129,27 @@ module("Unit | Utility | workflows property engine", function () {
         value: "insert",
       }),
       "Insert"
+    );
+    assert.strictEqual(
+      propertyOptionLabel("action:code", "mode", {
+        value: "runOnceForEachItem",
+      }),
+      "Run once for each item"
+    );
+    assert.strictEqual(
+      propertyOptionLabel("trigger:schedule", "field", {
+        value: "cronExpression",
+      }),
+      "Custom (Cron)"
+    );
+  });
+
+  test("normalizes camelCase values for locale key lookup", function (assert) {
+    assert.strictEqual(localeKeyPart("fooBarBaz"), "foo_bar_baz");
+    assert.strictEqual(localeKeyPart("cronExpression"), "cron_expression");
+    assert.strictEqual(
+      localeKeyPart("runOnceForAllItems"),
+      "run_once_for_all_items"
     );
   });
 

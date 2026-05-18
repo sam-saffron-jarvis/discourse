@@ -5,6 +5,7 @@ import DButton from "discourse/components/d-button";
 import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
 import { i18n } from "discourse-i18n";
+import { localeKeyPart } from "../../../lib/workflows/property-engine";
 
 function formatJson(data) {
   if (!data || Object.keys(data).length === 0) {
@@ -119,6 +120,10 @@ function formatValue(value) {
     return "null";
   }
   return String(value);
+}
+
+function conditionOperatorLabel(operator) {
+  return i18n(`discourse_workflows.if.operators.${localeKeyPart(operator)}`);
 }
 
 function formatLogs(logs) {
@@ -349,12 +354,7 @@ export default class ExecutionDetail extends Component {
                       </span>
                       <span
                         class="workflows-execution-detail__condition-operator"
-                      >{{i18n
-                          (concat
-                            "discourse_workflows.if.operators."
-                            condition.operator
-                          )
-                        }}</span>
+                      >{{conditionOperatorLabel condition.operator}}</span>
                       {{#if condition.right}}
                         <span
                           class="workflows-execution-detail__condition-value"

@@ -43,6 +43,14 @@ function translationKeyWithFallback(keys = []) {
   return keys.find((key) => translatedOrNull(key) !== null) || null;
 }
 
+export function localeKeyPart(value) {
+  return String(value)
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/[\s-]+/g, "_")
+    .toLowerCase();
+}
+
 export function findNodeType(nodeTypes, nodeType) {
   return (
     nodeTypes?.find(
@@ -88,33 +96,35 @@ function i18nBase(nodeDefinitionOrType) {
 
 export function propertyLabel(nodeDefinitionOrType, fieldName) {
   const base = i18nBase(nodeDefinitionOrType);
+  const labelKey = localeKeyPart(fieldName);
 
   return (
-    translatedOrNull(`${base}.${fieldName}`) ||
-    translatedOrNull(`${base}.${fieldName}.title`) ||
+    translatedOrNull(`${base}.${labelKey}`) ||
+    translatedOrNull(`${base}.${labelKey}.title`) ||
     humanize(fieldName)
   );
 }
 
 export function propertyDescription(nodeDefinitionOrType, fieldName) {
   return translatedOrNull(
-    `${i18nBase(nodeDefinitionOrType)}.${fieldName}_description`
+    `${i18nBase(nodeDefinitionOrType)}.${localeKeyPart(fieldName)}_description`
   );
 }
 
 export function propertyPlaceholder(nodeDefinitionOrType, fieldName) {
   return translatedOrNull(
-    `${i18nBase(nodeDefinitionOrType)}.${fieldName}_placeholder`
+    `${i18nBase(nodeDefinitionOrType)}.${localeKeyPart(fieldName)}_placeholder`
   );
 }
 
 export function propertySelectNoneKey(nodeDefinitionOrType, fieldName) {
   const base = i18nBase(nodeDefinitionOrType);
-  const selectField = fieldName.replace(/_id$/, "");
+  const key = localeKeyPart(fieldName);
+  const selectField = key.replace(/_id$/, "");
 
   return translationKeyWithFallback([
     `${base}.select_${selectField}`,
-    `${base}.${fieldName}_placeholder`,
+    `${base}.${key}_placeholder`,
   ]);
 }
 
@@ -128,8 +138,9 @@ export function collectionAddLabel(
     override || (fieldName.endsWith("s") ? fieldName.slice(0, -1) : fieldName);
 
   return (
-    translatedOrNull(`${i18nBase(nodeDefinitionOrType)}.add_${singular}`) ||
-    i18n("discourse_workflows.property_engine.add_item")
+    translatedOrNull(
+      `${i18nBase(nodeDefinitionOrType)}.add_${localeKeyPart(singular)}`
+    ) || i18n("discourse_workflows.property_engine.add_item")
   );
 }
 
@@ -195,10 +206,12 @@ export function fieldType(schema = {}) {
 
 export function propertyOptionLabel(nodeDefinitionOrType, fieldName, option) {
   const base = i18nBase(nodeDefinitionOrType);
+  const key = localeKeyPart(fieldName);
+  const valueKey = localeKeyPart(option.value);
 
   return (
-    translatedOrNull(`${base}.${fieldName}_${option.value}`) ||
-    translatedOrNull(`${base}.${fieldName}s.${option.value}`) ||
+    translatedOrNull(`${base}.${key}_${valueKey}`) ||
+    translatedOrNull(`${base}.${key}s.${valueKey}`) ||
     option.label ||
     option.name ||
     option.value
