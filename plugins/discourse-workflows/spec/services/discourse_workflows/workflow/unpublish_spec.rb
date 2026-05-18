@@ -36,9 +36,8 @@ RSpec.describe DiscourseWorkflows::Workflow::Unpublish do
         expect(workflow.reload.published_version_id).to be_nil
       end
 
-      it "clears workflow caches" do
-        Site.expects(:clear_cache).never
-        DiscourseWorkflows::WorkflowDependency.expects(:clear_cache!).once
+      it "expires workflow caches" do
+        DiscourseWorkflows::Workflow::Action::ExpireCaches.expects(:call).once
         result
       end
     end

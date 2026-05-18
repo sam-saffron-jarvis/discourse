@@ -39,7 +39,7 @@ module DiscourseWorkflows
     end
 
     def expire_workflow_caches
-      DiscourseWorkflows::WorkflowDependency.clear_cache!
+      Workflow::Action::ExpireCaches.call
     end
 
     def activate_triggers(workflow:, draft_version:)
