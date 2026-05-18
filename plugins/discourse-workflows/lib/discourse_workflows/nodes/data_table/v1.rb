@@ -25,7 +25,9 @@ module DiscourseWorkflows
             data_table_id: {
               type: :integer,
               required: true,
-              options_source: "data_tables",
+              type_options: {
+                load_options_method: "data_tables",
+              },
               ui: {
                 control: :data_table_select,
               },
@@ -142,11 +144,11 @@ module DiscourseWorkflows
         end
 
         def self.load_options_context(context)
-          case context.source_key
+          case context.method_name
           when "data_tables"
             DiscourseWorkflows::DataTable
               .order(:name)
-              .select { |dt| context.matches_search?(dt.name) }
+              .select { |dt| context.matches_filter?(dt.name) }
               .map do |dt|
                 {
                   id: dt.id,

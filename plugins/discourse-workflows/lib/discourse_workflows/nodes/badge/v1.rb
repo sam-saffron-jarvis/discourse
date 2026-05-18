@@ -34,7 +34,9 @@ module DiscourseWorkflows
             badge_id: {
               type: :integer,
               required: true,
-              options_source: "badges",
+              type_options: {
+                load_options_method: "badges",
+              },
               ui: {
                 control: :combo_box,
               },
@@ -63,13 +65,13 @@ module DiscourseWorkflows
         )
 
         def self.load_options_context(context)
-          case context.source_key
+          case context.method_name
           when "badges"
             ::Badge
               .where(enabled: true)
               .order(:name)
               .pluck(:id, :name)
-              .select { |_, name| context.matches_search?(name) }
+              .select { |_, name| context.matches_filter?(name) }
               .map { |id, name| { id:, name: } }
           end
         end

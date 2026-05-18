@@ -7,12 +7,12 @@ RSpec.describe DiscourseWorkflows::Nodes::Group::V1 do
   fab!(:group_2) { Fabricate(:group, name: "another_group") }
 
   describe ".load_options_context" do
-    def load_options(parameters: {}, search: nil)
+    def load_options(parameters: {}, filter: nil)
       context =
         DiscourseWorkflows::LoadOptionsContext.new(
-          source_key: "groups",
+          method_name: "groups",
           parameters: parameters,
-          search: search,
+          filter: filter,
           node_class: described_class,
         )
 
@@ -37,8 +37,8 @@ RSpec.describe DiscourseWorkflows::Nodes::Group::V1 do
       expect(group_ids).to include(*Group::AUTO_GROUPS.values)
     end
 
-    it "filters groups by the search term" do
-      expect(load_options(search: "another")).to contain_exactly(
+    it "filters groups by the filter term" do
+      expect(load_options(filter: "another")).to contain_exactly(
         { id: group_2.id, name: group_2.name },
       )
     end

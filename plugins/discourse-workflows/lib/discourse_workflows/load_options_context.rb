@@ -2,16 +2,14 @@
 
 module DiscourseWorkflows
   class LoadOptionsContext
-    attr_reader :source_key,
+    attr_reader :method_name,
                 :property_name,
                 :node_identifier,
                 :node_version,
                 :node_id,
                 :node_name,
                 :workflow_id,
-                :parameters,
                 :credentials,
-                :search,
                 :filter,
                 :input_context,
                 :execution_context,
@@ -20,7 +18,7 @@ module DiscourseWorkflows
                 :node_class
 
     def initialize(
-      source_key:,
+      method_name:,
       property_name: nil,
       node_identifier: nil,
       node_version: nil,
@@ -29,7 +27,6 @@ module DiscourseWorkflows
       workflow_id: nil,
       parameters: {},
       credentials: {},
-      search: nil,
       filter: nil,
       input_context: {},
       execution_context: {},
@@ -37,7 +34,7 @@ module DiscourseWorkflows
       guardian: nil,
       node_class: nil
     )
-      @source_key = source_key.to_s
+      @method_name = method_name.to_s
       @property_name = property_name.presence&.to_s
       @node_identifier = node_identifier.presence&.to_s || node_class&.identifier
       @node_version = node_version.presence&.to_s || node_class&.version
@@ -47,8 +44,7 @@ module DiscourseWorkflows
       @parameters = normalize_hash(parameters)
       @node_class = node_class
       @credentials = filter_credentials(credentials)
-      @search = search.presence&.to_s
-      @filter = filter.presence&.to_s || @search
+      @filter = filter.presence&.to_s
       @input_context = normalize_hash(input_context)
       @execution_context = normalize_hash(execution_context)
       @user = user
@@ -56,18 +52,18 @@ module DiscourseWorkflows
     end
 
     def get_current_node_parameter(path = nil, fallback = nil)
-      return parameters if path.blank?
+      return @parameters if path.blank?
 
-      value = dig_path(parameters, path)
+      value = dig_path(@parameters, path)
       value.nil? ? fallback : value
     end
 
     def get_current_node_parameters
-      parameters
+      @parameters
     end
 
-    def matches_search?(value)
-      search.blank? || value.downcase.include?(search.downcase)
+    def matches_filter?(value)
+      filter.blank? || value.downcase.include?(filter.downcase)
     end
 
     def credential_reference(slot)
@@ -98,16 +94,15 @@ module DiscourseWorkflows
 
     def to_h
       {
-        source_key: source_key,
+        method_name: method_name,
         property_name: property_name,
         node_identifier: node_identifier,
         node_version: node_version,
         node_id: node_id,
         node_name: node_name,
         workflow_id: workflow_id,
-        parameters: parameters,
+        parameters: @parameters,
         credentials: credentials,
-        search: search,
         filter: filter,
         input_context: input_context,
         execution_context: execution_context,
@@ -126,7 +121,7 @@ module DiscourseWorkflows
       NodeData.filter_declared_credentials(
         NodeData.normalize_credentials(normalize_hash(credentials)),
         node_class,
-        parameters,
+        @parameters,
       )
     end
 

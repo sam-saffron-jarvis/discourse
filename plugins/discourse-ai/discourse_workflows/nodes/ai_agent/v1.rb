@@ -42,7 +42,9 @@ if defined?(DiscourseWorkflows)
               agent_id: {
                 type: :integer,
                 required: true,
-                options_source: "agents",
+                type_options: {
+                  load_options_method: "agents",
+                },
                 ui: {
                   control: :combo_box,
                   expression: false,
@@ -76,9 +78,9 @@ if defined?(DiscourseWorkflows)
           end
 
           def self.load_options_context(context)
-            case context.source_key
+            case context.method_name
             when "agents"
-              agent_options.select { |agent| context.matches_search?(agent[:name]) }
+              agent_options.select { |agent| context.matches_filter?(agent[:name]) }
             end
           end
 

@@ -37,7 +37,9 @@ module DiscourseWorkflows
             group_id: {
               type: :integer,
               required: true,
-              options_source: "groups",
+              type_options: {
+                load_options_method: "groups",
+              },
               ui: {
                 control: :group_select,
               },
@@ -70,7 +72,7 @@ module DiscourseWorkflows
         )
 
         def self.load_options_context(context)
-          case context.source_key
+          case context.method_name
           when "groups"
             scope = ::Group.order(:name)
             scope = scope.where(automatic: false) unless context.get_current_node_parameter(
@@ -79,7 +81,7 @@ module DiscourseWorkflows
 
             scope
               .pluck(:id, :name)
-              .select { |_, name| context.matches_search?(name) }
+              .select { |_, name| context.matches_filter?(name) }
               .map { |id, name| { id:, name: } }
           end
         end

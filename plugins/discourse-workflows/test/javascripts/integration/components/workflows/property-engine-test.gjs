@@ -385,7 +385,9 @@ module("Integration | Component | workflows property engine", function (hooks) {
         agent_id: {
           type: "integer",
           required: true,
-          options_source: "agents",
+          type_options: {
+            load_options_method: "agents",
+          },
           ui: {
             control: "combo_box",
             expression: false,

@@ -44,7 +44,9 @@ module DiscourseDataExplorer
             query_id: {
               type: :integer,
               required: true,
-              options_source: "queries",
+              type_options: {
+                load_options_method: "queries",
+              },
               visible_if: {
                 operation: "queries",
               },
@@ -119,9 +121,9 @@ module DiscourseDataExplorer
         end
 
         def self.load_options_context(context)
-          case context.source_key
+          case context.method_name
           when "queries"
-            metadata[:queries].select { |query| context.matches_search?(query[:name]) }
+            metadata[:queries].select { |query| context.matches_filter?(query[:name]) }
           end
         end
 

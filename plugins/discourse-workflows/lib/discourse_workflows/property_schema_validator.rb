@@ -26,7 +26,6 @@ module DiscourseWorkflows
       required
       default
       options
-      options_source
       min
       max
       max_items
@@ -49,6 +48,8 @@ module DiscourseWorkflows
       hide_optional_fields
       item_title
       layout
+      load_options_depends_on
+      load_options_method
       max_allowed_fields
       min_required_fields
       multiple_values
@@ -189,7 +190,7 @@ module DiscourseWorkflows
     def validate_field_options(field, path:)
       type = field[:type]
       return if TYPES_REQUIRING_OPTIONS.exclude?(type)
-      return if field[:options_source]
+      return if field.dig(:type_options, :load_options_method)
 
       options = field[:options]
       return if options.is_a?(Array) && options.any?

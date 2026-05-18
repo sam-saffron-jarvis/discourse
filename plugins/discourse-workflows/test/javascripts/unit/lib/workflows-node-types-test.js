@@ -168,7 +168,7 @@ module("Unit | Utility | workflows node types", function () {
 module("Unit | Service | workflows-node-types", function (hooks) {
   setupTest(hooks);
 
-  test("buildLoadOptionsContext includes current node, parameters, credentials, and execution context", function (assert) {
+  test("buildNodeParameterOptionsPayload includes current node, parameters, credentials, and execution context", function (assert) {
     const service = this.owner.lookup("service:workflows-node-types");
     const node = {
       clientId: "node-1",
@@ -186,34 +186,39 @@ module("Unit | Service | workflows-node-types", function (hooks) {
       { workflowId: 7 }
     );
 
-    const context = service.buildLoadOptionsContext({
+    const payload = service.buildNodeParameterOptionsPayload({
       identifier: "action:group",
       typeVersion: "1.0",
-      propertyName: "group_id",
-      parameters: { operation: "get" },
+      path: "group_id",
+      methodName: "groups",
+      currentNodeParameters: { operation: "get" },
       credentials: { auth: { id: "12", credential_type: "basic_auth" } },
-      search: "staff",
+      filter: "staff",
     });
 
-    assert.deepEqual(context.parameters, { operation: "get" });
-    assert.deepEqual(context.credentials, {
+    assert.deepEqual(payload.currentNodeParameters, { operation: "get" });
+    assert.deepEqual(payload.credentials, {
       auth: { id: "12", credential_type: "basic_auth" },
     });
-    assert.deepEqual(context.node, {
+    assert.deepEqual(payload.nodeTypeAndVersion, {
+      name: "action:group",
+      version: "1.0",
+    });
+    assert.deepEqual(payload.node, {
       id: "node-1",
       name: "Group",
       type: "action:group",
       type_version: "1.0",
     });
-    assert.strictEqual(context.property_name, "group_id");
-    assert.strictEqual(context.workflow_id, 7);
-    assert.strictEqual(context.search, "staff");
-    assert.strictEqual(context.filter, "staff");
-    assert.deepEqual(context.input_context, {
+    assert.strictEqual(payload.path, "group_id");
+    assert.strictEqual(payload.methodName, "groups");
+    assert.strictEqual(payload.workflowId, 7);
+    assert.strictEqual(payload.filter, "staff");
+    assert.deepEqual(payload.inputContext, {
       available: true,
       source_node_outputs: { "node-0": upstreamOutput },
     });
-    assert.deepEqual(context.execution_context, {
+    assert.deepEqual(payload.executionContext, {
       last_node_outputs: { "node-0": upstreamOutput },
     });
   });
@@ -233,7 +238,7 @@ module("Unit | Service | workflows-node-types", function (hooks) {
 
     const context = component.remoteOptionsContext("staff");
 
-    assert.deepEqual(context.parameters, {
+    assert.deepEqual(context.currentNodeParameters, {
       operation: "get",
       authentication: "basic_auth",
     });
@@ -244,63 +249,68 @@ module("Unit | Service | workflows-node-types", function (hooks) {
       clientId: "node-1",
       type: "action:group",
     });
-    assert.strictEqual(context.propertyName, "nested_group_id");
-    assert.strictEqual(context.search, "staff");
+    assert.strictEqual(context.path, "nested_group_id");
+    assert.strictEqual(context.filter, "staff");
   });
 
-  test("loadSourceOptions posts structured context and caches by context", async function (assert) {
+  test("loadNodeParameterOptions posts structured context and caches by context", async function (assert) {
     const requests = [];
 
     pretender.post(
-      "/admin/plugins/discourse-workflows/node-types/action%3Agroup/options/groups.json",
+      "/admin/plugins/discourse-workflows/dynamic-node-parameters/options.json",
       (request) => {
         const body = JSON.parse(request.requestBody);
         requests.push(body);
 
-        return response({
-          options: [{ id: requests.length, name: body.parameters.operation }],
-        });
+        return response([
+          { id: requests.length, name: body.currentNodeParameters.operation },
+        ]);
       }
     );
 
     const service = this.owner.lookup("service:workflows-node-types");
     const context = {
-      parameters: { operation: "add" },
-      search: "alp",
+      path: "group_id",
+      currentNodeParameters: { operation: "add" },
+      filter: "alp",
       node: { clientId: "node-1", name: "Group" },
     };
 
-    const first = await service.loadSourceOptions(
+    const first = await service.loadNodeParameterOptions(
       "action:group",
       "groups",
       "1.0",
       context
     );
-    const second = await service.loadSourceOptions(
+    const second = await service.loadNodeParameterOptions(
       "action:group",
       "groups",
       "1.0",
       context
     );
-    const third = await service.loadSourceOptions(
+    const third = await service.loadNodeParameterOptions(
       "action:group",
       "groups",
       "1.0",
-      { ...context, parameters: { operation: "get" } }
+      { ...context, currentNodeParameters: { operation: "get" } }
     );
 
     assert.strictEqual(requests.length, 2);
     assert.deepEqual(second, first);
-    assert.deepEqual(requests[0].parameters, { operation: "add" });
-    assert.strictEqual(requests[0].search, "alp");
+    assert.deepEqual(requests[0].currentNodeParameters, { operation: "add" });
+    assert.strictEqual(requests[0].path, "group_id");
+    assert.strictEqual(requests[0].methodName, "groups");
     assert.strictEqual(requests[0].filter, "alp");
+    assert.deepEqual(requests[0].nodeTypeAndVersion, {
+      name: "action:group",
+      version: "1.0",
+    });
     assert.deepEqual(requests[0].node, {
       id: "node-1",
       name: "Group",
       type: "action:group",
       type_version: "1.0",
     });
-    assert.strictEqual(requests[0].version, "1.0");
     assert.strictEqual(third[0].name, "get");
   });
 });

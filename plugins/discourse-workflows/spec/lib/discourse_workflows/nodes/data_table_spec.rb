@@ -21,11 +21,11 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
   end
 
   describe ".load_options_context" do
-    def load_options(search: nil)
+    def load_options(filter: nil)
       context =
         DiscourseWorkflows::LoadOptionsContext.new(
-          source_key: "data_tables",
-          search: search,
+          method_name: "data_tables",
+          filter: filter,
           node_class: described_class,
         )
 
@@ -41,10 +41,10 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
       expect(table_meta[:columns].find { |c| c[:name] == "email" }).not_to have_key(:reserved)
     end
 
-    it "filters data tables by the search term" do
+    it "filters data tables by the filter term" do
       Fabricate(:discourse_workflows_data_table, name: "projects")
 
-      expect(load_options(search: "cont").map { |table| table[:id] }).to contain_exactly(
+      expect(load_options(filter: "cont").map { |table| table[:id] }).to contain_exactly(
         data_table.id,
       )
     end

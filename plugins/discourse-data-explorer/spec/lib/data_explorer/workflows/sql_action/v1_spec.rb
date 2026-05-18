@@ -162,7 +162,7 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
         )
       context =
         DiscourseWorkflows::LoadOptionsContext.new(
-          source_key: "queries",
+          method_name: "queries",
           node_class: described_class,
         )
 
@@ -173,7 +173,7 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
       expect(query_ids).not_to include(hidden_query.id)
     end
 
-    it "filters query options by search term" do
+    it "filters query options by the filter term" do
       matching_query =
         DiscourseDataExplorer::Query.create!(
           name: "Needle query",
@@ -188,8 +188,8 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
         )
       context =
         DiscourseWorkflows::LoadOptionsContext.new(
-          source_key: "queries",
-          search: "needle",
+          method_name: "queries",
+          filter: "needle",
           node_class: described_class,
         )
 

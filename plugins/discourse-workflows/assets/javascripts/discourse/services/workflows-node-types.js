@@ -55,7 +55,7 @@ export default class WorkflowsNodeTypes extends Service {
   @tracked lastExecutionNodeOutputs = null;
 
   nodeTypeMap = new Map();
-  _sourceOptionsCache = new Map();
+  _nodeParameterOptionsCache = new Map();
 
   async load() {
     if (this.nodeTypes) {
@@ -86,43 +86,39 @@ export default class WorkflowsNodeTypes extends Service {
     return this.nodeTypeMap.get(identifier) || null;
   }
 
-  async loadSourceOptions(
+  async loadNodeParameterOptions(
     identifier,
-    sourceKey,
+    methodName,
     typeVersion = null,
     context = {}
   ) {
-    const requestContext = this.buildLoadOptionsContext({
+    const requestPayload = this.buildNodeParameterOptionsPayload({
       identifier,
-      sourceKey,
+      methodName,
       typeVersion,
       ...context,
     });
     const cacheKey = stableStringify({
       identifier,
       typeVersion: typeVersion || "latest",
-      sourceKey,
-      context: requestContext,
+      methodName,
+      payload: requestPayload,
     });
-    if (this._sourceOptionsCache.has(cacheKey)) {
-      return this._sourceOptionsCache.get(cacheKey);
+    if (this._nodeParameterOptionsCache.has(cacheKey)) {
+      return this._nodeParameterOptionsCache.get(cacheKey);
     }
 
     try {
-      const encodedIdentifier = encodeURIComponent(identifier);
-      const url = `/admin/plugins/discourse-workflows/node-types/${encodedIdentifier}/options/${sourceKey}.json`;
-      const result = await ajax(url, {
-        type: "POST",
-        contentType: "application/json",
-        data: JSON.stringify(
-          compactObject({
-            version: typeVersion,
-            ...requestContext,
-          })
-        ),
-      });
-      const options = result.options || [];
-      this._sourceOptionsCache.set(cacheKey, options);
+      const result = await ajax(
+        "/admin/plugins/discourse-workflows/dynamic-node-parameters/options.json",
+        {
+          type: "POST",
+          contentType: "application/json",
+          data: JSON.stringify(requestPayload),
+        }
+      );
+      const options = result || [];
+      this._nodeParameterOptionsCache.set(cacheKey, options);
       return options;
     } catch (e) {
       popupAjaxError(e);
@@ -130,33 +126,42 @@ export default class WorkflowsNodeTypes extends Service {
     }
   }
 
-  buildLoadOptionsContext({
+  buildNodeParameterOptionsPayload({
     identifier,
+    methodName,
     typeVersion = null,
-    propertyName = null,
-    parameters = null,
+    path = null,
+    currentNodeParameters = null,
     credentials = null,
     node = null,
-    search = null,
     filter = null,
     inputContext = null,
     executionContext = null,
   } = {}) {
     const resolvedNode = node || this.editingNode;
+    const resolvedVersion = typeVersion || resolvedNode?.type_version;
 
     return compactObject({
-      property_name: propertyName,
-      parameters: parameters || {},
+      path,
+      nodeTypeAndVersion: compactObject({
+        name: identifier,
+        version: resolvedVersion,
+      }),
+      currentNodeParameters: currentNodeParameters || {},
+      methodName,
       credentials: credentials || {},
-      search,
-      filter: filter || search,
-      node: normalizeNodeForLoadOptions(resolvedNode, identifier, typeVersion),
-      workflow_id: this.workflowId,
-      input_context:
+      filter,
+      node: normalizeNodeForLoadOptions(
+        resolvedNode,
+        identifier,
+        resolvedVersion
+      ),
+      workflowId: this.workflowId,
+      inputContext:
         inputContext === null
           ? this.inputContextForNode(resolvedNode)
           : inputContext,
-      execution_context:
+      executionContext:
         executionContext === null
           ? this.executionContextForNode(resolvedNode)
           : executionContext,
@@ -248,7 +253,7 @@ export default class WorkflowsNodeTypes extends Service {
     this.credentialTypes = null;
     this.expressionContext = {};
     this.nodeTypeMap = new Map();
-    this._sourceOptionsCache = new Map();
+    this._nodeParameterOptionsCache = new Map();
     this.invalidateWorkflowVars();
     this.workflowId = null;
     this.lastExecutionNodeOutputs = null;

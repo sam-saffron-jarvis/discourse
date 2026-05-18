@@ -7,11 +7,11 @@ RSpec.describe DiscourseWorkflows::Nodes::Badge::V1 do
   describe ".load_options_context" do
     fab!(:badge_2) { Fabricate(:badge, name: "A badge") }
 
-    def load_options(search: nil)
+    def load_options(filter: nil)
       context =
         DiscourseWorkflows::LoadOptionsContext.new(
-          source_key: "badges",
-          search: search,
+          method_name: "badges",
+          filter: filter,
           node_class: described_class,
         )
 
@@ -30,8 +30,8 @@ RSpec.describe DiscourseWorkflows::Nodes::Badge::V1 do
       expect(load_options).not_to include({ id: disabled_badge.id, name: disabled_badge.name })
     end
 
-    it "filters badges by the search term" do
-      expect(load_options(search: "A badge")).to contain_exactly(
+    it "filters badges by the filter term" do
+      expect(load_options(filter: "A badge")).to contain_exactly(
         { id: badge_2.id, name: badge_2.name },
       )
     end

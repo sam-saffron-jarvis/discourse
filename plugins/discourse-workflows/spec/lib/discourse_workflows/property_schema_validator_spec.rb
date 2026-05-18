@@ -121,6 +121,20 @@ RSpec.describe DiscourseWorkflows::PropertySchemaValidator do
       expect(errors.first).to include("type :options requires")
     end
 
+    it "allows dynamic option fields to declare a load options method" do
+      schema = {
+        choice: {
+          type: :options,
+          default: "a",
+          type_options: {
+            load_options_method: "choices",
+          },
+        },
+      }
+
+      expect(validate(schema)).to eq([])
+    end
+
     it "allows credential_type on credential fields" do
       schema = { credential_id: { type: :credential, credential_type: :basic_auth } }
       expect(validate(schema)).to eq([])
