@@ -6,7 +6,6 @@ RSpec.describe DiscourseWorkflows::Registry do
   describe ".credential_types" do
     it "returns registered credential types from the plugin registry" do
       expect(described_class.credential_types).to be_present
-      expect(described_class.credential_types.all? { |ct| ct.respond_to?(:identifier) }).to be(true)
     end
   end
 

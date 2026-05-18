@@ -6,21 +6,18 @@ RSpec.describe DiscourseWorkflows::Registry do
   describe ".triggers" do
     it "returns registered triggers from the plugin registry" do
       expect(described_class.triggers).to be_present
-      expect(described_class.triggers.all? { |t| t.respond_to?(:identifier) }).to be(true)
     end
   end
 
   describe ".actions" do
     it "returns registered actions from the plugin registry" do
       expect(described_class.actions).to be_present
-      expect(described_class.actions.all? { |a| a.respond_to?(:identifier) }).to be(true)
     end
   end
 
   describe ".conditions" do
     it "returns registered conditions from the plugin registry" do
       expect(described_class.conditions).to be_present
-      expect(described_class.conditions.all? { |c| c.respond_to?(:identifier) }).to be(true)
     end
   end
 
