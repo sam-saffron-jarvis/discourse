@@ -165,14 +165,10 @@ module("Integration | Component | workflows-form", function (hooks) {
     assert.dom(".workflows-form__error").hasText("Error in workflow");
   });
 
-  test("completes workflow_finishes submissions that enter a non-form wait", async function (assert) {
+  test("completes empty successful workflow_finishes submissions", async function (assert) {
     pretender.post(
       "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
-      () =>
-        response(200, {
-          response_mode: "workflow_finishes",
-          status: "waiting",
-        })
+      () => [200, {}, ""]
     );
 
     this.set("model", {

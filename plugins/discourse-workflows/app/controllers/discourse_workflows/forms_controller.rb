@@ -39,7 +39,7 @@ module DiscourseWorkflows
           body = DiscourseWorkflows::FormResponse.initial_submission(execution, response_metadata)
           status =
             DiscourseWorkflows::FormResponse.initial_submission_status(execution, response_metadata)
-          render json: body, status: status
+          render_form_response(body, status)
         end
         on_failed_policy(:authenticated_if_required) { raise Discourse::NotLoggedIn }
         on_failed_step(:ensure_form_valid) do |form_validation:|
@@ -119,7 +119,13 @@ module DiscourseWorkflows
           service_params: service_params,
         )
 
-      render json: result.body, status: result.status
+      render_form_response(result.body, result.status)
+    end
+
+    def render_form_response(body, status)
+      return head status if body.nil?
+
+      render json: body, status: status
     end
   end
 end

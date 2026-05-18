@@ -112,6 +112,11 @@ export default class WorkflowsForm extends Component {
   }
 
   #handleSubmissionResult(result) {
+    if (!result) {
+      this.#complete();
+      return;
+    }
+
     if (result.status === "error") {
       this.state = "error";
       this.errorMessage = responseErrorMessage(result);
