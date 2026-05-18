@@ -985,7 +985,7 @@
       <div class="wh-num">3</div>
       <div class="wh-content">
         <div class="wh-title">External signal arrives</div>
-        <div class="wh-desc">Form submission or inbound webhook POST to <code>/workflows/webhooks/:execution_id/:suffix?token=TOKEN</code>.</div>
+        <div class="wh-desc">Form submission or inbound webhook POST to <code>/workflows/waiting/:execution_id/webhook/:suffix?signature=SIGNATURE</code>.</div>
       </div>
     </div>
     <div class="wh-step">
@@ -1207,7 +1207,7 @@
 
   <h2>2. Resume Webhook (Wait / Form)</h2>
   <div class="callout">
-    <strong>URL format:</strong> <code>/workflows/webhooks/:execution_id/:suffix?token=:resume_token</code><br>
+    <strong>URL format:</strong> <code>/workflows/waiting/:execution_id/webhook/:suffix?signature=:signature</code><br>
     This URL is available as <code>$execution.resume_url</code> in expressions — you can embed it in emails, posts, or forms.
   </div>
   <div class="two-col">
@@ -1217,14 +1217,14 @@
           <div class="wh-num">1</div>
           <div class="wh-content">
             <div class="wh-title">POST to resume URL</div>
-            <div class="wh-desc">External agent (user clicking a link, form submission) sends a request with the resume token in the query string.</div>
+            <div class="wh-desc">External agent (user clicking a link, form submission) sends a request with the signed resume URL.</div>
           </div>
         </div>
         <div class="wh-step">
           <div class="wh-num">2</div>
           <div class="wh-content">
-            <div class="wh-title">Token validation</div>
-            <div class="wh-desc">Token must match <code>execution.resume_token</code>. Execution must be in <code>waiting</code> status and not past <code>waiting_until</code>.</div>
+            <div class="wh-title">Signature validation</div>
+            <div class="wh-desc">Signature must validate against <code>execution.resume_token</code>. Execution must be in <code>waiting</code> status and not past <code>waiting_until</code>.</div>
           </div>
         </div>
         <div class="wh-step">
@@ -1660,7 +1660,7 @@ never_error: <span class="kw">false</span>  <span class="cmt">← default</span>
           <tr><td><code>error</code></td><td>text</td><td>Exception message (if status=error)</td></tr>
           <tr><td><code>waiting_node_id</code></td><td>string</td><td>Node that paused execution</td></tr>
           <tr><td><code>waiting_until</code></td><td>datetime</td><td>Deadline for wait timeout</td></tr>
-          <tr><td><code>resume_token</code></td><td>string</td><td>UUID used to authenticate resume requests</td></tr>
+          <tr><td><code>resume_token</code></td><td>string</td><td>UUID used to sign resume requests</td></tr>
           <tr><td><code>execution_mode</code></td><td>integer</td><td>0=normal, 1=error_mode (prevents re-triggering error workflow)</td></tr>
         </table>
       </div>

@@ -129,9 +129,11 @@ module DiscourseWorkflows
             return if token.blank? || execution_id.blank?
 
             suffix = extra_context&.dig("__webhook_suffix")
-            base = "#{Discourse.base_url}/workflows/webhooks/#{execution_id}"
-            base = "#{base}/#{suffix}" if suffix.present?
-            "#{base}?token=#{token}"
+            DiscourseWorkflows::WaitingExecution.webhook_url(
+              execution_id: execution_id,
+              resume_token: token,
+              suffix: suffix,
+            )
           end,
       }.freeze
 

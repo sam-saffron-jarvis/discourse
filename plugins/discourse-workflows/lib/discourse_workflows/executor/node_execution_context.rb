@@ -170,6 +170,14 @@ module DiscourseWorkflows
         @waiting_until = waiting_until
       end
 
+      def resume_action_id(action)
+        DiscourseWorkflows::WaitingExecution.action_token(
+          execution_id: execution_id,
+          resume_token: resume_token,
+          action: action,
+        )
+      end
+
       def add_execution_hint(message, location: "outputPane")
         @execution_hints << { "message" => message, "location" => location }
       end

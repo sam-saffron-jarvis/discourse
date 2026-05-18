@@ -116,11 +116,17 @@ after_initialize do
       action_id = interaction.action&.dig("action_id").to_s
       next if action_id.blank?
 
-      resume_token, action_type = action_id.split(":", 2)
-      next if %w[approve deny].exclude?(action_type)
-      next if resume_token.blank?
+      payload = DiscourseWorkflows::WaitingExecution.action_token_payload(action_id)
+      next if payload.blank?
 
-      execution = DiscourseWorkflows::Execution.by_resume_token(resume_token).first
+      action_type = payload["action"]
+      next if %w[approve deny].exclude?(action_type)
+
+      execution =
+        DiscourseWorkflows::WaitingExecution.find_by_action_token(
+          action_id,
+          expected_node_type: "action:chat_approval",
+        )
       next unless execution
 
       Jobs.enqueue(

@@ -54,7 +54,7 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
       end
     end
 
-    it "creates buttons with resume_token-based action IDs" do
+    it "creates buttons with signed action IDs" do
       config = {
         "message" => "Please approve this",
         "approve_label" => "Yes",
@@ -68,9 +68,19 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
 
       message = Chat::Message.last
       buttons = message.blocks.first["elements"]
-      expect(buttons.map { |b| b["action_id"] }).to eq(
-        ["#{resume_token}:approve", "#{resume_token}:deny"],
+      payloads =
+        buttons.map do |button|
+          DiscourseWorkflows::WaitingExecution.action_token_payload(button["action_id"])
+        end
+
+      expect(payloads).to match(
+        [
+          hash_including("execution_id" => execution.id, "action" => "approve"),
+          hash_including("execution_id" => execution.id, "action" => "deny"),
+        ],
       )
+      action_ids = buttons.map { |button| button["action_id"] }
+      expect(action_ids).to all(satisfy { |id| id.length <= 255 && id.exclude?(resume_token) })
     end
 
     it "uses default labels when none provided" do

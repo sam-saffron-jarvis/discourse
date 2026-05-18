@@ -88,8 +88,8 @@ if defined?(DiscourseWorkflows)
             channel_id = config.fetch("channel_id").to_i
             timeout_minutes = config["timeout_minutes"].presence&.to_i
 
-            approve_action_id = "#{exec_ctx.resume_token}:approve"
-            deny_action_id = "#{exec_ctx.resume_token}:deny"
+            approve_action_id = exec_ctx.resume_action_id("approve")
+            deny_action_id = exec_ctx.resume_action_id("deny")
 
             blocks = approval_blocks(approve_action_id, deny_action_id, approve_label, deny_label)
             send_chat_message(channel_id, message_text, blocks)

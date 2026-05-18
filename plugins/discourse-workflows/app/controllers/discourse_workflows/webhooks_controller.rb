@@ -138,13 +138,13 @@ module DiscourseWorkflows
       query = request.query_parameters
       {
         execution_id: params[:execution_id]&.to_i,
-        token: query["token"],
+        token: is_resume ? query["signature"] : query["token"],
         webhook_suffix: params[:suffix].to_s,
         path: params[:path].to_s,
         http_method: request.method,
         body: parser.parse_body,
         headers: parser.extract_headers,
-        query_params: is_resume ? query.except("token") : query,
+        query_params: is_resume ? query.except("signature") : query,
         raw_authorization: request.headers["Authorization"],
       }
     end

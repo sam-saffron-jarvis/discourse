@@ -3,8 +3,6 @@
 module DiscourseWorkflows
   class Executor
     class ExecutionStore
-      include FormExecutionChannel
-
       MAX_EXECUTION_DATA_SIZE = 5.megabytes
       MAX_STEP_IO_SIZE = 128.kilobytes
       MAX_STEP_STRING_BYTES = 16.kilobytes
@@ -53,7 +51,6 @@ module DiscourseWorkflows
           finished_at: Time.current,
           run_time_ms: Execution.compute_run_time_ms(steps),
         )
-        publish_form_notification(:success)
         publish_execution_node_outputs(steps)
         execution
       end
@@ -67,7 +64,6 @@ module DiscourseWorkflows
           run_time_ms: Execution.compute_run_time_ms(steps),
         )
         trigger_error_workflow(error, steps)
-        publish_form_notification(:error)
         execution
       end
 
@@ -97,6 +93,7 @@ module DiscourseWorkflows
           resume_token: @execution_context.resume_token,
         )
         save!(steps)
+        publish_waiting_form_notification(node)
         execution
       end
 
@@ -288,18 +285,25 @@ module DiscourseWorkflows
         ).trigger_error_workflow(error)
       end
 
-      def publish_form_notification(status)
+      def publish_waiting_form_notification(node)
+        return unless node.type == "action:form"
         return if @workflow_snapshot.nil?
 
         trigger_node = @workflow_snapshot.find_node(@trigger_node_id)
         return unless trigger_node&.type == "trigger:form"
 
-        channel = self.class.form_channel(execution.id, @execution_context.resume_token)
-        return if %i[success error].exclude?(status)
+        channel = DiscourseWorkflows::WaitingExecution.form_channel(execution)
+        return if channel.blank?
 
-        payload = { status: status.to_s }
-        payload[:form_completion] = @execution_context.form_completion if status == :success
-        MessageBus.publish(channel, payload.compact)
+        MessageBus.publish(
+          channel,
+          {
+            status: "waiting_for_form",
+            form_waiting_url: DiscourseWorkflows::WaitingExecution.form_waiting_url(execution),
+            form_submit_url: DiscourseWorkflows::WaitingExecution.form_waiting_url(execution),
+            form_status_url: DiscourseWorkflows::WaitingExecution.form_status_url(execution),
+          },
+        )
       end
 
       def publish_execution_node_outputs(steps)

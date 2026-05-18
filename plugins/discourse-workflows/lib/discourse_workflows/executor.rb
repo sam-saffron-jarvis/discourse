@@ -2,8 +2,6 @@
 
 module DiscourseWorkflows
   class Executor
-    include FormExecutionChannel
-
     MAX_ITERATIONS = 1000
     MAX_WAIT_DURATION_SECONDS = 30.days.to_i
 

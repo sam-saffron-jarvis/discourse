@@ -19,14 +19,13 @@ RSpec.describe "Chat interaction listener for workflow approvals" do
                }
         g.chain "trigger-1", "wait-1"
       end
-    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, **graph)
     publish_workflow!(workflow)
 
     execution = DiscourseWorkflows::Executor.new(workflow, "trigger-1", {}).run
     expect(execution.status).to eq("waiting")
 
-    resume_token = execution.resume_token
-    approve_action_id = "#{resume_token}:approve"
+    approve_action_id = Chat::Message.last.blocks.first["elements"].first["action_id"]
 
     interaction =
       Chat::MessageInteraction.new(
@@ -66,12 +65,19 @@ RSpec.describe "Chat interaction listener for workflow approvals" do
   end
 
   it "ignores interactions with an unrecognized action type" do
+    action_id =
+      DiscourseWorkflows::WaitingExecution.action_token(
+        execution_id: 1,
+        resume_token: "some-token",
+        action: "unknown",
+      )
+
     interaction =
       Chat::MessageInteraction.new(
         user: user,
         message: chat_message,
         action: {
-          "action_id" => "some-token:unknown",
+          "action_id" => action_id,
         },
       )
 

@@ -1,6 +1,23 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
+  describe "#resume_action_id" do
+    it "returns a signed action id for interactive resume nodes" do
+      ctx =
+        described_class.new(
+          input_items: [],
+          resolver: nil,
+          execution_id: 123,
+          resume_token: "resume-token",
+        )
+
+      payload =
+        DiscourseWorkflows::WaitingExecution.action_token_payload(ctx.resume_action_id("approve"))
+
+      expect(payload).to include("execution_id" => 123, "action" => "approve")
+    end
+  end
+
   describe "#get_parameters" do
     it "resolves $json expressions against the item passed in, not a cached first item" do
       config = { "value" => "={{ $json.x }}" }

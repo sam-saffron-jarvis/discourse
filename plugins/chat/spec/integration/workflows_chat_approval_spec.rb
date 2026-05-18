@@ -49,7 +49,7 @@ RSpec.describe "Wait for Approval end-to-end" do
         g.chain "trigger-1", "wait-1", "final-1"
       end
 
-    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, **graph)
     publish_workflow!(workflow)
 
     execution = DiscourseWorkflows::Executor.new(workflow, "trigger-1", { "topic_id" => 1 }).run
@@ -90,7 +90,7 @@ RSpec.describe "Wait for Approval end-to-end" do
         g.chain "trigger-1", "wait-1"
       end
 
-    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, enabled: true, **graph)
+    workflow = Fabricate(:discourse_workflows_workflow, created_by: user, **graph)
     publish_workflow!(workflow)
 
     execution = DiscourseWorkflows::Executor.new(workflow, "trigger-1", {}).run

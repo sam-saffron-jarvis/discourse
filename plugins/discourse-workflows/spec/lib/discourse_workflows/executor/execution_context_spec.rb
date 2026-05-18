@@ -53,7 +53,7 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionContext do
       expect(context["__execution"]).to include("id", "workflow_id", "workflow_name", "resume_url")
       expect(context["__execution"]["workflow_id"]).to eq(workflow.id)
       expect(context["__execution"]["resume_url"]).to match(
-        %r{/workflows/webhooks/\d+\?token=[a-f0-9-]+},
+        %r{/workflows/waiting/\d+/webhook\?signature=[a-f0-9-]+},
       )
     end
 
@@ -68,7 +68,7 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionContext do
     it "appends webhook suffix to resume_url when present" do
       context = execution_context.resolver_context("__webhook_suffix" => "my-hook/path")
       expect(context["__execution"]["resume_url"]).to match(
-        %r{/workflows/webhooks/\d+/my-hook/path\?token=},
+        %r{/workflows/waiting/\d+/webhook/my-hook/path\?signature=},
       )
     end
   end
