@@ -4,11 +4,12 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
   let(:sandbox) { DiscourseWorkflows::JsSandbox.new({}) }
   after { sandbox.dispose }
 
-  def build_exec_ctx(items, resolver_context: nil, **kwargs)
+  def build_exec_ctx(items, resolver_context: nil, parameters: {}, **kwargs)
     resolver_context ||= { "$json" => items.first&.dig("json") || {} }
     resolver = DiscourseWorkflows::ExpressionResolver.new(resolver_context, sandbox: sandbox)
     DiscourseWorkflows::Executor::NodeExecutionContext.new(
       input_items: items,
+      parameters: parameters,
       resolver: resolver,
       resolver_context: resolver_context,
       **kwargs,
@@ -16,31 +17,38 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
   end
 
   def execute_code(code, items: [{ "json" => {} }], **kwargs)
-    action = described_class.new(parameters: { "code" => code, "mode" => "runOnceForEachItem" })
-    action.execute(build_exec_ctx(items, **kwargs))[0]
+    parameters = { "code" => code, "mode" => "runOnceForEachItem" }
+    action = described_class.new(parameters: parameters)
+    action.execute(build_exec_ctx(items, parameters: parameters, **kwargs))[0]
   end
 
   def execute_all(code, items:, **kwargs)
-    action = described_class.new(parameters: { "code" => code, "mode" => "runOnceForAllItems" })
-    action.execute(build_exec_ctx(items, **kwargs))[0]
+    parameters = { "code" => code, "mode" => "runOnceForAllItems" }
+    action = described_class.new(parameters: parameters)
+    action.execute(build_exec_ctx(items, parameters: parameters, **kwargs))[0]
   end
 
   def execute_code_with_log(code, items: [{ "json" => {} }], **kwargs)
-    action =
-      described_class.new(
-        parameters:
-          kwargs.delete(:configuration) || { "code" => code, "mode" => "runOnceForEachItem" },
-      )
-    exec_ctx = build_exec_ctx(items, **kwargs)
+    parameters = kwargs.delete(:configuration) || { "code" => code, "mode" => "runOnceForEachItem" }
+    action = described_class.new(parameters: parameters)
+    exec_ctx = build_exec_ctx(items, parameters: parameters, **kwargs)
     action.execute(exec_ctx)
     exec_ctx.log
   end
 
   describe "#execute" do
     it "defaults to runOnceForAllItems like n8n" do
-      action = described_class.new(parameters: { "code" => "return $input.all();" })
+      parameters = { "code" => "return $input.all();" }
+      action = described_class.new(parameters: parameters)
       result =
-        action.execute(build_exec_ctx([{ "json" => { "n" => 1 } }, { "json" => { "n" => 2 } }]))[0]
+        action.execute(
+          build_exec_ctx(
+            [{ "json" => { "n" => 1 } }, { "json" => { "n" => 2 } }],
+            parameters: parameters,
+          ),
+        )[
+          0
+        ]
 
       expect(result.map { |item| item["json"]["n"] }).to eq([1, 2])
     end
@@ -196,22 +204,19 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
       expect(result.first["json"]["item"]["json"]["name"]).to eq("Alice")
     end
 
-    it "does not expose legacy global item alias" do
-      expect { execute_code("return item;") }.to raise_error(
-        DiscourseWorkflows::JsSandbox::SandboxError,
-        /item is not defined/,
-      )
+    it "exposes the n8n global item alias in per-item mode" do
+      result = execute_code("return item;", items: [{ "json" => { "name" => "Alice" } }])
+
+      expect(result.first["json"]["name"]).to eq("Alice")
     end
 
     it "exposes $input.params for the current code node" do
-      action =
-        described_class.new(
-          parameters: {
-            "code" => "return { mode: $input.params.mode };",
-            "mode" => "runOnceForEachItem",
-          },
-        )
-      result = action.execute(build_exec_ctx([{ "json" => {} }]))[0]
+      parameters = {
+        "code" => "return { mode: $input.params.mode };",
+        "mode" => "runOnceForEachItem",
+      }
+      action = described_class.new(parameters: parameters)
+      result = action.execute(build_exec_ctx([{ "json" => {} }], parameters: parameters))[0]
 
       expect(result.first["json"]["mode"]).to eq("runOnceForEachItem")
     end
@@ -409,20 +414,15 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
 
     it "uses a single sandbox for all input items" do
       items = (1..5).map { |i| { "json" => { "x" => i } } }
-      action =
-        described_class.new(
-          parameters: {
-            "code" => "return { val: $json.x * 2 };",
-            "mode" => "runOnceForEachItem",
-          },
-        )
-      exec_ctx = build_exec_ctx(items)
+      parameters = { "code" => "return { val: $json.x * 2 };", "mode" => "runOnceForEachItem" }
+      action = described_class.new(parameters: parameters)
+      exec_ctx = build_exec_ctx(items, parameters: parameters)
       sandbox_calls = 0
-      original_with_sandbox = exec_ctx.method(:with_sandbox)
+      original_start_job = exec_ctx.method(:start_job)
 
-      exec_ctx.define_singleton_method(:with_sandbox) do |*args, **kwargs, &block|
+      exec_ctx.define_singleton_method(:start_job) do |*args, **kwargs|
         sandbox_calls += 1
-        original_with_sandbox.call(*args, **kwargs, &block)
+        original_start_job.call(*args, **kwargs)
       end
 
       result = action.execute(exec_ctx)[0]
@@ -460,10 +460,14 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
         expect(result.first["json"]).to include("all" => 2, "first" => 1, "last" => 2)
       end
 
-      it "does not expose legacy global items alias" do
-        expect {
-          execute_all("return { count: items.length };", items: [{ "json" => {} }])
-        }.to raise_error(DiscourseWorkflows::JsSandbox::SandboxError, /items is not defined/)
+      it "exposes the n8n global items alias in all-items mode" do
+        result =
+          execute_all(
+            "return { count: items.length };",
+            items: [{ "json" => {} }, { "json" => {} }],
+          )
+
+        expect(result.first["json"]["count"]).to eq(2)
       end
 
       it "returns no items when code returns null" do
@@ -575,12 +579,12 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
         expect(result.first["json"]["total"]).to eq(3)
       end
 
-      it "does not rebind $json per item" do
+      it "binds $json to the first item in all-items mode" do
         items = [{ "json" => { "a" => 1 } }, { "json" => { "b" => 2 } }]
         result = execute_all("return { keys: Object.keys($json) };", items: items)
 
         expect(result.length).to eq(1)
-        expect(result.first["json"]["keys"]).to eq([])
+        expect(result.first["json"]["keys"]).to eq(["a"])
       end
     end
   end

@@ -16,21 +16,13 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
   end
 
-  describe "#normalize_items" do
-    it "normalizes n8n-compatible items through the public execution context" do
+  describe "#helpers" do
+    it "normalizes n8n-compatible items through execution helpers" do
       ctx = described_class.new(input_items: [], resolver: nil)
 
-      expect(ctx.normalize_items([{ json: { name: "Ada" }, pairedItem: 0 }])).to eq(
+      expect(ctx.helpers.normalize_items([{ json: { name: "Ada" }, pairedItem: 0 }])).to eq(
         [{ "json" => { "name" => "Ada" }, "pairedItem" => { "item" => 0 } }],
       )
-    end
-  end
-
-  describe "#normalize_paired_item" do
-    it "normalizes n8n pairedItem shorthand through the public execution context" do
-      ctx = described_class.new(input_items: [], resolver: nil)
-
-      expect(ctx.normalize_paired_item(0)).to eq("item" => 0)
     end
   end
 

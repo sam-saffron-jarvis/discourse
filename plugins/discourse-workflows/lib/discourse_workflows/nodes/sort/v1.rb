@@ -152,14 +152,15 @@ module DiscourseWorkflows
             raise ArgumentError, I18n.t("discourse_workflows.errors.sort.code_missing_return")
           end
 
-          items = exec_ctx.input_items.map { |item| { "json" => item.fetch("json") { {} } } }
-          sorted =
-            exec_ctx.with_sandbox(capture_logs: true) do |sandbox|
-              sandbox.declare_json("__items", items)
-              sandbox.eval("(function() { return __items.sort(function(a, b) { #{code} }); })()")
-            end
-
-          sorted.map { |item| wrap(item.fetch("json") { {} }) }
+          items = exec_ctx.input_items.map(&:deep_dup)
+          sandbox =
+            DiscourseWorkflows::JsTaskRunnerSandbox.new(
+              exec_ctx.get_mode,
+              exec_ctx,
+              nil,
+              { "items" => items },
+            )
+          sandbox.run_code("return items.sort(function(a, b) { #{code} });")
         end
       end
     end

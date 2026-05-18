@@ -18,5 +18,9 @@ module DiscourseWorkflows
     def get_data_table_aggregate_proxy
       @data_table_proxy_provider.get_data_table_aggregate_proxy
     end
+
+    def normalize_items(items)
+      Item.normalize_items(items)
+    end
   end
 end
