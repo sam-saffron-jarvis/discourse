@@ -38,12 +38,16 @@ module DiscourseWorkflows
       DiscourseWorkflows::Executor.new(
         workflow,
         params.trigger_node_id,
-        trigger_data(workflow:, trigger_node:, params:),
+        trigger_data(workflow:, trigger_node:, params:, user: guardian.user),
         options,
       ).run
     end
 
-    def trigger_data(workflow:, trigger_node:, params:)
+    def trigger_data(workflow:, trigger_node:, params:, user:)
+      if params.trigger_data.blank? && trigger_node["type"] == "trigger:schedule"
+        return TriggerRuntime.manual_trigger_data(workflow:, trigger_node:, user:)
+      end
+
       return params.trigger_data unless trigger_node["type"] == "trigger:error"
       return params.trigger_data if params.trigger_data.present?
 

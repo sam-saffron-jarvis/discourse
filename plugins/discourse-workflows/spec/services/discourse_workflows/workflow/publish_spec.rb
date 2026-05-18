@@ -56,14 +56,10 @@ RSpec.describe DiscourseWorkflows::Workflow::Publish do
           connections: graph[:connections],
           static_data: {
             "kept-trigger" => {
-              "seconds_last_triggered" => {
-                "0" => last_triggered_at,
-              },
+              "last_triggered_at" => last_triggered_at,
             },
             "removed-trigger" => {
-              "seconds_tokens" => {
-                "0" => "removed-token",
-              },
+              "triggered_occurrences" => ["removed-key"],
             },
           },
         )
@@ -73,9 +69,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Publish do
 
         expect(workflow.reload.static_data).to eq(
           "kept-trigger" => {
-            "seconds_last_triggered" => {
-              "0" => last_triggered_at,
-            },
+            "last_triggered_at" => last_triggered_at,
           },
         )
       end

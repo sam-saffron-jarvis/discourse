@@ -353,9 +353,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::PopulateGraph do
               "key" => "value",
             },
             "existing-2" => {
-              "seconds_tokens" => {
-                "0" => "token",
-              },
+              "triggered_occurrences" => ["key"],
             },
           },
         )

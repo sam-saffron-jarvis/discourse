@@ -38,7 +38,7 @@ module DiscourseWorkflows
 
       def timezone_is_valid
         return if !timezone_provided? || timezone.blank?
-        return if ScheduleRule.valid_timezone?(timezone)
+        return if WorkflowTimezone.valid?(timezone)
 
         errors.add(:timezone, :invalid)
       end

@@ -15,10 +15,9 @@ module DiscourseWorkflows
             color: "orange",
           },
           properties: {
-            rules: {
+            rule: {
               type: :fixed_collection,
               required: true,
-              max_items: ScheduleRule::MAX_RULES_PER_NODE,
               type_options: {
                 multiple_values: true,
               },
@@ -27,102 +26,92 @@ module DiscourseWorkflows
               },
               options: [
                 {
-                  name: "values",
+                  name: "interval",
                   values: {
-                    interval: {
+                    field: {
                       type: :options,
                       required: true,
                       default: "days",
-                      options: %w[seconds minutes hours days weeks months cron],
+                      options: %w[minutes hours days weeks months cronExpression],
                       no_data_expression: true,
                     },
-                    seconds_between_triggers: {
-                      type: :integer,
-                      default: 30,
-                      min: 1,
-                      max: 59,
-                      visible_if: {
-                        interval: %w[seconds],
-                      },
-                      no_data_expression: true,
-                    },
-                    minutes_between_triggers: {
+                    minutesInterval: {
                       type: :integer,
                       default: 5,
                       min: 1,
                       max: 59,
                       visible_if: {
-                        interval: %w[minutes],
+                        field: %w[minutes],
                       },
                       no_data_expression: true,
                     },
-                    hours_between_triggers: {
+                    hoursInterval: {
                       type: :integer,
                       default: 1,
                       min: 1,
                       max: 23,
                       visible_if: {
-                        interval: %w[hours],
+                        field: %w[hours],
                       },
                       no_data_expression: true,
                     },
-                    days_between_triggers: {
+                    daysInterval: {
                       type: :integer,
                       default: 1,
                       min: 1,
                       max: 31,
                       visible_if: {
-                        interval: %w[days],
+                        field: %w[days],
                       },
                       no_data_expression: true,
                     },
-                    weeks_between_triggers: {
+                    weeksInterval: {
                       type: :integer,
                       default: 1,
                       min: 1,
                       max: 52,
                       visible_if: {
-                        interval: %w[weeks],
+                        field: %w[weeks],
                       },
                       no_data_expression: true,
                     },
-                    months_between_triggers: {
+                    monthsInterval: {
                       type: :integer,
                       default: 1,
                       min: 1,
                       max: 12,
                       visible_if: {
-                        interval: %w[months],
+                        field: %w[months],
                       },
                       no_data_expression: true,
                     },
-                    trigger_on_weekdays: {
+                    triggerAtDay: {
                       type: :multi_options,
                       default: [0],
                       options: WEEKDAY_OPTIONS,
                       visible_if: {
-                        interval: %w[weeks],
+                        field: %w[weeks],
                       },
                       control_options: {
                         option_format: :weekday,
                       },
                     },
-                    trigger_at_day_of_month: {
+                    triggerAtDayOfMonth: {
                       type: :integer,
                       default: 1,
                       min: 1,
                       max: 31,
                       visible_if: {
-                        interval: %w[months],
+                        field: %w[months],
                       },
                       no_data_expression: true,
                     },
-                    trigger_at_hour: {
+                    triggerAtHour: {
                       type: :options,
                       default: 0,
                       options: HOUR_OPTIONS,
                       visible_if: {
-                        interval: %w[days weeks months],
+                        field: %w[days weeks months],
                       },
                       no_data_expression: true,
                       ui: {
@@ -132,21 +121,21 @@ module DiscourseWorkflows
                         option_format: :hour_of_day,
                       },
                     },
-                    trigger_at_minute: {
+                    triggerAtMinute: {
                       type: :integer,
                       default: 0,
                       min: 0,
                       max: 59,
                       visible_if: {
-                        interval: %w[hours days weeks months],
+                        field: %w[hours days weeks months],
                       },
                       no_data_expression: true,
                     },
-                    cron: {
+                    expression: {
                       type: :string,
                       validate: :cron,
                       visible_if: {
-                        interval: %w[cron],
+                        field: %w[cronExpression],
                       },
                     },
                   },
@@ -177,53 +166,95 @@ module DiscourseWorkflows
         end
 
         def self.validate_configuration(configuration, errors)
-          configuration = configuration.is_a?(Hash) ? configuration.with_indifferent_access : {}
-          rules = ScheduleRule.rules_from_configuration(configuration)
-
-          if rules.empty?
-            errors.add(:base, I18n.t("discourse_workflows.errors.schedule_rules_required"))
-            return
-          end
-
-          if rules.size > ScheduleRule::MAX_RULES_PER_NODE
-            errors.add(
-              :base,
-              I18n.t(
-                "discourse_workflows.errors.too_many_schedule_rules",
-                count: ScheduleRule::MAX_RULES_PER_NODE,
-              ),
-            )
-            return
-          end
-
-          rules.each do |rule|
-            next if ScheduleRule.valid_rule?(rule)
-
-            errors.add(:base, I18n.t("discourse_workflows.errors.invalid_schedule_rule"))
-            break
-          end
+          Rules.validate_configuration(configuration, errors)
         end
 
-        def output(time: Time.current, timezone: ScheduleRule.default_timezone)
-          local_time = time.in_time_zone(timezone)
-          hour = local_time.hour % 12
-          hour = 12 if hour.zero?
-          readable_time = "#{hour}:#{local_time.strftime("%M:%S %P")}"
+        def trigger(trigger_ctx)
+          rules = Rules.from_rule_parameter(trigger_ctx.get_node_parameter("rule", {}))
+          node_key = "#{trigger_ctx.workflow_id}:#{trigger_ctx.node_id}"
+          schedules =
+            rules.map.with_index do |rule, index|
+              {
+                rule: rule,
+                rule_index: index,
+                cron_expression: Rules.to_cron_expression(rule, node_key),
+                recurrence: Rules.recurrence(rule, index),
+              }
+            end
 
-          {
-            timestamp: local_time.iso8601(3),
-            "Readable date":
-              "#{local_time.strftime("%B")} #{local_time.day.ordinalize} #{local_time.year}, #{readable_time}",
-            "Readable time": readable_time,
-            "Day of week": local_time.strftime("%A"),
-            Year: local_time.strftime("%Y"),
-            Month: local_time.strftime("%B"),
-            "Day of month": local_time.strftime("%d"),
-            Hour: local_time.strftime("%H"),
-            Minute: local_time.strftime("%M"),
-            Second: local_time.strftime("%S"),
-            Timezone: "#{timezone} (UTC#{local_time.formatted_offset})",
-          }
+          if trigger_ctx.get_mode == "manual"
+            return(
+              {
+                manual_trigger_function:
+                  lambda do
+                    schedule = schedules.first
+                    if schedule
+                      execute_trigger(
+                        trigger_ctx,
+                        schedule[:recurrence],
+                        rule_index: schedule[:rule_index],
+                        skip_recurrence_check: true,
+                        deduplicate: false,
+                      )
+                    end
+                  end,
+              }
+            )
+          end
+
+          schedules.each do |schedule|
+            trigger_ctx
+              .helpers
+              .register_cron(
+                { expression: schedule[:cron_expression], recurrence: schedule[:recurrence] },
+              ) do |scheduled_time|
+                execute_trigger(
+                  trigger_ctx,
+                  schedule[:recurrence],
+                  rule_index: schedule[:rule_index],
+                  scheduled_time:,
+                )
+              end
+          end
+
+          {}
+        end
+
+        def output(time: Time.current, timezone: DiscourseWorkflows::WorkflowTimezone.default)
+          Payload.build(time:, timezone:)
+        end
+
+        private
+
+        def execute_trigger(
+          trigger_ctx,
+          recurrence,
+          rule_index:,
+          scheduled_time: Time.current.utc,
+          skip_recurrence_check: false,
+          deduplicate: true
+        )
+          timezone = trigger_ctx.get_timezone
+          static_data = trigger_ctx.get_workflow_static_data(:node)
+          recurrence_rules = static_data["recurrenceRules"] ||= []
+          if !skip_recurrence_check &&
+               !Recurrence.due?(recurrence, recurrence_rules, scheduled_time, timezone)
+            return
+          end
+
+          trigger_ctx.emit(
+            [
+              trigger_ctx.helpers.return_json_array(
+                [Payload.build(time: scheduled_time, timezone:)],
+              ),
+            ],
+            deduplication_key:
+              (
+                if deduplicate
+                  "#{trigger_ctx.workflow_id}:#{trigger_ctx.node_id}:#{rule_index}:#{scheduled_time.utc.iso8601}"
+                end
+              ),
+          )
         end
       end
     end

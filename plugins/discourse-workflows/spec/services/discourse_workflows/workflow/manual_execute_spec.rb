@@ -75,6 +75,34 @@ RSpec.describe DiscourseWorkflows::Workflow::ManualExecute do
           )
         end
       end
+
+      context "when manually testing a Schedule trigger" do
+        fab!(:workflow) do
+          graph =
+            build_workflow_graph do |g|
+              g.node "trigger-1",
+                     "trigger:schedule",
+                     configuration: {
+                       rule: {
+                         interval: [{ field: "minutes", minutesInterval: 5 }],
+                       },
+                     }
+            end
+          Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
+        end
+
+        it "uses the schedule trigger's manual output" do
+          freeze_time Time.utc(2026, 3, 18, 9, 0)
+
+          result
+
+          expect(result[:execution].trigger_data).to include(
+            "timestamp" => "2026-03-18T09:00:00.000Z",
+            "Hour" => "09",
+            "Minute" => "00",
+          )
+        end
+      end
     end
   end
 end

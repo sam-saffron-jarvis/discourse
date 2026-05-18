@@ -14,6 +14,7 @@ module DiscourseWorkflows
 
     lock(:workflow_id) do
       model :workflow
+      step :deactivate_triggers
       step :unpublish_workflow
     end
 
@@ -27,6 +28,10 @@ module DiscourseWorkflows
 
     def unpublish_workflow(workflow:)
       workflow.unpublish!
+    end
+
+    def deactivate_triggers(workflow:)
+      TriggerRuntime.deactivate_workflow!(workflow)
     end
 
     def expire_workflow_caches

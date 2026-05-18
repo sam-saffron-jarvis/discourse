@@ -1,0 +1,175 @@
+# frozen_string_literal: true
+
+module DiscourseWorkflows
+  class Executor
+    class TriggerExecutionContext
+      MAX_DEDUPLICATION_KEYS = 200
+
+      attr_reader :published_trigger,
+                  :node_type_class,
+                  :now,
+                  :emitted_trigger_data,
+                  :node_id,
+                  :node_identifier
+
+      def initialize(
+        published_trigger:,
+        node_type_class:,
+        mode: :normal,
+        activation_mode: :init,
+        now: Time.current.utc,
+        dispatch: :enqueue,
+        tick: false,
+        user: nil
+      )
+        @published_trigger = published_trigger
+        @node_type_class = node_type_class
+        @mode = mode.to_s
+        @activation_mode = activation_mode.to_s
+        @now = now
+        @dispatch = dispatch
+        @tick = tick
+        @user = user
+        @node_id = published_trigger.trigger_node_id.to_s
+        @node_identifier = node_value("type").to_s
+        @static_data = workflow.node_static_data(node_id).deep_dup
+        @emitted_trigger_data = []
+      end
+
+      def get_node_parameter(parameter_name, default = nil, _options = {})
+        parameters.fetch(parameter_name.to_s) { parameters.fetch(parameter_name.to_sym, default) }
+      end
+
+      def get_timezone
+        DiscourseWorkflows::WorkflowTimezone.for(workflow:, workflow_version:)
+      end
+
+      def get_workflow_static_data(type)
+        raise ArgumentError, "Only node static data is supported" unless type.to_s == "node"
+
+        @static_data
+      end
+
+      def get_mode
+        @mode
+      end
+
+      def get_activation_mode
+        @activation_mode
+      end
+
+      def get_workflow
+        { "id" => workflow.id.to_s, "name" => workflow.name }
+      end
+
+      def get_node
+        published_trigger.trigger_node
+      end
+
+      def workflow_id
+        workflow.id
+      end
+
+      def workflow_version_id
+        workflow_version.id
+      end
+
+      def helpers
+        @helpers ||= Helpers.new(self)
+      end
+
+      def tick?
+        @tick
+      end
+
+      def emit(data, deduplication_key: nil)
+        trigger_data = trigger_data_from(data)
+        return if trigger_data.blank?
+        return if deduplicated?(deduplication_key)
+
+        if deduplication_key.present?
+          keys = Array.wrap(@static_data["triggered_occurrences"])
+          @static_data["triggered_occurrences"] = keys.last(MAX_DEDUPLICATION_KEYS - 1) +
+            [deduplication_key]
+          @static_data["last_triggered_at"] = now.utc.iso8601
+        end
+
+        case @dispatch
+        when :enqueue
+          DiscourseWorkflows::TriggerDispatcher.enqueue(published_trigger, trigger_data:)
+        when :execute
+          DiscourseWorkflows::TriggerDispatcher.execute(
+            published_trigger,
+            trigger_data:,
+            user: @user,
+          )
+        when :collect
+          @emitted_trigger_data << trigger_data
+        when :none
+          nil
+        end
+      end
+
+      def persist_static_data!
+        workflow.update_node_static_data!(node_id, @static_data)
+      end
+
+      private
+
+      def workflow
+        published_trigger.workflow
+      end
+
+      def workflow_version
+        published_trigger.workflow_version
+      end
+
+      def parameters
+        @parameters ||= DiscourseWorkflows::NodeData.parameters(published_trigger.trigger_node)
+      end
+
+      def node_value(key)
+        DiscourseWorkflows::NodeData.read(published_trigger.trigger_node, key)
+      end
+
+      def deduplicated?(deduplication_key)
+        deduplication_key.present? &&
+          Array.wrap(@static_data["triggered_occurrences"]).include?(deduplication_key)
+      end
+
+      def trigger_data_from(data)
+        output_arrays = Array.wrap(data)
+        first_output = output_arrays.first
+        first_item = Array.wrap(first_output).first
+
+        if first_item.is_a?(Hash) && first_item.key?("json")
+          first_item["json"]
+        elsif first_item.is_a?(Hash)
+          first_item.deep_stringify_keys
+        else
+          {}
+        end
+      end
+
+      class Helpers
+        def initialize(context)
+          @context = context
+        end
+
+        def return_json_array(json_data)
+          Array.wrap(json_data).map { |data| DiscourseWorkflows::Item.wrap(data) }
+        end
+
+        def register_cron(cron)
+          return unless @context.tick?
+
+          expression = cron[:expression] || cron["expression"]
+          scheduled_time = @context.now.in_time_zone(@context.get_timezone)
+          return unless DiscourseWorkflows::CronParser.matches?(expression, scheduled_time)
+
+          yield @context.now if block_given?
+        end
+      end
+    end
+  end
+end

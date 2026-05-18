@@ -22,7 +22,7 @@ module DiscourseWorkflows
     end
 
     step :expire_workflow_caches
-    step :start_seconds_schedules
+    step :activate_triggers
 
     private
 
@@ -43,18 +43,8 @@ module DiscourseWorkflows
       DiscourseWorkflows::WorkflowDependency.clear_cache!
     end
 
-    def start_seconds_schedules(workflow:, draft_version:)
-      workflow.each_seconds_schedule_rule(published: true) do |node, rule, rule_index|
-        ScheduleRule.start_seconds_chain!(
-          DiscourseWorkflows::PublishedTrigger.new(
-            workflow: workflow,
-            workflow_version: draft_version,
-            trigger_node: node,
-          ),
-          rule_index,
-          rule,
-        )
-      end
+    def activate_triggers(workflow:, draft_version:)
+      TriggerRuntime.activate_workflow!(workflow, workflow_version: draft_version)
     end
   end
 end

@@ -34,6 +34,20 @@ Runtime internals such as `DiscourseWorkflows::WaitingExecution`,
 `DiscourseWorkflows::Execution.claim_for_resume`, and `DiscourseWorkflows::Executor.resume`
 remain implementation details for workflow core services, jobs, controllers, and stores.
 
+Trigger nodes follow the same boundary through `trigger_ctx`, which tracks n8n's
+`ITriggerFunctions` contract in Ruby naming. Trigger nodes implement `trigger(trigger_ctx)` and
+use only context methods for runtime behavior:
+
+- Parameters: `get_node_parameter`
+- Timezone and mode: `get_timezone`, `get_mode`, `get_activation_mode`
+- Persistent node state: `get_workflow_static_data(:node)`
+- Scheduling and output: `helpers.register_cron`, `helpers.return_json_array`, `emit`
+
+Schedule-like trigger nodes declare their configuration and convert it to cron registrations, but
+the runtime owns workflow lookup, static-data persistence, deduplication, job enqueueing, and
+dispatch. Nodes must not call `Workflow`, `NodeData`, `TriggerDispatcher`, jobs, published-trigger
+lookup, or static-data storage directly.
+
 Specs should assert observable node and workflow behavior: output items, waiting status, resume
 payloads, validation errors, and execution metadata. Avoid tests whose only purpose is to police
 which internal helper a node did or did not call.

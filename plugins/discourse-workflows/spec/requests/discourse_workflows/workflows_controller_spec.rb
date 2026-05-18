@@ -135,7 +135,9 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
                    type: "trigger:schedule",
                    name: "Schedule",
                    configuration: {
-                     cron: "invalid",
+                     rule: {
+                       interval: [{ field: "cronExpression", expression: "invalid" }],
+                     },
                    },
                  },
                ],
@@ -286,7 +288,9 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
                   type: "trigger:schedule",
                   name: "Schedule",
                   configuration: {
-                    cron: "invalid",
+                    rule: {
+                      interval: [{ field: "cronExpression", expression: "invalid" }],
+                    },
                   },
                 },
               ],

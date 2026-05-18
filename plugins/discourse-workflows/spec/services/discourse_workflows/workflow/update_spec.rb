@@ -225,7 +225,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
         result
       end
 
-      context "when graph data includes seconds schedule triggers" do
+      context "when graph data includes schedule triggers" do
         let(:nodes) do
           [
             {
@@ -233,15 +233,17 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
               type: "trigger:schedule",
               name: "Schedule",
               parameters: {
-                rules: [{ interval: "seconds", seconds_between_triggers: 10 }],
+                rule: {
+                  interval: [{ field: "minutes", minutesInterval: 5 }],
+                },
               },
             },
           ]
         end
         let(:connections) { [] }
 
-        it "does not start seconds schedule chains" do
-          DiscourseWorkflows::ScheduleRule.expects(:start_seconds_chain!).never
+        it "does not activate triggers before publishing" do
+          DiscourseWorkflows::TriggerRuntime.expects(:activate_workflow!).never
           result
         end
       end

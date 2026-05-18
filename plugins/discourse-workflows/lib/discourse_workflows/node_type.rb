@@ -188,6 +188,10 @@ module DiscourseWorkflows
       raise NotImplementedError
     end
 
+    def trigger(trigger_ctx)
+      raise NotImplementedError
+    end
+
     def webhook(webhook_ctx)
       raise NotImplementedError
     end

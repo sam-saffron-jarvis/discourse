@@ -47,7 +47,7 @@ module DiscourseWorkflows
     end
 
     def timezone
-      object.settings&.dig("timezone") || DiscourseWorkflows::ScheduleRule.default_timezone
+      object.settings&.dig("timezone") || DiscourseWorkflows::WorkflowTimezone.default
     end
 
     def include_error_workflow_name?

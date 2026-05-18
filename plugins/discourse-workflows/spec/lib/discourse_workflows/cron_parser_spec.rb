@@ -109,4 +109,16 @@ RSpec.describe DiscourseWorkflows::CronParser do
       expect(described_class.valid?("* * * * ?")).to be(false)
     end
   end
+
+  describe ".minute_granularity?" do
+    it "accepts 5-field cron and 6-field cron fixed to second zero" do
+      expect(described_class.minute_granularity?("0 9 * * *")).to be(true)
+      expect(described_class.minute_granularity?("0 0 9 * * *")).to be(true)
+    end
+
+    it "rejects sub-minute cron expressions" do
+      expect(described_class.minute_granularity?("*/10 * * * * *")).to be(false)
+      expect(described_class.minute_granularity?("0,30 * * * * *")).to be(false)
+    end
+  end
 end

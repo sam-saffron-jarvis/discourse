@@ -27,13 +27,15 @@ RSpec.describe DiscourseWorkflows::PluginEnableHandler do
       expect(enqueued.first["args"].first["execution_id"]).to eq(execution.id)
     end
 
-    it "restarts seconds chains for published workflows with seconds rules" do
+    it "activates published workflow triggers" do
       graph =
         build_workflow_graph do |g|
           g.node "trigger-1",
                  "trigger:schedule",
                  configuration: {
-                   "rules" => [{ "interval" => "seconds", "seconds_between_triggers" => 10 }],
+                   "rule" => {
+                     "interval" => [{ "field" => "minutes", "minutesInterval" => 5 }],
+                   },
                  }
         end
       workflow = Fabricate(:discourse_workflows_workflow, published: true, **graph)
@@ -43,36 +45,19 @@ RSpec.describe DiscourseWorkflows::PluginEnableHandler do
           g.node "trigger-1",
                  "trigger:schedule",
                  configuration: {
-                   "rules" => [{ "interval" => "seconds", "seconds_between_triggers" => 10 }],
+                   "rule" => {
+                     "interval" => [{ "field" => "minutes", "minutesInterval" => 5 }],
+                   },
                  }
         end
       Fabricate(:discourse_workflows_workflow, published: false, **unpublished_graph)
 
-      Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs.clear
+      DiscourseWorkflows::TriggerRuntime.expects(:activate_workflow!).with(
+        workflow,
+        workflow_version: workflow.published_version,
+      )
 
       described_class.handle!
-
-      enqueued = Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs
-      expect(enqueued.size).to eq(1)
-      expect(enqueued.first["args"].first["workflow_id"]).to eq(workflow.id)
-    end
-
-    it "skips non-seconds rules" do
-      graph =
-        build_workflow_graph do |g|
-          g.node "trigger-1",
-                 "trigger:schedule",
-                 configuration: {
-                   "rules" => [{ "interval" => "minutes", "minutes_between_triggers" => 5 }],
-                 }
-        end
-      Fabricate(:discourse_workflows_workflow, published: true, **graph)
-
-      Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs.clear
-
-      described_class.handle!
-
-      expect(Jobs::DiscourseWorkflows::ExecuteSecondsSchedule.jobs).to be_empty
     end
   end
 end

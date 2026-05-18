@@ -8,9 +8,9 @@ const NODE_DEFAULTS = {
     http_method: "GET",
   }),
   "trigger:schedule": () => ({
-    rules: [
-      { interval: "hours", hours_between_triggers: 1, trigger_at_minute: 0 },
-    ],
+    rule: {
+      interval: [{ field: "hours", hoursInterval: 1, triggerAtMinute: 0 }],
+    },
   }),
 };
 

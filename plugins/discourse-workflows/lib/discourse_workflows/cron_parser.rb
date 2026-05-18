@@ -102,6 +102,14 @@ module DiscourseWorkflows
       compile(expression).present?
     end
 
+    def self.minute_granularity?(expression)
+      fields = tokenize(expression)
+      second_field = compile_field(fields.first, FIELD_DEFINITIONS.first)
+      second_field.values == Set[0]
+    rescue InvalidExpression
+      false
+    end
+
     def self.compile(expression)
       fields = tokenize(expression)
 

@@ -150,23 +150,6 @@ module DiscourseWorkflows
       update!(static_data: static_data.merge(node_id.to_s => data))
     end
 
-    def each_seconds_schedule_rule(published: false)
-      schedule_nodes = published ? published_nodes : nodes
-
-      schedule_nodes.each do |node|
-        next unless node["type"] == "trigger:schedule"
-
-        rules =
-          ScheduleRule.rules_from_configuration(NodeData.parameters(node)).first(
-            ScheduleRule::MAX_RULES_PER_NODE,
-          )
-        rules.each_with_index do |rule, rule_index|
-          next unless ScheduleRule.seconds_rule?(rule)
-          yield node, rule, rule_index
-        end
-      end
-    end
-
     def upstream_node_of(node_id)
       return if node_id.blank?
       node_id_str = node_id.to_s

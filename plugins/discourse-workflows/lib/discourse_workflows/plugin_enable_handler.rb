@@ -6,7 +6,7 @@ module DiscourseWorkflows
 
     def handle!
       reschedule_waiting_executions!
-      restart_seconds_chains!
+      activate_published_triggers!
     end
 
     def reschedule_waiting_executions!
@@ -23,22 +23,12 @@ module DiscourseWorkflows
         end
     end
 
-    def restart_seconds_chains!
+    def activate_published_triggers!
       Workflow
         .published
         .includes(:published_version)
         .find_each do |workflow|
-          workflow.each_seconds_schedule_rule(published: true) do |node, rule, rule_index|
-            ScheduleRule.start_seconds_chain!(
-              DiscourseWorkflows::PublishedTrigger.new(
-                workflow: workflow,
-                workflow_version: workflow.published_version,
-                trigger_node: node,
-              ),
-              rule_index,
-              rule,
-            )
-          end
+          TriggerRuntime.activate_workflow!(workflow, workflow_version: workflow.published_version)
         end
     end
   end
