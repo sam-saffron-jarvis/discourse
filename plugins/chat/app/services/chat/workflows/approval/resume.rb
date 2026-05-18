@@ -9,26 +9,15 @@ module Chat
         policy :workflows_enabled
 
         params do
-          attribute :execution_id, :integer
-          attribute :approved, :boolean
-          attribute :action_token, :string
-          attribute :action_type, :string
+          attribute :action_id, :string
           attribute :channel_id, :integer
 
-          before_validation do
-            payload = ::DiscourseWorkflows::WaitingExecution.action_token_payload(action_token)
-            next if payload.blank?
-
-            self.execution_id = payload["execution_id"]
-            self.action_type = payload["action"]
-          end
-
-          validates :execution_id, presence: true
-          validates :action_type, inclusion: { in: %w[approve deny] }
+          validates :action_id, presence: true
+          validates :channel_id, presence: true
         end
 
-        model :execution
-        model :claimed_execution
+        model :resume_request
+        model :claimed_resume_request
         step :resume_execution
 
         private
@@ -37,30 +26,28 @@ module Chat
           SiteSetting.discourse_workflows_enabled
         end
 
-        def fetch_execution(params:)
-          ::DiscourseWorkflows::WaitingExecution.find_by_action_token(
-            params.action_token,
+        def fetch_resume_request(params:)
+          ::DiscourseWorkflows::InteractiveResume.from_action_id(
+            params.action_id,
             expected_node_type: "action:chat_approval",
+            allowed_actions: %w[approve deny],
           )
         end
 
-        def fetch_claimed_execution(execution:)
-          ::DiscourseWorkflows::Execution.claim_for_resume(
-            execution,
-            resume_token: execution.resume_token,
-          )
+        def fetch_claimed_resume_request(resume_request:)
+          resume_request.claim
         end
 
-        def resume_execution(claimed_execution:, params:)
+        def resume_execution(claimed_resume_request:, params:)
           response_items = [
             {
               "json" => {
-                "approved" => params.action_type == "approve",
+                "approved" => claimed_resume_request.action == "approve",
                 "channel_id" => params.channel_id,
               },
             },
           ]
-          ::DiscourseWorkflows::WaitingExecution.resume_claimed(claimed_execution, response_items)
+          claimed_resume_request.resume!(response_items)
         end
       end
     end

@@ -70,7 +70,7 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
       buttons = message.blocks.first["elements"]
       payloads =
         buttons.map do |button|
-          DiscourseWorkflows::WaitingExecution.action_token_payload(button["action_id"])
+          DiscourseWorkflows::InteractiveResume.action_payload(button["action_id"])
         end
 
       expect(payloads).to match(

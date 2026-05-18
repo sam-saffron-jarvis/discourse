@@ -6,9 +6,7 @@ module Jobs
       def execute(args)
         ::Chat::Workflows::Approval::Resume.call(
           params: {
-            execution_id: args[:execution_id],
-            approved: args[:approved],
-            action_token: args[:action_token],
+            action_id: args[:action_id],
             channel_id: args[:channel_id],
           },
         )

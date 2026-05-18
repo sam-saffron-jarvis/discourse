@@ -175,7 +175,7 @@ module DiscourseWorkflows
       end
 
       def resume_action_id(action)
-        DiscourseWorkflows::WaitingExecution.action_token(
+        DiscourseWorkflows::InteractiveResume.action_id(
           execution_id: execution_id,
           resume_token: resume_token,
           action: action,

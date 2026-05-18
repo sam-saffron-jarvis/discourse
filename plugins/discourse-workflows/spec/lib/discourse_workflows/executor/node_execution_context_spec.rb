@@ -45,7 +45,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
         )
 
       payload =
-        DiscourseWorkflows::WaitingExecution.action_token_payload(ctx.resume_action_id("approve"))
+        DiscourseWorkflows::InteractiveResume.action_payload(ctx.resume_action_id("approve"))
 
       expect(payload).to include("execution_id" => 123, "action" => "approve")
     end

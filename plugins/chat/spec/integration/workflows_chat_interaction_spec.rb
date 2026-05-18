@@ -40,9 +40,7 @@ RSpec.describe "Chat interaction listener for workflow approvals" do
     expect_enqueued_with(
       job: Jobs::Chat::ResumeWorkflowApproval,
       args: {
-        execution_id: execution.id,
-        approved: true,
-        action_token: approve_action_id,
+        action_id: approve_action_id,
         channel_id: channel.id,
       },
     ) { DiscourseEvent.trigger(:chat_message_interaction, interaction) }
@@ -66,7 +64,7 @@ RSpec.describe "Chat interaction listener for workflow approvals" do
 
   it "ignores interactions with an unrecognized action type" do
     action_id =
-      DiscourseWorkflows::WaitingExecution.action_token(
+      DiscourseWorkflows::InteractiveResume.action_id(
         execution_id: 1,
         resume_token: "some-token",
         action: "unknown",
