@@ -188,6 +188,11 @@ RSpec.describe DiscourseWorkflows::FormsController do
                      "page_type" => "page",
                      "form_fields" => [
                        { "field_label" => "Email", "field_type" => "text", "required" => false },
+                       {
+                         "field_label" => "Tracking ID",
+                         "field_name" => "tracking_id",
+                         "field_type" => "hiddenField",
+                       },
                      ],
                    }
             g.node "form-completion-1",
@@ -307,6 +312,120 @@ RSpec.describe DiscourseWorkflows::FormsController do
         expect(completion_step.dig("metadata", "form_completion")).to include(
           "completion_title" => "test@example.com",
           "completion_message" => "Test User",
+        )
+      end
+
+      it "carries query-backed hidden values through downstream form pages" do
+        get form_path, params: { tracking_id: "campaign-42" }
+        expect(response).to have_http_status(:ok)
+
+        post form_path,
+             params: {
+               resume_token: response.parsed_body["resume_token"],
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+
+        get response.parsed_body["form_waiting_url"]
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["form_fields"].pluck("key")).to include("tracking_id")
+        expect(
+          response.parsed_body["form_fields"].find { |field| field["key"] == "tracking_id" },
+        ).not_to include("field_value")
+        expect(response.parsed_body.dig("form_kit_schema", "fields").pluck("name")).not_to include(
+          "tracking_id",
+        )
+
+        post response.parsed_body["form_submit_url"],
+             params: {
+               form_data: {
+                 email: "test@example.com",
+                 tracking_id: "client-tamper",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+
+        form_step =
+          DiscourseWorkflows::Execution.last.execution_data.steps_array.find do |step|
+            step["node_id"] == "form-action-1" &&
+              step["status"] == DiscourseWorkflows::Executor::Step::SUCCESS
+          end
+        expect(form_step.dig("output", 0, "json")).to include(
+          "email" => "test@example.com",
+          "tracking_id" => "campaign-42",
+          "formQueryParameters" => {
+            "tracking_id" => "campaign-42",
+          },
+        )
+      end
+
+      it "keeps workflow_finishes submissions waiting on the next FormKit page" do
+        trigger_node = workflow.nodes.find { |node| node["id"] == "trigger-1" }
+        trigger_node["parameters"]["response_mode"] = "workflow_finishes"
+        workflow.update!(nodes: workflow.nodes)
+        publish_workflow!(workflow)
+
+        post form_path,
+             params: {
+               resume_token: initial_resume_token,
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).to include(
+          "response_mode" => "workflow_finishes",
+          "status" => "waiting",
+        )
+        expect(response.parsed_body["form_waiting_url"]).to be_present
+
+        get response.parsed_body["form_waiting_url"]
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body.dig("form_kit_schema", "fields").pluck("name")).to include(
+          "email",
+        )
+      end
+
+      it "returns sanitized HTML completion text" do
+        completion_node = workflow.nodes.find { |node| node["id"] == "form-completion-1" }
+        completion_node["parameters"].merge!(
+          "on_submission" => "show_text",
+          "completion_text" =>
+            '<strong>Done</strong><script>alert("x")</script><iframe src="https://example.com"></iframe>',
+        )
+        workflow.update!(nodes: workflow.nodes)
+        publish_workflow!(workflow)
+
+        post form_path,
+             params: {
+               resume_token: initial_resume_token,
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+
+        post response.parsed_body["form_submit_url"],
+             params: {
+               form_data: {
+                 email: "test@example.com",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["form_completion"]).to include(
+          "on_submission" => "show_text",
+          "completion_text" => "<strong>Done</strong>",
+        )
+        expect(response.parsed_body["form_completion"]["completion_text"]).not_to include(
+          "script",
+          "iframe",
         )
       end
 

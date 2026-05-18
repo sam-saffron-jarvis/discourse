@@ -31,13 +31,20 @@ module DiscourseWorkflows
     def self.completion_payload(config)
       {
         "on_submission" => config.fetch("on_submission") { DEFAULT_ON_SUBMISSION },
-        "completion_title" => config["completion_title"],
-        "completion_message" => config["completion_message"],
+        "completion_title" => sanitize_html(config["completion_title"]),
+        "completion_message" => sanitize_html(config["completion_message"]),
         "redirect_url" => config["redirect_url"],
-        "completion_text" => config["completion_text"],
+        "completion_text" => sanitize_html(config["completion_text"]),
       }
     end
     private_class_method :completion_payload
+
+    def self.sanitize_html(value)
+      return if value.nil?
+
+      DiscourseWorkflows::Forms::FormKitSchema.sanitize_html(value)
+    end
+    private_class_method :sanitize_html
 
     def self.parameters_for(node)
       NodeData.parameters(node).deep_stringify_keys

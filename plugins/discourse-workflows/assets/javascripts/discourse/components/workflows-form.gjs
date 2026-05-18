@@ -70,6 +70,17 @@ export default class WorkflowsForm extends Component {
     });
   }
 
+  @cached
+  get completionHtml() {
+    const completion = this.completionData || {};
+
+    return {
+      completion_title: trustHTML(completion.completion_title || ""),
+      completion_message: trustHTML(completion.completion_message || ""),
+      completion_text: trustHTML(completion.completion_text || ""),
+    };
+  }
+
   @action
   async handleSubmit(formData) {
     this.state = "submitting";
@@ -316,17 +327,22 @@ export default class WorkflowsForm extends Component {
             {{#if (eq this.completionData.on_submission "redirect")}}
               <p>{{i18n "discourse_workflows.form.redirecting"}}</p>
             {{else if (eq this.completionData.on_submission "show_text")}}
-              <p>{{this.completionData.completion_text}}</p>
+              <DecoratedHtml
+                @html={{this.completionHtml.completion_text}}
+                @className="workflows-form__completion-text"
+              />
             {{else}}
               {{#if this.completionData.completion_title}}
-                <h2
-                  class="workflows-form__completion-title"
-                >{{this.completionData.completion_title}}</h2>
+                <DecoratedHtml
+                  @html={{this.completionHtml.completion_title}}
+                  @className="workflows-form__completion-title"
+                />
               {{/if}}
               {{#if this.completionData.completion_message}}
-                <p
-                  class="workflows-form__completion-message"
-                >{{this.completionData.completion_message}}</p>
+                <DecoratedHtml
+                  @html={{this.completionHtml.completion_message}}
+                  @className="workflows-form__completion-message"
+                />
               {{else}}
                 <p>{{i18n "discourse_workflows.form.thank_you"}}</p>
               {{/if}}

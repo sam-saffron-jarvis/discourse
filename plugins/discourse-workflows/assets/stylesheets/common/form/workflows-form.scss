@@ -45,4 +45,16 @@
   &__error {
     color: var(--danger);
   }
+
+  &__completion-title {
+    margin-bottom: 0.5em;
+    font-size: var(--font-up-2);
+    font-weight: 700;
+    line-height: var(--line-height-medium);
+  }
+
+  &__completion-message,
+  &__completion-text {
+    color: var(--primary);
+  }
 }

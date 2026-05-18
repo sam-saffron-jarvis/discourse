@@ -1,6 +1,8 @@
 import { render } from "@ember/test-helpers";
 import { module, test } from "qunit";
 import { setupRenderingTest } from "discourse/tests/helpers/component-test";
+import pretender, { response } from "discourse/tests/helpers/create-pretender";
+import formKit from "discourse/tests/helpers/form-kit-helper";
 import WorkflowsForm from "discourse/plugins/discourse-workflows/discourse/components/workflows-form";
 
 module("Integration | Component | workflows-form", function (hooks) {
@@ -104,5 +106,36 @@ module("Integration | Component | workflows-form", function (hooks) {
     assert.dom(".workflows-form__html strong").hasText("Escaped intro");
     assert.dom(".workflows-form__html").doesNotIncludeText("<strong>");
     assert.dom('input[name="tracking_id"]').doesNotExist();
+  });
+
+  test("renders completion text HTML returned by the workflow", async function (assert) {
+    pretender.post(
+      "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      () =>
+        response(200, {
+          status: "success",
+          form_completion: {
+            on_submission: "show_text",
+            completion_text: "<strong>Saved</strong>",
+          },
+        })
+    );
+
+    this.set("model", {
+      uuid: "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
+      form_title: "Intake",
+      form_kit_schema: {
+        data: {},
+        fields: [],
+      },
+    });
+
+    await render(<template><WorkflowsForm @model={{this.model}} /></template>);
+    await formKit().submit();
+
+    assert.dom(".workflows-form__completion-text strong").hasText("Saved");
+    assert
+      .dom(".workflows-form__completion-text")
+      .doesNotIncludeText("<strong>");
   });
 });
