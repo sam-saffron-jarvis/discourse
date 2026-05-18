@@ -9,81 +9,78 @@ import WorkflowsForm from "discourse/plugins/discourse-workflows/discourse/compo
 module("Integration | Component | workflows-form", function (hooks) {
   setupRenderingTest(hooks);
 
-  test("renders backend FormKit schema with FormKit controls", async function (assert) {
+  test("renders backend form schema with FormKit controls", async function (assert) {
     this.set("model", {
-      uuid: "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
       form_title: "Intake",
-      form_kit_schema: {
-        data: {
-          name: "",
-          age: "",
-          bio: "",
-          email: "",
-          password: "",
-          starts_on: "",
-          plan: "basic",
-          contact_method: "",
-        },
-        fields: [
-          {
-            name: "name",
-            title: "Name",
-            type: "input",
-            validation: "required",
-            placeholder: "Your name",
-          },
-          {
-            name: "age",
-            title: "Age",
-            type: "input-number",
-          },
-          {
-            name: "bio",
-            title: "Bio",
-            type: "textarea",
-            placeholder: "Tell us more",
-          },
-          {
-            name: "email",
-            title: "Email",
-            type: "input-email",
-          },
-          {
-            name: "password",
-            title: "Password",
-            type: "password",
-          },
-          {
-            name: "starts_on",
-            title: "Starts on",
-            type: "input-date",
-          },
-          {
-            name: "plan",
-            title: "Plan",
-            type: "select",
-            options: [
-              { value: "basic", label: "Basic" },
-              { value: "pro", label: "Pro" },
-            ],
-          },
-          {
-            name: "contact_method",
-            title: "Contact method",
-            type: "radio-group",
-            options: [
-              { value: "email", label: "Email" },
-              { value: "phone", label: "Phone" },
-            ],
-          },
-          {
-            name: "intro",
-            title: "Intro",
-            type: "html",
-            html: "<strong>Escaped intro</strong>",
-          },
-        ],
+      data: {
+        name: "",
+        age: "",
+        bio: "",
+        email: "",
+        password: "",
+        starts_on: "",
+        plan: "basic",
+        contact_method: "",
       },
+      fields: [
+        {
+          name: "name",
+          title: "Name",
+          type: "input",
+          validation: "required",
+          placeholder: "Your name",
+        },
+        {
+          name: "age",
+          title: "Age",
+          type: "input-number",
+        },
+        {
+          name: "bio",
+          title: "Bio",
+          type: "textarea",
+          placeholder: "Tell us more",
+        },
+        {
+          name: "email",
+          title: "Email",
+          type: "input-email",
+        },
+        {
+          name: "password",
+          title: "Password",
+          type: "password",
+        },
+        {
+          name: "starts_on",
+          title: "Starts on",
+          type: "input-date",
+        },
+        {
+          name: "plan",
+          title: "Plan",
+          type: "select",
+          options: [
+            { value: "basic", label: "Basic" },
+            { value: "pro", label: "Pro" },
+          ],
+        },
+        {
+          name: "contact_method",
+          title: "Contact method",
+          type: "radio-group",
+          options: [
+            { value: "email", label: "Email" },
+            { value: "phone", label: "Phone" },
+          ],
+        },
+        {
+          name: "intro",
+          title: "Intro",
+          type: "html",
+          html: "<strong>Escaped intro</strong>",
+        },
+      ],
     });
 
     await render(<template><WorkflowsForm @model={{this.model}} /></template>);
@@ -123,12 +120,11 @@ module("Integration | Component | workflows-form", function (hooks) {
     );
 
     this.set("model", {
-      uuid: "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
       form_title: "Intake",
-      form_kit_schema: {
-        data: {},
-        fields: [],
-      },
+      form_submit_url:
+        "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      data: {},
+      fields: [],
     });
 
     await render(<template><WorkflowsForm @model={{this.model}} /></template>);
@@ -151,12 +147,11 @@ module("Integration | Component | workflows-form", function (hooks) {
     );
 
     this.set("model", {
-      uuid: "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
       form_title: "Intake",
-      form_kit_schema: {
-        data: {},
-        fields: [],
-      },
+      form_submit_url:
+        "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      data: {},
+      fields: [],
     });
 
     await render(<template><WorkflowsForm @model={{this.model}} /></template>);
@@ -172,12 +167,11 @@ module("Integration | Component | workflows-form", function (hooks) {
     );
 
     this.set("model", {
-      uuid: "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
       form_title: "Intake",
-      form_kit_schema: {
-        data: {},
-        fields: [],
-      },
+      form_submit_url:
+        "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      data: {},
+      fields: [],
     });
 
     await render(<template><WorkflowsForm @model={{this.model}} /></template>);

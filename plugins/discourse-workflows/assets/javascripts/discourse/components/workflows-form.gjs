@@ -47,18 +47,13 @@ export default class WorkflowsForm extends Component {
   }
 
   @cached
-  get formKitSchema() {
-    return this.formSchema.form_kit_schema;
-  }
-
-  @cached
   get formData() {
-    return this.formKitSchema?.data || {};
+    return this.formSchema.data || {};
   }
 
   @cached
   get fields() {
-    return (this.formKitSchema?.fields || []).map((field, index) => {
+    return (this.formSchema.fields || []).map((field, index) => {
       if (field.type === "html") {
         return {
           ...field,
@@ -91,12 +86,10 @@ export default class WorkflowsForm extends Component {
 
     try {
       const payload = { form_data: formData };
-      const submitUrl =
-        this.formSchema.form_submit_url ||
-        `/workflows/form/${this.args.model.uuid}.json`;
+      const submitUrl = this.formSchema.form_submit_url;
 
-      if (!this.formSchema.form_submit_url && this.args.model.resume_token) {
-        payload.resume_token = this.args.model.resume_token;
+      if (this.formSchema.resume_token) {
+        payload.resume_token = this.formSchema.resume_token;
       }
 
       const result = await ajax(submitUrl, {

@@ -2,7 +2,7 @@
 
 module DiscourseWorkflows
   module Forms
-    module FormKitSchema
+    module Schema
       HTML_SANITIZE_CONFIG = {
         elements: %w[
           a

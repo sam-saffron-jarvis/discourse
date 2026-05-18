@@ -77,12 +77,10 @@ module DiscourseWorkflows
           params.form_query_parameters,
         )
 
-      {
-        uuid: params.uuid,
+      DiscourseWorkflows::Forms::ViewModel.build(
+        fields: fields,
         form_title: config["form_title"],
         form_description: config["form_description"],
-        form_fields: Schemas::FormFields.public_fields(fields),
-        form_kit_schema: DiscourseWorkflows::Forms::FormKitSchema.build(fields),
         response_mode: config["response_mode"] || "on_received",
         has_downstream_form:
           workflow.node_has_reachable_downstream_of_type?(
@@ -90,8 +88,9 @@ module DiscourseWorkflows
             "action:form",
             published: true,
           ),
+        form_submit_url: "/workflows/form/#{params.uuid}.json",
         resume_token: resume_token,
-      }
+      )
     end
   end
 end

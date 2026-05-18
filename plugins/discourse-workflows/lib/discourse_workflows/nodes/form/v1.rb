@@ -150,7 +150,7 @@ module DiscourseWorkflows
             Schemas::FormFields.validate_submission(
               form_fields(webhook_ctx),
               form_data_param(webhook_ctx),
-              query_parameters: webhook_ctx.form_query_parameters,
+              query_parameters: form_query_parameters(webhook_ctx),
             )
 
           unless form_validation.valid?
@@ -172,8 +172,8 @@ module DiscourseWorkflows
                     DiscourseWorkflows::Forms::Payload.build(
                       form_validation.data,
                       submitted_at: Time.current.utc.iso8601(3),
-                      form_mode: webhook_ctx.form_mode,
-                      query_parameters: webhook_ctx.form_query_parameters,
+                      form_mode: form_mode(webhook_ctx),
+                      query_parameters: form_query_parameters(webhook_ctx),
                     ),
                 },
               ],
@@ -193,27 +193,35 @@ module DiscourseWorkflows
           fields =
             Schemas::FormFields.apply_query_defaults(
               form_fields(webhook_ctx),
-              webhook_ctx.form_query_parameters,
+              form_query_parameters(webhook_ctx),
             )
 
-          {
-            uuid: webhook_ctx.trigger_node_webhook_id,
+          DiscourseWorkflows::Forms::ViewModel.build(
+            fields: fields,
             form_title: webhook_ctx.get_node_parameter("form_title", 0),
             form_description: webhook_ctx.get_node_parameter("form_description", 0),
-            form_fields: Schemas::FormFields.public_fields(fields),
-            form_kit_schema: DiscourseWorkflows::Forms::FormKitSchema.build(fields),
             response_mode: "on_received",
             has_downstream_form:
               webhook_ctx
                 .get_child_nodes(webhook_ctx.get_node.name)
                 .any? { |node| node.type == "action:form" },
-          }.compact
+          )
         end
 
         def form_fields(webhook_ctx)
           Schemas::FormFields.with_keys(
-            webhook_ctx.get_node_parameter("form_fields.values", 0, default: []),
+            DiscourseWorkflows::CollectionParameters.rows_from_value(
+              webhook_ctx.get_node_parameter("form_fields", 0, default: []),
+            ),
           )
+        end
+
+        def form_mode(webhook_ctx)
+          DiscourseWorkflows::Forms::Payload.form_mode_from(webhook_ctx.trigger_data)
+        end
+
+        def form_query_parameters(webhook_ctx)
+          DiscourseWorkflows::Forms::Payload.query_parameters_from(webhook_ctx.trigger_data)
         end
       end
     end

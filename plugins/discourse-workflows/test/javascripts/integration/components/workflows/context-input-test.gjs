@@ -22,7 +22,16 @@ const EXPRESSION_CONTEXT = {
           visible_if: {
             node_present: {
               type: "flow:wait",
-              configuration: { resume: "webhook" },
+              parameters: { resume: "webhook" },
+            },
+          },
+        },
+        resumeFormUrl: {
+          type: "string",
+          visible_if: {
+            node_present: {
+              type: "action:form",
+              parameters: { page_type: "page" },
             },
           },
         },
@@ -162,6 +171,49 @@ module("Integration | Component | workflows/context/input", function (hooks) {
     ].map((el) => el.textContent.trim());
 
     assert.false(allKeys.includes("resume_url"));
+  });
+
+  test("execution fields include resumeFormUrl when a form page node exists", async function (assert) {
+    const formNode = {
+      clientId: "f1",
+      type: "action:form",
+      name: "Form",
+      configuration: { page_type: "page" },
+    };
+    const actionNode = {
+      clientId: "a1",
+      type: "action:http_request",
+      name: "HTTP",
+    };
+    const nodes = makeNodes(formNode, actionNode);
+
+    await render(
+      <template>
+        <InputContext
+          @node={{actionNode}}
+          @nodes={{nodes}}
+          @connections={{(Array)}}
+          @nodeTypes={{(Array)}}
+        />
+      </template>
+    );
+
+    const executionFields = this.element.querySelectorAll(
+      ".workflows-schema-field"
+    );
+    const executionField = [...executionFields].find(
+      (el) =>
+        el.querySelector(".workflows-schema-field__key")?.textContent.trim() ===
+        "execution"
+    );
+
+    await click(executionField.querySelector(".workflows-schema-field__row"));
+
+    const allKeys = [
+      ...this.element.querySelectorAll(".workflows-schema-field__key"),
+    ].map((el) => el.textContent.trim());
+
+    assert.true(allKeys.includes("resumeFormUrl"));
   });
 
   test("uses previous node name as the input heading", async function (assert) {

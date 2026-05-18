@@ -80,22 +80,13 @@ RSpec.describe DiscourseWorkflows::Form::Show do
       it "builds trigger form data" do
         result
         form_data = result[:form_data]
-        expect(form_data[:uuid]).to eq(uuid)
         expect(form_data[:form_title]).to eq("Test Form")
         expect(form_data[:form_description]).to eq("A test form")
-        expect(form_data[:form_fields]).to eq(
-          [
-            {
-              "field_label" => "Name",
-              "field_type" => "text",
-              "required" => true,
-              "key" => "name",
-            },
-          ],
-        )
         expect(form_data[:response_mode]).to eq("on_received")
         expect(form_data[:has_downstream_form]).to be(false)
-        expect(form_data[:form_kit_schema]).to include(
+        expect(form_data[:form_submit_url]).to eq("/workflows/form/#{uuid}.json")
+        expect(form_data).not_to have_key(:form_fields)
+        expect(form_data).to include(
           data: {
             "name" => "",
           },
@@ -131,8 +122,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         end
 
         it "uses matching query parameters as field defaults" do
-          expect(result[:form_data][:form_fields].first["default_value"]).to eq("Query User")
-          expect(result[:form_data][:form_kit_schema][:data]["name"]).to eq("Query User")
+          expect(result[:form_data][:data]["name"]).to eq("Query User")
         end
 
         it "persists query parameters in the signed submission token" do
@@ -170,9 +160,9 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         end
 
         it "keeps hidden values server-side and out of public form data" do
-          expect(result[:form_data][:form_fields].first).not_to have_key("field_value")
-          expect(result[:form_data][:form_kit_schema][:data]).to be_empty
-          expect(result[:form_data][:form_kit_schema][:fields]).to be_empty
+          expect(result[:form_data]).not_to have_key(:form_fields)
+          expect(result[:form_data][:data]).to be_empty
+          expect(result[:form_data][:fields]).to be_empty
         end
       end
 

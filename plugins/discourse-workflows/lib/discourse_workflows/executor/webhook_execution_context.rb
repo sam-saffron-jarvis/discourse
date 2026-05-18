@@ -45,14 +45,6 @@ module DiscourseWorkflows
         @execution.trigger_data || {}
       end
 
-      def form_mode
-        DiscourseWorkflows::Forms::Payload.form_mode_from(trigger_data)
-      end
-
-      def form_query_parameters
-        DiscourseWorkflows::Forms::Payload.query_parameters_from(trigger_data)
-      end
-
       def get_request_object
         {
           "method" => http_method,
@@ -73,10 +65,6 @@ module DiscourseWorkflows
 
       def get_header_data
         params[:headers] || params["headers"] || {}
-      end
-
-      def trigger_node_webhook_id
-        snapshot_node(@execution.trigger_node_id)&.webhook_id
       end
 
       def resolve(value, item_index = 0)

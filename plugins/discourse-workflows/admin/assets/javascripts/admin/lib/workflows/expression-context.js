@@ -208,6 +208,15 @@ function buildExecutionScope(nodes) {
     scope.resume_url = "";
   }
 
+  const hasFormPage = (nodes || []).some(
+    (n) =>
+      n.type === "action:form" && n.configuration?.page_type !== "completion"
+  );
+
+  if (hasFormPage) {
+    scope.resumeFormUrl = "";
+  }
+
   return scope;
 }
 

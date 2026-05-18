@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-RSpec.describe DiscourseWorkflows::Forms::FormKitSchema do
+RSpec.describe DiscourseWorkflows::Forms::Schema do
   describe ".build" do
-    it "maps workflow form fields to FormKit field config and initial data" do
+    it "maps workflow form fields to frontend field config and initial data" do
       schema =
         described_class.build(
           [

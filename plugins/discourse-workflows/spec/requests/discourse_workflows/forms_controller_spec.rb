@@ -35,7 +35,11 @@ RSpec.describe DiscourseWorkflows::FormsController do
       expect(response).to have_http_status(:ok)
       json = response.parsed_body
       expect(json["form_title"]).to eq("Test Form")
-      expect(json["form_fields"].length).to eq(1)
+      expect(json["fields"].length).to eq(1)
+      expect(json["fields"].first["name"]).to eq("name")
+      expect(json["data"]).to eq("name" => "")
+      expect(json["form_submit_url"]).to eq(form_path)
+      expect(json).not_to have_key("form_fields")
       expect(json["resume_token"]).to be_present
     end
 
@@ -387,7 +391,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
         get waiting_url
         expect(response).to have_http_status(:ok)
         expect(response.parsed_body).not_to have_key("resume_token")
-        expect(response.parsed_body["form_fields"].first["key"]).to eq("email")
+        expect(response.parsed_body["fields"].first["name"]).to eq("email")
 
         post submit_url,
              params: {
@@ -540,13 +544,8 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
         get response.parsed_body["form_waiting_url"]
         expect(response).to have_http_status(:ok)
-        expect(response.parsed_body["form_fields"].pluck("key")).to include("tracking_id")
-        expect(
-          response.parsed_body["form_fields"].find { |field| field["key"] == "tracking_id" },
-        ).not_to include("field_value")
-        expect(response.parsed_body.dig("form_kit_schema", "fields").pluck("name")).not_to include(
-          "tracking_id",
-        )
+        expect(response.parsed_body).not_to have_key("form_fields")
+        expect(response.parsed_body["fields"].pluck("name")).not_to include("tracking_id")
 
         post response.parsed_body["form_submit_url"],
              params: {
@@ -595,9 +594,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
         get response.parsed_body["form_waiting_url"]
         expect(response).to have_http_status(:ok)
-        expect(response.parsed_body.dig("form_kit_schema", "fields").pluck("name")).to include(
-          "email",
-        )
+        expect(response.parsed_body["fields"].pluck("name")).to include("email")
       end
 
       it "returns sanitized HTML completion text" do

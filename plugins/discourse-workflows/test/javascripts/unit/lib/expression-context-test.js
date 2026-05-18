@@ -133,6 +133,24 @@ module("Unit | lib | discourse-workflows | buildScope", function () {
     );
   });
 
+  test("includes resumeFormUrl when a form page node exists", function (assert) {
+    const scope = buildScope({
+      nodes: [{ type: "action:form", configuration: { page_type: "page" } }],
+    });
+
+    assert.strictEqual(scope.$execution.resumeFormUrl, "");
+  });
+
+  test("omits resumeFormUrl when no form page node exists", function (assert) {
+    const scope = buildScope({
+      nodes: [
+        { type: "action:form", configuration: { page_type: "completion" } },
+      ],
+    });
+
+    assert.strictEqual(scope.$execution.resumeFormUrl, undefined);
+  });
+
   test("exposes global constructors", function (assert) {
     const scope = buildScope({});
 

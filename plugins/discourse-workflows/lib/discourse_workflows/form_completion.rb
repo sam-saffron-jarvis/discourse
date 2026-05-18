@@ -42,7 +42,7 @@ module DiscourseWorkflows
     def self.sanitize_html(value)
       return if value.nil?
 
-      DiscourseWorkflows::Forms::FormKitSchema.sanitize_html(value)
+      DiscourseWorkflows::Forms::Schema.sanitize_html(value)
     end
     private_class_method :sanitize_html
 

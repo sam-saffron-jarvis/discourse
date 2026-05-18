@@ -78,8 +78,8 @@ RSpec.describe DiscourseWorkflows::WaitingWebhookRunner do
       expect(result.status).to eq(:ok)
       expect(result.body[:form_title]).to eq("Published workflow")
       expect(result.body[:form_description]).to eq("Counter was 42")
-      expect(result.body[:form_fields].first["key"]).to eq("feedback")
-      expect(result.body[:form_kit_schema]).to include(
+      expect(result.body).not_to have_key(:form_fields)
+      expect(result.body).to include(
         data: {
           "feedback" => "",
         },
@@ -104,7 +104,7 @@ RSpec.describe DiscourseWorkflows::WaitingWebhookRunner do
 
       result = dispatch(http_method: "GET")
 
-      expect(result.body[:form_fields].first["default_value"]).to eq("Prefill")
+      expect(result.body[:data]["feedback"]).to eq("Prefill")
     end
 
     it "returns structured validation errors from the waiting form webhook" do
