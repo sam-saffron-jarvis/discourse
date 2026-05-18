@@ -255,7 +255,7 @@ export default class ExecutionDetail extends Component {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `execution-${execution.id}.txt`;
+    a.download = `discourse-workflows-execution-${execution.id}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }
