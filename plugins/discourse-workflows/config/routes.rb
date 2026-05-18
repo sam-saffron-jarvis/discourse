@@ -78,7 +78,7 @@ DiscourseWorkflows::Engine.routes.draw do
   end
 
   scope "/workflows", defaults: { format: :json } do
-    match "/webhooks/:execution_id(/*suffix)" => "webhooks#receive",
+    match "/waiting/:execution_id/webhook(/*suffix)" => "webhooks#receive",
           :via => :all,
           :constraints => {
             execution_id: /\d+/,
@@ -95,7 +95,12 @@ DiscourseWorkflows::Engine.routes.draw do
           format: :html,
         }
     post "/:uuid" => "forms#create", :constraints => { uuid: /[0-9a-f-]{36}/ }
-    put "/:uuid" => "forms#update", :constraints => { uuid: /[0-9a-f-]{36}/ }
+  end
+
+  scope "/workflows/forms/waiting", defaults: { format: :json } do
+    get "/:execution_id/status" => "forms#waiting_status", :constraints => { execution_id: /\d+/ }
+    get "/:execution_id" => "forms#waiting_show", :constraints => { execution_id: /\d+/ }
+    post "/:execution_id" => "forms#waiting_create", :constraints => { execution_id: /\d+/ }
   end
 end
 

@@ -143,6 +143,12 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
 
     context "when resuming a waiting webhook" do
       let(:resume_token) { "resume-token" }
+      let(:signature) do
+        DiscourseWorkflows::WaitingExecution.resume_signature(
+          execution_id: waiting_execution.id,
+          resume_token: resume_token,
+        )
+      end
 
       before do
         extra =
@@ -179,7 +185,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
       end
 
       it "resumes when the suffix matches" do
-        post "/workflows/webhooks/#{waiting_execution.id}/after-approval.json?token=#{resume_token}",
+        post "/workflows/waiting/#{waiting_execution.id}/webhook/after-approval.json?signature=#{signature}",
              params: { foo: "bar" }.to_json,
              headers: {
                "CONTENT_TYPE" => "application/json",
@@ -191,16 +197,42 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
         job = Jobs::DiscourseWorkflows::ResumeWebhookWaiting.jobs.last
         expect(job["args"].first).to include("execution_id" => waiting_execution.id)
         expect(job["args"].first["response_items"].first["json"]["webhook_url"]).to eq(
-          "#{Discourse.base_url}/workflows/webhooks/#{waiting_execution.id}/after-approval?token=#{resume_token}",
+          DiscourseWorkflows::WaitingExecution.webhook_url(
+            execution_id: waiting_execution.id,
+            resume_token: resume_token,
+            suffix: "after-approval",
+          ),
         )
       end
 
       it "returns 404 when the suffix does not match" do
-        post "/workflows/webhooks/#{waiting_execution.id}/wrong-suffix.json?token=#{resume_token}",
+        post "/workflows/waiting/#{waiting_execution.id}/webhook/wrong-suffix.json?signature=#{signature}",
              params: { foo: "bar" }.to_json,
              headers: {
                "CONTENT_TYPE" => "application/json",
              }
+
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "does not accept the legacy token resume route" do
+        post "/workflows/webhooks/#{waiting_execution.id}/after-approval.json?token=#{resume_token}",
+             params: { foo: "bar" }.to_json,
+             headers: {
+               "CONTENT_TYPE" => "application/json",
+             }
+
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "does not accept token on the waiting resume route" do
+        expect do
+          post "/workflows/waiting/#{waiting_execution.id}/webhook/after-approval.json?token=#{resume_token}",
+               params: { foo: "bar" }.to_json,
+               headers: {
+                 "CONTENT_TYPE" => "application/json",
+               }
+        end.not_to change { Jobs::DiscourseWorkflows::ResumeWebhookWaiting.jobs.size }
 
         expect(response).to have_http_status(:not_found)
       end
@@ -237,7 +269,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
           workflow_data: DiscourseWorkflows::WorkflowSnapshot.from_workflow(workflow).to_h,
         )
 
-        post "/workflows/webhooks/#{waiting_execution.id}/after-approval.json?token=#{resume_token}",
+        post "/workflows/waiting/#{waiting_execution.id}/webhook/after-approval.json?signature=#{signature}",
              params: { foo: "bar" }.to_json,
              headers: {
                "CONTENT_TYPE" => "application/json",

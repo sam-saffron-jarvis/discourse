@@ -6,10 +6,12 @@ module DiscourseWorkflows
 
     params do
       attribute :uuid, :string
-      attribute :resume_token, :string
+      attribute :execution_id, :integer
+      attribute :signature, :string
       attribute :form_query_parameters, default: -> { {} }
 
-      validates :uuid, presence: true
+      validates :uuid, presence: true, unless: :execution_id
+      validates :signature, presence: true, if: :execution_id
       validate :form_query_parameters_must_be_hash
 
       def form_query_parameters_must_be_hash
@@ -18,6 +20,7 @@ module DiscourseWorkflows
     end
 
     model :waiting_execution, optional: true
+    policy :valid_waiting_request
 
     only_if(:resuming?) do
       model :workflow, :fetch_workflow_from_execution
@@ -41,8 +44,12 @@ module DiscourseWorkflows
       waiting_execution.present?
     end
 
-    def initial_request?(waiting_execution:)
-      waiting_execution.blank?
+    def initial_request?(waiting_execution:, params:)
+      waiting_execution.blank? && params.execution_id.blank?
+    end
+
+    def valid_waiting_request(waiting_execution:, params:)
+      params.execution_id.blank? || waiting_execution.present?
     end
 
     def authenticated_if_required(form_node:, guardian:)
@@ -51,8 +58,12 @@ module DiscourseWorkflows
     end
 
     def fetch_waiting_execution(params:)
-      return unless params.resume_token
-      DiscourseWorkflows::Execution.by_resume_token(params.resume_token).includes(:workflow).first
+      return if params.execution_id.blank?
+
+      DiscourseWorkflows::WaitingExecution.find(
+        execution_id: params.execution_id,
+        signature: params.signature,
+      )
     end
 
     def action_form(form_node:)
@@ -108,14 +119,17 @@ module DiscourseWorkflows
             "workflow_id" => workflow.id,
             "workflow_name" => waiting_execution.workflow_snapshot_name,
             "resume_url" =>
-              "#{Discourse.base_url}/workflows/webhooks/#{waiting_execution.id}?token=#{resume_token}",
+              DiscourseWorkflows::WaitingExecution.webhook_url(
+                execution_id: waiting_execution.id,
+                resume_token: resume_token,
+              ),
           },
         )
 
       parameters = NodeData.parameters(form_node)
 
       {
-        uuid: params.uuid,
+        uuid: params.uuid || form_uuid_from_execution(waiting_execution),
         form_title:
           ExpressionResolver.resolve(
             parameters["form_title"],
@@ -136,8 +150,11 @@ module DiscourseWorkflows
         response_mode: "on_received",
         has_downstream_form:
           waiting_execution.node_has_reachable_downstream_of_type?(form_node["id"], "action:form"),
-        resume_token: resume_token,
       }
+    end
+
+    def form_uuid_from_execution(waiting_execution)
+      waiting_execution.workflow_node(waiting_execution.trigger_node_id)&.dig("webhook_id")
     end
 
     def build_form_data_from_config(workflow:, workflow_version:, form_node:, params:, guardian:)

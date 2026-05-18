@@ -2,7 +2,23 @@
 
 RSpec.describe DiscourseWorkflows::Form::Show do
   describe described_class::Contract, type: :model do
-    it { is_expected.to validate_presence_of(:uuid) }
+    it "requires uuid for initial form requests" do
+      contract = described_class.new
+      expect(contract).not_to be_valid
+      expect(contract.errors[:uuid]).to be_present
+    end
+
+    it "allows waiting execution requests without uuid" do
+      contract = described_class.new(execution_id: 1, signature: "token")
+      contract.valid?
+      expect(contract.errors[:uuid]).to be_blank
+    end
+
+    it "requires signature for waiting execution requests" do
+      contract = described_class.new(execution_id: 1)
+      expect(contract).not_to be_valid
+      expect(contract.errors[:signature]).to be_present
+    end
   end
 
   describe ".call" do
@@ -211,14 +227,20 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         exec
       end
 
-      let(:params) { { uuid: uuid, resume_token: resume_token } }
+      let(:signature) do
+        DiscourseWorkflows::WaitingExecution.resume_signature(
+          execution_id: execution.id,
+          resume_token: resume_token,
+        )
+      end
+      let(:params) { { execution_id: execution.id, signature: signature } }
 
       it { is_expected.to run_successfully }
 
       it "builds waiting form data" do
         result
         form_data = result[:form_data]
-        expect(form_data[:uuid]).to eq(uuid)
+        expect(form_data[:uuid]).to be_nil
         expect(form_data[:form_title]).to eq("Waiting Form")
         expect(form_data[:form_description]).to eq("A waiting form")
         expect(form_data[:form_fields]).to eq(
@@ -233,7 +255,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         )
         expect(form_data[:response_mode]).to eq("on_received")
         expect(form_data[:has_downstream_form]).to be(false)
-        expect(form_data[:resume_token]).to eq(resume_token)
+        expect(form_data).not_to have_key(:resume_token)
       end
 
       context "when the trigger captured query parameters" do
@@ -265,7 +287,10 @@ RSpec.describe DiscourseWorkflows::Form::Show do
 
         it "resolves $execution.resume_url from the execution context" do
           expect(result[:form_data][:form_description]).to eq(
-            "#{Discourse.base_url}/workflows/webhooks/#{execution.id}?token=#{resume_token}",
+            DiscourseWorkflows::WaitingExecution.webhook_url(
+              execution_id: execution.id,
+              resume_token: resume_token,
+            ),
           )
         end
       end
@@ -449,10 +474,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
       context "when execution is not waiting" do
         before { execution.update!(status: :success) }
 
-        it "falls back to initial form request path" do
-          expect(result).to run_successfully
-          expect(result[:form_data][:form_title]).to eq("Test Form")
-        end
+        it { is_expected.to fail_a_policy(:valid_waiting_request) }
       end
 
       context "when the waiting node is not a form action" do

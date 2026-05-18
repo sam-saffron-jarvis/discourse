@@ -7,15 +7,12 @@ module DiscourseWorkflows
     policy :workflows_enabled, class_name: DiscourseWorkflows::Policy::WorkflowsEnabled
 
     params do
-      attribute :action_token, :string
-      attribute :resume_token, :string
-      attribute :action_type, :string
+      attribute :execution_id, :integer
+      attribute :signature, :string
       attribute :form_data, default: -> { {} }
 
-      before_validation { self.resume_token, self.action_type = action_token.to_s.split(":", 2) }
-
-      validates :resume_token, presence: true
-      validates :action_type, presence: true
+      validates :execution_id, presence: true
+      validates :signature, presence: true
       validate :form_data_must_be_hash
 
       def form_data_must_be_hash
@@ -44,7 +41,10 @@ module DiscourseWorkflows
     end
 
     def fetch_execution(params:)
-      DiscourseWorkflows::Execution.by_resume_token(params.resume_token).includes(:workflow).first
+      DiscourseWorkflows::WaitingExecution.find(
+        execution_id: params.execution_id,
+        signature: params.signature,
+      )
     end
 
     def action_form(waiting_node:)
@@ -56,7 +56,7 @@ module DiscourseWorkflows
     end
 
     def fetch_claimed_execution(execution:, params:)
-      DiscourseWorkflows::Execution.claim_for_resume(execution, resume_token: params.resume_token)
+      DiscourseWorkflows::WaitingExecution.claim(execution, signature: params.signature)
     end
 
     def resume_execution(execution:, claimed_execution:, form_validation:, guardian:)
@@ -71,7 +71,11 @@ module DiscourseWorkflows
             ),
         },
       ]
-      DiscourseWorkflows::Executor.resume(claimed_execution, response_items, user: guardian.user)
+      DiscourseWorkflows::WaitingExecution.resume_claimed(
+        claimed_execution,
+        response_items,
+        user: guardian.user,
+      )
     end
   end
 end

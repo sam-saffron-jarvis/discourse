@@ -75,10 +75,17 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
         execution
       end
 
+      let(:signature) do
+        DiscourseWorkflows::WaitingExecution.resume_signature(
+          execution_id: waiting_execution.id,
+          resume_token: resume_token,
+        )
+      end
+
       let(:params) do
         {
           execution_id: waiting_execution.id,
-          token: resume_token,
+          token: signature,
           webhook_suffix: webhook_suffix,
           http_method: "POST",
           body: {
@@ -112,7 +119,10 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
             },
             "method" => "POST",
             "webhook_url" =>
-              "#{Discourse.base_url}/workflows/webhooks/#{waiting_execution.id}?token=#{resume_token}",
+              DiscourseWorkflows::WaitingExecution.webhook_url(
+                execution_id: waiting_execution.id,
+                resume_token: resume_token,
+              ),
           )
         end
       end

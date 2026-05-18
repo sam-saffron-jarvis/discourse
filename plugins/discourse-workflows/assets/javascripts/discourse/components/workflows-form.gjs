@@ -33,8 +33,8 @@ export default class WorkflowsForm extends Component {
   @tracked errorMessage = null;
   @tracked completionData = null;
   @tracked formSchemaOverride = null;
-  resumeToken = null;
   channel = null;
+  pendingFormWaitingUrl = null;
 
   willDestroy() {
     super.willDestroy(...arguments);
@@ -76,40 +76,55 @@ export default class WorkflowsForm extends Component {
 
     try {
       const payload = { form_data: formData };
-      const isResume = !!this.resumeToken;
+      const submitUrl =
+        this.formSchema.form_submit_url ||
+        `/workflows/form/${this.args.model.uuid}.json`;
 
-      if (isResume) {
-        payload.resume_token = this.resumeToken;
-      } else if (this.args.model.resume_token) {
+      if (!this.formSchema.form_submit_url && this.args.model.resume_token) {
         payload.resume_token = this.args.model.resume_token;
       }
 
-      const result = await ajax(
-        `/workflows/form/${this.args.model.uuid}.json`,
-        {
-          type: isResume ? "PUT" : "POST",
-          data: payload,
-        }
-      );
+      const result = await ajax(submitUrl, {
+        type: "POST",
+        data: payload,
+      });
 
-      this.resumeToken = result.resume_token;
-
-      const shouldWait =
-        result.has_downstream_form ||
-        result.response_mode === "workflow_finishes";
-
-      if (shouldWait) {
-        this.state = "waiting";
-        this.#subscribe(result.form_channel);
-      } else {
-        this.state = "complete";
-      }
+      this.#handleSubmissionResult(result);
     } catch (e) {
       this.state = "error";
       this.errorMessage =
         e?.jqXHR?.responseJSON?.error ||
         i18n("discourse_workflows.form.error_message");
     }
+  }
+
+  #handleSubmissionResult(result) {
+    if (result.status === "error") {
+      this.state = "error";
+      return;
+    }
+
+    if (result.form_channel && result.form_waiting_url) {
+      this.state = "waiting";
+      this.pendingFormWaitingUrl = result.form_waiting_url;
+      this.#subscribe(result.form_channel);
+      return;
+    }
+
+    if (result.form_waiting_url) {
+      this.#loadWaitingForm(result.form_waiting_url);
+      return;
+    }
+
+    if (
+      result.response_mode === "workflow_finishes" &&
+      result.status === "waiting"
+    ) {
+      this.state = "waiting";
+      return;
+    }
+
+    this.#complete(result.form_completion);
   }
 
   #subscribe(channel) {
@@ -133,40 +148,54 @@ export default class WorkflowsForm extends Component {
 
   async #handleMessage(message) {
     if (message.status === "waiting_for_form") {
-      try {
-        const schema = await ajax(
-          `/workflows/form/${this.args.model.uuid}.json?resume_token=${this.resumeToken}`
-        );
-        this.formSchema = schema;
-        this.state = "form";
-      } catch {
-        this.state = "error";
-      }
-    } else if (message.status === "success") {
-      this.#unsubscribe();
-      const completion = message.form_completion;
-      if (completion?.on_submission === "redirect" && completion.redirect_url) {
-        const url = completion.redirect_url;
-        try {
-          if (url.startsWith("/") && !url.startsWith("//")) {
-            window.location.href = url;
-          } else {
-            const parsed = new URL(url);
-            if (parsed.origin === window.location.origin) {
-              window.location.href = url;
-            }
-          }
-        } catch {
-          // invalid URL, don't redirect
-        }
-        return;
-      }
-      this.completionData = completion || null;
-      this.state = "complete";
+      await this.#loadWaitingForm(
+        message.form_waiting_url || this.pendingFormWaitingUrl
+      );
     } else if (message.status === "error") {
       this.#unsubscribe();
       this.state = "error";
     }
+  }
+
+  async #loadWaitingForm(url) {
+    if (!url) {
+      this.state = "error";
+      return;
+    }
+
+    try {
+      const schema = await ajax(url);
+      this.formSchema = schema;
+      this.state = "form";
+      this.pendingFormWaitingUrl = null;
+      this.#unsubscribe();
+    } catch {
+      this.state = "error";
+    }
+  }
+
+  #complete(completion) {
+    this.#unsubscribe();
+
+    if (completion?.on_submission === "redirect" && completion.redirect_url) {
+      const url = completion.redirect_url;
+      try {
+        if (url.startsWith("/") && !url.startsWith("//")) {
+          window.location.href = url;
+        } else {
+          const parsed = new URL(url);
+          if (parsed.origin === window.location.origin) {
+            window.location.href = url;
+          }
+        }
+      } catch {
+        // invalid URL, don't redirect
+      }
+      return;
+    }
+
+    this.completionData = completion || null;
+    this.state = "complete";
   }
 
   <template>

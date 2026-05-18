@@ -50,18 +50,6 @@ RSpec.describe DiscourseWorkflows::FormsController do
       expect(response).to have_http_status(:not_found)
     end
 
-    it "returns 404 when resume token points to a non-form action node" do
-      Fabricate(
-        :discourse_workflows_waiting_execution,
-        workflow: workflow,
-        waiting_node_id: "trigger-1",
-        resume_token: "test-resume-token",
-      )
-
-      get form_path, params: { resume_token: "test-resume-token" }
-      expect(response).to have_http_status(:not_found)
-    end
-
     it "rate limits repeated show requests" do
       RateLimiter.any_instance.expects(:performed!).raises(RateLimiter::LimitExceeded.new(60))
 
@@ -94,7 +82,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
   end
 
   describe "POST /workflows/form/:uuid.json" do
-    it "executes workflow and returns resume token" do
+    it "executes workflow without returning a raw waiting token" do
       post form_path,
            params: {
              resume_token: initial_resume_token,
@@ -106,11 +94,11 @@ RSpec.describe DiscourseWorkflows::FormsController do
       expect(response).to have_http_status(:ok)
 
       json = response.parsed_body
-      expect(json["resume_token"]).to be_present
+      expect(json).not_to have_key("resume_token")
 
       execution = DiscourseWorkflows::Execution.last
       expect(execution.trigger_node_id).to eq("trigger-1")
-      expect(execution.execution_data.context_data["__resume_token"]).to eq(json["resume_token"])
+      expect(execution.execution_data.context_data["__resume_token"]).to be_present
     end
 
     it "stores initial URL query parameters in the trigger payload" do
@@ -188,43 +176,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
     end
   end
 
-  describe "PUT /workflows/form/:uuid.json" do
-    it "returns 404 when no waiting execution matches the resume token" do
-      put form_path,
-          params: {
-            action_token: "nonexistent-token:submit",
-            form_data: {
-              name: "Test User",
-            },
-          },
-          headers: origin_headers
-      expect(response).to have_http_status(:not_found)
-    end
-
-    it "returns 404 when resume token points to a non-form action node" do
-      Fabricate(
-        :discourse_workflows_waiting_execution,
-        workflow: workflow,
-        waiting_node_id: "trigger-1",
-        resume_token: "test-resume-token",
-      )
-
-      put form_path,
-          params: {
-            action_token: "test-resume-token:submit",
-            form_data: {
-              name: "Test User",
-            },
-          },
-          headers: origin_headers
-      expect(response).to have_http_status(:not_found)
-    end
-
-    it "returns 422 when resume_token is missing" do
-      put form_path, params: { form_data: {} }, headers: origin_headers
-      expect(response).to have_http_status(:unprocessable_entity)
-    end
-
+  describe "/workflows/forms/waiting/:execution_id.json" do
     context "with a workflow containing a downstream form action" do
       before do
         extra =
@@ -268,7 +220,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
         publish_workflow!(workflow)
       end
 
-      it "resumes a waiting execution and returns a new resume token" do
+      it "returns signed waiting URLs without exposing the raw waiting token" do
         post form_path,
              params: {
                resume_token: initial_resume_token,
@@ -279,25 +231,87 @@ RSpec.describe DiscourseWorkflows::FormsController do
              headers: origin_headers
         expect(response).to have_http_status(:ok)
 
-        resume_token = response.parsed_body["resume_token"]
-        expect(resume_token).to be_present
+        expect(response.parsed_body).not_to have_key("resume_token")
+        expect(response.parsed_body["form_waiting_url"]).to be_present
+        expect(response.parsed_body["form_submit_url"]).to be_present
+        expect(response.parsed_body["form_status_url"]).to be_present
 
         execution = DiscourseWorkflows::Execution.last
         expect(execution.status).to eq("waiting")
         expect(execution.waiting_node_id).to eq("form-action-1")
+        expect(
+          response
+            .parsed_body
+            .values_at("form_waiting_url", "form_submit_url", "form_status_url")
+            .join,
+        ).not_to include(execution.resume_token)
 
-        put form_path,
-            params: {
-              action_token: "#{resume_token}:submit",
-              form_data: {
-                email: "test@example.com",
-              },
-            },
-            headers: origin_headers
+        post response.parsed_body["form_submit_url"],
+             params: {
+               form_data: {
+                 email: "test@example.com",
+               },
+             },
+             headers: origin_headers
         expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).not_to have_key("resume_token")
 
         execution.reload
         expect(execution.status).to eq("success")
+      end
+
+      it "serves and resumes a waiting form through waiting execution endpoints" do
+        post form_path,
+             params: {
+               resume_token: initial_resume_token,
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+
+        waiting_url = response.parsed_body["form_waiting_url"]
+        submit_url = response.parsed_body["form_submit_url"]
+        status_url = response.parsed_body["form_status_url"]
+
+        get status_url
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["status"]).to eq("form_waiting")
+
+        get waiting_url
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).not_to have_key("resume_token")
+        expect(response.parsed_body["form_fields"].first["key"]).to eq("email")
+
+        post submit_url,
+             params: {
+               form_data: {
+                 email: "test@example.com",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["status"]).to eq("success")
+        expect(response.parsed_body["form_completion"]).to include(
+          "completion_title" => "Done",
+          "completion_message" => "Thanks",
+        )
+      end
+
+      it "returns 404 when the waiting signature does not match" do
+        post form_path,
+             params: {
+               resume_token: initial_resume_token,
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:ok)
+
+        get response.parsed_body["form_status_url"].sub(/signature=[^&]+/, "signature=invalid")
+        expect(response).to have_http_status(:not_found)
       end
 
       it "returns 404 when execution has already been resumed" do
@@ -309,26 +323,24 @@ RSpec.describe DiscourseWorkflows::FormsController do
                },
              },
              headers: origin_headers
-        resume_token = response.parsed_body["resume_token"]
+        submit_url = response.parsed_body["form_submit_url"]
 
-        put form_path,
-            params: {
-              action_token: "#{resume_token}:submit",
-              form_data: {
-                email: "test@example.com",
-              },
-            },
-            headers: origin_headers
+        post submit_url,
+             params: {
+               form_data: {
+                 email: "test@example.com",
+               },
+             },
+             headers: origin_headers
         expect(response).to have_http_status(:ok)
 
-        put form_path,
-            params: {
-              action_token: "#{resume_token}:submit",
-              form_data: {
-                email: "test@example.com",
-              },
-            },
-            headers: origin_headers
+        post submit_url,
+             params: {
+               form_data: {
+                 email: "test@example.com",
+               },
+             },
+             headers: origin_headers
         expect(response).to have_http_status(:not_found)
       end
     end

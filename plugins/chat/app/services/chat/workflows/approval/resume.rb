@@ -12,16 +12,18 @@ module Chat
           attribute :execution_id, :integer
           attribute :approved, :boolean
           attribute :action_token, :string
-          attribute :resume_token, :string
           attribute :action_type, :string
           attribute :channel_id, :integer
 
           before_validation do
-            self.resume_token, self.action_type = action_token.to_s.split(":", 2)
+            payload = ::DiscourseWorkflows::WaitingExecution.action_token_payload(action_token)
+            next if payload.blank?
+
+            self.execution_id = payload["execution_id"]
+            self.action_type = payload["action"]
           end
 
           validates :execution_id, presence: true
-          validates :resume_token, presence: true
           validates :action_type, inclusion: { in: %w[approve deny] }
         end
 
@@ -36,23 +38,29 @@ module Chat
         end
 
         def fetch_execution(params:)
-          ::DiscourseWorkflows::Execution.by_resume_token(params.resume_token).find_by(
-            id: params.execution_id,
+          ::DiscourseWorkflows::WaitingExecution.find_by_action_token(
+            params.action_token,
+            expected_node_type: "action:chat_approval",
           )
         end
 
-        def fetch_claimed_execution(execution:, params:)
+        def fetch_claimed_execution(execution:)
           ::DiscourseWorkflows::Execution.claim_for_resume(
             execution,
-            resume_token: params.resume_token,
+            resume_token: execution.resume_token,
           )
         end
 
         def resume_execution(claimed_execution:, params:)
           response_items = [
-            { "json" => { "approved" => params.approved, "channel_id" => params.channel_id } },
+            {
+              "json" => {
+                "approved" => params.action_type == "approve",
+                "channel_id" => params.channel_id,
+              },
+            },
           ]
-          ::DiscourseWorkflows::Executor.resume(claimed_execution, response_items)
+          ::DiscourseWorkflows::WaitingExecution.resume_claimed(claimed_execution, response_items)
         end
       end
     end

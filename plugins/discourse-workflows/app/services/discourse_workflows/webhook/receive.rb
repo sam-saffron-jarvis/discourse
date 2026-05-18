@@ -19,9 +19,11 @@ module DiscourseWorkflows
 
       def webhook_url
         if execution_id.present?
-          base = "#{Discourse.base_url}/workflows/webhooks/#{execution_id}"
-          base = "#{base}/#{webhook_suffix}" if webhook_suffix.present?
-          "#{base}?token=#{token}"
+          DiscourseWorkflows::WaitingExecution.webhook_url_with_signature(
+            execution_id: execution_id,
+            signature: token,
+            suffix: webhook_suffix,
+          )
         else
           "#{Discourse.base_url}/workflows/webhooks/#{path}"
         end
@@ -84,14 +86,12 @@ module DiscourseWorkflows
       return nil if params.execution_id.blank? || params.token.blank?
 
       execution =
-        DiscourseWorkflows::Execution.includes(:workflow).find_by(
-          id: params.execution_id,
-          status: :waiting,
+        DiscourseWorkflows::WaitingExecution.find(
+          execution_id: params.execution_id,
+          signature: params.token,
+          expected_node_type: "flow:wait",
         )
       return nil unless execution
-      unless ActiveSupport::SecurityUtils.secure_compare(execution.resume_token, params.token)
-        return nil
-      end
 
       waiting_node = execution.find_waiting_node
       return nil unless waiting_node
@@ -104,7 +104,7 @@ module DiscourseWorkflows
     end
 
     def fetch_claimed_execution(waiting_execution:, params:)
-      DiscourseWorkflows::Execution.claim_for_resume(waiting_execution, resume_token: params.token)
+      DiscourseWorkflows::WaitingExecution.claim(waiting_execution, signature: params.token)
     end
 
     def resuming_execution(waiting_execution:)
@@ -144,7 +144,11 @@ module DiscourseWorkflows
 
     def resume_execution_synchronously(claimed_execution:, waiting_node:, params:)
       parameters = NodeData.parameters(waiting_node)
-      execution = DiscourseWorkflows::Executor.resume(claimed_execution, params.response_items)
+      execution =
+        DiscourseWorkflows::WaitingExecution.resume_claimed(
+          claimed_execution,
+          params.response_items,
+        )
       {
         execution: execution,
         response_mode: parameters["response_mode"],

@@ -23,8 +23,6 @@ module DiscourseWorkflows
 
     scope :expired_waiting, -> { where(status: :waiting).where("waiting_until < ?", Time.current) }
 
-    scope :by_resume_token, ->(token) { where(status: :waiting, resume_token: token.to_s) }
-
     def self.claim_for_resume(execution, resume_token: nil)
       scope = where(id: execution.id, status: :waiting)
       scope = scope.where(resume_token: resume_token) if resume_token
