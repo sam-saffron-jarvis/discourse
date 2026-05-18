@@ -4,6 +4,8 @@ module DiscourseWorkflows
   module Nodes
     module Code
       class JsTaskRunnerSandbox
+        include NodeErrorHandling
+
         RUN_CODE = "runCode"
         RUN_ONCE_FOR_ALL_ITEMS = "runOnceForAllItems"
         RUN_ONCE_FOR_EACH_ITEM = "runOnceForEachItem"
@@ -122,7 +124,10 @@ module DiscourseWorkflows
           error = execution_result.error
           raise error if error.is_a?(Exception)
 
-          raise DiscourseWorkflows::NodeError, error.to_s
+          raise_node_error!(
+            I18n.t("discourse_workflows.errors.javascript_execution_failed"),
+            description: error.to_s,
+          )
         end
 
         def validate_no_disallowed_methods_in_run_for_each(code, item_index)
@@ -222,8 +227,6 @@ module DiscourseWorkflows
 
         def normalize_items!(value)
           @execute_functions.helpers.normalize_items(value)
-        rescue DiscourseWorkflows::Item::InconsistentItemFormatError => e
-          raise_node_error!("Inconsistent item format", description: e.message)
         end
 
         def validate_item!(item, item_index:)
@@ -289,17 +292,6 @@ module DiscourseWorkflows
 
         def reserved_item_key?(key)
           RESERVED_ITEM_KEYS.include?(key.to_s)
-        end
-
-        def raise_node_error!(message, description:, item_index: nil, line_number: nil)
-          suffix = +""
-          suffix << " [line #{line_number}" if line_number
-          if item_index
-            suffix << (line_number ? ", for item #{item_index}" : " [item #{item_index}")
-          end
-          suffix.presence&.<<("]")
-
-          raise DiscourseWorkflows::NodeError, "#{message}#{suffix}: #{description}"
         end
       end
     end

@@ -45,6 +45,15 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::JsTaskRunnerSandbox do
         runner.run_code_all_items("return [{ json: { id: 1 } }, { id: 2 }];")
       }.to raise_error(DiscourseWorkflows::NodeError, /Unknown top-level item key: id/)
     end
+
+    it "raises node validation errors for incompatible reserved item formats" do
+      expect {
+        runner.run_code_all_items("return [{ json: { id: 1 } }, { binary: {} }];")
+      }.to raise_error(
+        DiscourseWorkflows::NodeError,
+        "Inconsistent item format: Every returned item must use the same format.",
+      )
+    end
   end
 
   describe "#run_code_for_each_item" do
@@ -68,6 +77,31 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::JsTaskRunnerSandbox do
       result = runner.run_code("return items.map(function(item) { return item.json.name; });")
 
       expect(result).to eq(["Ada"])
+    end
+
+    it "raises node errors for task runner failures without exception objects" do
+      execute_functions =
+        Class
+          .new do
+            def continue_on_fail
+              false
+            end
+
+            def start_job(*)
+              DiscourseWorkflows::Executor::NodeExecutionContext::JobResult.new(
+                ok: false,
+                result: nil,
+                error: "broken",
+              )
+            end
+          end
+          .new
+      runner = described_class.new("manual", execute_functions)
+
+      expect { runner.run_code("return 1;") }.to raise_error(
+        DiscourseWorkflows::NodeError,
+        "JavaScript execution failed: broken",
+      )
     end
   end
 end

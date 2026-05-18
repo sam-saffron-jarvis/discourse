@@ -318,8 +318,14 @@ module DiscourseWorkflows
             field_1 = field["field_1"].presence || field["field1"].presence
             field_2 = field["field_2"].presence || field["field2"].presence || field_1
             if field_1.blank? || field_2.blank?
-              raise DiscourseWorkflows::NodeError,
-                    "Fields to match pair #{index + 1} must define both input fields"
+              raise_node_error!(
+                I18n.t("discourse_workflows.errors.merge.invalid_fields_to_match"),
+                description:
+                  I18n.t(
+                    "discourse_workflows.errors.merge.fields_to_match_pair_missing_fields",
+                    index: index + 1,
+                  ),
+              )
             end
 
             [field_1, field_2]
@@ -328,8 +334,10 @@ module DiscourseWorkflows
 
         def validate_match_fields!(fields)
           if fields.blank?
-            raise DiscourseWorkflows::NodeError,
-                  'You need to define at least one pair of fields in "Fields to match"'
+            raise_node_error!(
+              I18n.t("discourse_workflows.errors.merge.missing_fields_to_match"),
+              description: I18n.t("discourse_workflows.errors.merge.fields_to_match_required"),
+            )
           end
         end
 

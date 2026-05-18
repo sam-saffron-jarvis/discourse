@@ -13,11 +13,15 @@ en:
       invalid_form_submission: "The form submission has invalid or missing fields."
       invalid_form_token: "The form token is invalid or has expired."
       already_resumed: "This execution has already been resumed."
+      javascript_execution_failed: "JavaScript execution failed"
       storage_limit_exceeded: "Data table storage limit exceeded."
       max_nodes_exceeded: "Workflows cannot have more than %{max} nodes"
       max_nodes_of_type_exceeded: "Workflows cannot have more than %{max} %{type} node"
       node_does_not_accept_inputs: "%{node} does not accept inputs."
       no_rows_matched_filter: "No rows matched the provided filter."
+      item:
+        inconsistent_format_title: "Inconsistent item format"
+        inconsistent_format: "Every returned item must use the same format."
       create_post:
         topic_closed_or_archived: "Cannot create a post in a closed or archived topic."
       create_topic:
@@ -34,6 +38,11 @@ en:
         operation_failed: "Tag operation failed: %{errors}"
       sort:
         code_missing_return: "Code must contain a return statement."
+      merge:
+        invalid_fields_to_match: "Invalid fields to match"
+        fields_to_match_pair_missing_fields: "Fields to match pair %{index} must define both input fields"
+        missing_fields_to_match: "Missing fields to match"
+        fields_to_match_required: 'You need to define at least one pair of fields in "Fields to match"'
       split_out:
         destination_count_mismatch: "Destination field name count must match field count."
         fields_to_include_required: "No fields specified."

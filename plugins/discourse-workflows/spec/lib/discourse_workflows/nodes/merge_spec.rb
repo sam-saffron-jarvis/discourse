@@ -178,4 +178,38 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
 
     expect(output).to eq([item("title" => "Missing id")])
   end
+
+  it "raises node errors when no matching fields are configured" do
+    expect {
+      execute_merge(
+        configuration: {
+          "mode" => "combine",
+          "combine_by" => "matching_fields",
+          "fields_to_match" => [],
+        },
+        input_1: [item("id" => 1)],
+        input_2: [item("id" => 1)],
+      )
+    }.to raise_error(
+      DiscourseWorkflows::NodeError,
+      'Missing fields to match: You need to define at least one pair of fields in "Fields to match"',
+    )
+  end
+
+  it "raises node errors when a matching field pair is incomplete" do
+    expect {
+      execute_merge(
+        configuration: {
+          "mode" => "combine",
+          "combine_by" => "matching_fields",
+          "fields_to_match" => [{ "field_1" => "", "field_2" => "topic_id" }],
+        },
+        input_1: [item("id" => 1)],
+        input_2: [item("topic_id" => 1)],
+      )
+    }.to raise_error(
+      DiscourseWorkflows::NodeError,
+      "Invalid fields to match: Fields to match pair 1 must define both input fields",
+    )
+  end
 end

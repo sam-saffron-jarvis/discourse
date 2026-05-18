@@ -169,7 +169,10 @@ module DiscourseWorkflows
 
           raise execution_result.error if execution_result.error.is_a?(Exception)
           unless execution_result.ok
-            raise DiscourseWorkflows::NodeError, execution_result.error.to_s
+            raise_node_error!(
+              I18n.t("discourse_workflows.errors.javascript_execution_failed"),
+              description: execution_result.error.to_s,
+            )
           end
 
           execution_result.result

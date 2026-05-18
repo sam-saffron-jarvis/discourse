@@ -139,6 +139,31 @@ RSpec.describe DiscourseWorkflows::Nodes::Sort::V1 do
       )
     end
 
+    it "raises node errors for task runner failures without exception objects" do
+      job_result =
+        DiscourseWorkflows::Executor::NodeExecutionContext::JobResult.new(
+          ok: false,
+          result: nil,
+          error: "broken",
+        )
+      exec_ctx =
+        double(
+          input_items: [{ "json" => { "n" => 1 } }],
+          get_mode: "manual",
+          continue_on_fail: false,
+          get_node_parameters: {
+            "type" => "code",
+            "code" => "return 0;",
+          },
+          start_job: job_result,
+        )
+
+      expect { described_class.new.execute(exec_ctx) }.to raise_error(
+        DiscourseWorkflows::NodeError,
+        "JavaScript execution failed: broken",
+      )
+    end
+
     it "captures console.log output" do
       input = [{ "json" => { "n" => 2 } }, { "json" => { "n" => 1 } }]
       configuration = {

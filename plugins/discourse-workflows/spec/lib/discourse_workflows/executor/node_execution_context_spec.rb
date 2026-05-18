@@ -47,6 +47,15 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
         [{ "json" => { "name" => "Ada" }, "pairedItem" => { "item" => 0 } }],
       )
     end
+
+    it "raises node errors for incompatible item formats" do
+      ctx = described_class.new(input_items: [], resolver: nil)
+
+      expect { ctx.helpers.normalize_items([{ json: { id: 1 } }, { binary: {} }]) }.to raise_error(
+        DiscourseWorkflows::NodeError,
+        "Inconsistent item format: Every returned item must use the same format.",
+      )
+    end
   end
 
   describe "#resume_action_id" do

@@ -2,6 +2,8 @@
 
 module DiscourseWorkflows
   class ContextHelpers
+    include NodeErrorHandling
+
     def initialize(node_identifier:, data_table_access_validator: nil, guardian: nil)
       @data_table_proxy_provider =
         DataTables::NodeProxyProvider.new(
@@ -21,6 +23,11 @@ module DiscourseWorkflows
 
     def normalize_items(items)
       Item.normalize_items(items)
+    rescue Item::InconsistentItemFormatError
+      raise_node_error!(
+        I18n.t("discourse_workflows.errors.item.inconsistent_format_title"),
+        description: I18n.t("discourse_workflows.errors.item.inconsistent_format"),
+      )
     end
   end
 end
