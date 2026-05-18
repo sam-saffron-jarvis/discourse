@@ -11,31 +11,36 @@ RSpec.describe Jobs::DiscourseWorkflows::ResumeWaitingExecution do
     )
   end
 
-  it "does not resume when the plugin is disabled" do
+  it "leaves the execution waiting when the plugin is disabled" do
     SiteSetting.discourse_workflows_enabled = false
-    allow(::DiscourseWorkflows::Executor).to receive(:resume)
+    before_updated_at = execution.updated_at
 
     described_class.new.execute(execution_id: execution.id)
 
-    expect(::DiscourseWorkflows::Executor).not_to have_received(:resume)
-    expect(execution.reload.status).to eq("waiting")
+    execution.reload
+    expect(execution.status).to eq("waiting")
+    expect(execution.updated_at).to eq_time(before_updated_at)
   end
 
-  it "does not resume when another caller already claimed the execution" do
-    allow(::DiscourseWorkflows::Executor).to receive(:resume)
+  it "leaves the execution untouched when another worker already claimed it" do
     allow(::DiscourseWorkflows::Execution).to receive(:claim_for_resume).and_return(nil)
+    before_updated_at = execution.updated_at
 
     described_class.new.execute(execution_id: execution.id)
 
-    expect(::DiscourseWorkflows::Executor).not_to have_received(:resume)
+    execution.reload
+    expect(execution.status).to eq("waiting")
+    expect(execution.updated_at).to eq_time(before_updated_at)
   end
 
-  it "does not resume when the execution is no longer waiting" do
-    allow(::DiscourseWorkflows::Executor).to receive(:resume)
+  it "no-ops when the execution is no longer waiting" do
     execution.update!(status: :running)
+    before_updated_at = execution.updated_at
 
     described_class.new.execute(execution_id: execution.id)
 
-    expect(::DiscourseWorkflows::Executor).not_to have_received(:resume)
+    execution.reload
+    expect(execution.status).to eq("running")
+    expect(execution.updated_at).to eq_time(before_updated_at)
   end
 end
