@@ -172,22 +172,4 @@ RSpec.describe DiscourseWorkflows::JsSandbox do
       )
     end
   end
-
-  describe ".extract_item_json" do
-    it "extracts json from array format" do
-      expect(described_class.extract_item_json([{ "json" => { "a" => 1 } }])).to eq({ "a" => 1 })
-    end
-
-    it "returns hash as-is" do
-      expect(described_class.extract_item_json({ "b" => 2 })).to eq({ "b" => 2 })
-    end
-
-    it "returns empty hash for nil" do
-      expect(described_class.extract_item_json(nil)).to eq({})
-    end
-
-    it "returns empty hash for empty array" do
-      expect(described_class.extract_item_json([])).to eq({})
-    end
-  end
 end

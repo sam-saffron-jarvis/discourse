@@ -82,17 +82,6 @@ module DiscourseWorkflows
       @js_context = nil
     end
 
-    def self.extract_item_json(node_data)
-      case node_data
-      when Array
-        node_data.dig(0, "json") || {}
-      when Hash
-        node_data
-      else
-        {}
-      end
-    end
-
     class SiteSettingStore
       def initialize
         @values_by_name = {}

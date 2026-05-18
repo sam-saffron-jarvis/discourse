@@ -397,17 +397,6 @@ module DiscourseWorkflows
               set: function(value) { __itemIndex = value; },
               configurable: true
             });
-            Object.defineProperty(this, '$items', {
-              value: function(name) {
-                if (typeof name === 'undefined') {
-                  return $input.all();
-                }
-
-                return $(name).all();
-              },
-              configurable: true,
-              writable: false
-            });
             if (__nodeMode === "run_once_for_all_items") {
               Object.defineProperty(this, 'items', {
                 value: __allInputItems,
