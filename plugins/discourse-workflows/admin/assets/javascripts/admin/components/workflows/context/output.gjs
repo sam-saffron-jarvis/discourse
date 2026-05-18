@@ -3,6 +3,7 @@ import icon from "discourse/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import processFields from "../../../lib/workflows/field-processors";
 import { resolvePreviousOutput } from "../../../lib/workflows/graph-traversal";
+import { resolveNodeTypeVersion } from "../../../lib/workflows/node-types";
 import resolveNodeFields from "../../../lib/workflows/resolve-node-fields";
 import SchemaField from "./schema-field";
 
@@ -40,8 +41,8 @@ export default class OutputContext extends Component {
         nt.name === this.args.node?.type ||
         nt.identifier === this.args.node?.type
     );
-    return !!(nodeType?.properties || nodeType?.property_schema)?.output_fields
-      ?.ui?.hidden;
+    return !!resolveNodeTypeVersion(nodeType, this.args.node?.type_version)
+      ?.properties?.output_fields?.ui?.hidden;
   }
 
   <template>

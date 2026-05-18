@@ -118,12 +118,12 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
     ]);
   });
 
-  test("resolveNodeFields falls back to output_schema from node type", function (assert) {
+  test("resolveNodeFields uses outputSchema from node type", function (assert) {
     const node = { type: "trigger:webhook", configuration: {} };
     const nodeTypes = [
       {
         identifier: "trigger:webhook",
-        output_schema: { body: "object", method: "string" },
+        outputSchema: { body: "object", method: "string" },
       },
     ];
     const fields = resolveNodeFields(node, nodeTypes);
@@ -132,7 +132,7 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
     assert.strictEqual(fields[0].key, "body");
   });
 
-  test("resolveNodeFields uses output_schema for the saved node type version", function (assert) {
+  test("resolveNodeFields uses outputSchema for the saved node type version", function (assert) {
     const node = {
       type: "trigger:webhook",
       type_version: "1.0",
@@ -141,11 +141,10 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
     const nodeTypes = [
       {
         identifier: "trigger:webhook",
-        latest_version: "2.0",
-        latest: { output_schema: { latest_body: "object" } },
+        latest: { version: "2.0", outputSchema: { latest_body: "object" } },
         versions: {
-          "1.0": { output_schema: { old_body: "object" } },
-          "2.0": { output_schema: { latest_body: "object" } },
+          "1.0": { outputSchema: { old_body: "object" } },
+          "2.0": { outputSchema: { latest_body: "object" } },
         },
       },
     ];
@@ -163,7 +162,7 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
     const nodeTypes = [
       {
         identifier: "flow:wait",
-        output_schema: {
+        outputSchema: {
           body: { type: "object", visible_if: { resume: "webhook" } },
           hidden: {
             type: "string",

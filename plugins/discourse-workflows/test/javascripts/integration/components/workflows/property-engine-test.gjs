@@ -196,7 +196,7 @@ module("Integration | Component | workflows property engine", function (hooks) {
       nodeTypes: [
         {
           identifier: "trigger:manual",
-          output_schema: {
+          outputSchema: {
             status: "string",
           },
         },

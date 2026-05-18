@@ -10,6 +10,7 @@ import { normalizeSourceOutputIndex } from "../../../lib/workflows/graph-constan
 import {
   nodeTypeLabel,
   nodeTypePrimaryOutputKey,
+  nodeTypeVersion,
 } from "../../../lib/workflows/node-types";
 import StickyNote, { STICKY_NOTE_TYPE } from "../../../models/sticky-note";
 import WorkflowConnection from "../../../models/workflow-connection";
@@ -322,7 +323,7 @@ export default class WorkflowsEditor extends Component {
       existingNodes,
       position,
       {
-        typeVersion: nodeType.latest_version,
+        typeVersion: nodeTypeVersion(nodeType),
         configOverrides,
       }
     );
@@ -681,7 +682,7 @@ export default class WorkflowsEditor extends Component {
       existingNodes,
       position,
       {
-        typeVersion: nodeType.latest_version,
+        typeVersion: nodeTypeVersion(nodeType),
         configOverrides,
       }
     );
@@ -787,7 +788,7 @@ export default class WorkflowsEditor extends Component {
       existingNodes,
       null,
       {
-        typeVersion: nodeType.latest_version,
+        typeVersion: nodeTypeVersion(nodeType),
       }
     );
 

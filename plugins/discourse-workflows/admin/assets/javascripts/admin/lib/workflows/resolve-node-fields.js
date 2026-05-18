@@ -124,8 +124,7 @@ export default function resolveNodeFields(
     (nt) => nt.name === node.type || nt.identifier === node.type
   );
   const versionedNodeType = resolveNodeTypeVersion(nodeType, node.type_version);
-  const schema =
-    versionedNodeType?.outputSchema || versionedNodeType?.output_schema;
+  const schema = versionedNodeType?.outputSchema;
   if (!schema || !Object.keys(schema).length) {
     return null;
   }

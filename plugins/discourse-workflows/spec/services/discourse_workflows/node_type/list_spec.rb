@@ -78,10 +78,12 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
         expect(webhook.dig(:properties, :url_preview, :ui, :control)).to eq(:url_preview)
       end
 
-      it "declares options_source for dynamic combo box fields" do
+      it "declares load options methods for dynamic combo box fields" do
         award_badge = result[:node_types].find { |nt| nt[:identifier] == "action:badge" }
 
-        expect(award_badge.dig(:properties, :badge_id, :options_source)).to eq("badges")
+        expect(award_badge.dig(:properties, :badge_id, :type_options)).to include(
+          load_options_method: "badges",
+        )
         expect(award_badge).not_to have_key(:metadata)
       end
 
@@ -274,13 +276,19 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
       node_type =
         result[:node_types].find { |nt| nt[:identifier] == "action:versioned_palette_test" }
 
-      expect(node_type[:latest_version]).to eq("2.0")
-      expect(node_type[:available_versions]).to eq(%w[1.0 2.0])
+      expect(node_type.dig(:latest, :version)).to eq("2.0")
       expect(node_type[:properties]).to have_key(:new_field)
       expect(node_type.dig(:versions, "1.0", :properties)).to have_key(:old_field)
-      expect(node_type.dig(:versions, "1.0", :output_schema)).to eq(old_output: :string)
+      expect(node_type.dig(:versions, "1.0", :outputSchema)).to eq(old_output: :string)
       expect(node_type.dig(:versions, "1.0", :outputs)).to contain_exactly(include(key: "old"))
       expect(node_type.dig(:versions, "2.0", :properties)).to have_key(:new_field)
+      expect(node_type).not_to have_key(:latest_version)
+      expect(node_type).not_to have_key(:available_versions)
+      expect(node_type).not_to have_key(:property_versions)
+      expect(node_type).not_to have_key(:property_schema_versions)
+      expect(node_type[:latest]).not_to have_key(:property_schema)
+      expect(node_type[:latest]).not_to have_key(:output_schema)
+      expect(node_type.dig(:latest, :description)).not_to have_key(:output_schema)
     ensure
       DiscoursePluginRegistry._raw_discourse_workflows_nodes.reject! do |entry|
         [v1, v2].include?(entry[:value])

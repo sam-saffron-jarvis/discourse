@@ -277,7 +277,7 @@ module("Integration | Component | workflows/context/input", function (hooks) {
 
     const webhookType = {
       identifier: "trigger:webhook",
-      output_schema: { body: "object", method: "string" },
+      outputSchema: { body: "object", method: "string" },
     };
     const nodeTypes = [webhookType];
 

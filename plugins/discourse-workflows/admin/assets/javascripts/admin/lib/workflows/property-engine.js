@@ -60,20 +60,11 @@ export function getPropertySchema(nodeTypes, nodeType, typeVersion = null) {
   }
 
   const versionedDefinition = resolveNodeTypeVersion(definition, typeVersion);
-  if (versionedDefinition?.properties || versionedDefinition?.property_schema) {
-    return (
-      versionedDefinition.properties || versionedDefinition.property_schema
-    );
+  if (versionedDefinition?.properties) {
+    return versionedDefinition.properties;
   }
 
-  const versions =
-    definition.property_versions || definition.property_schema_versions;
-
-  if (typeVersion && versions?.[typeVersion]) {
-    return versions[typeVersion];
-  }
-
-  return definition.properties || definition.property_schema || {};
+  return definition.properties || {};
 }
 
 export function normalizeSchema(schema = {}) {

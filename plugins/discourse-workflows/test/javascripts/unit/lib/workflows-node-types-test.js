@@ -12,6 +12,7 @@ import {
   nodeTypePrimaryOutputKey,
   nodeTypePropertyI18nPrefix,
   nodeTypePropertyI18nScope,
+  nodeTypeVersion,
   resolveNodeTypeVersion,
 } from "discourse/plugins/discourse-workflows/admin/lib/workflows/node-types";
 
@@ -100,7 +101,6 @@ module("Unit | Utility | workflows node types", function () {
   test("resolves a full node definition for a saved type version", function (assert) {
     const nodeType = {
       identifier: "action:versioned",
-      latest_version: "2.0",
       latest: {
         identifier: "action:versioned",
         version: "2.0",
@@ -121,6 +121,7 @@ module("Unit | Utility | workflows node types", function () {
     };
 
     assert.strictEqual(resolveNodeTypeVersion(nodeType, "1.0").version, "1.0");
+    assert.strictEqual(nodeTypeVersion(nodeType), "2.0");
     assert.deepEqual(nodeTypeOutputKeys(nodeType, { type_version: "1.0" }), [
       "old",
     ]);

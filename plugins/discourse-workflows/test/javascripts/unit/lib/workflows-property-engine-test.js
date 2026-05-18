@@ -73,7 +73,6 @@ module("Unit | Utility | workflows property engine", function () {
     const nodeTypes = [
       {
         identifier: "action:versioned",
-        latest_version: "2.0",
         latest: {
           properties: {
             new_field: { type: "string" },

@@ -66,7 +66,7 @@ module("Unit | lib | discourse-workflows | graph-traversal", function () {
     assert.strictEqual(result, null);
   });
 
-  test("resolveFieldsForNode falls back to output_schema for trigger nodes", function (assert) {
+  test("resolveFieldsForNode uses outputSchema for trigger nodes", function (assert) {
     const node = {
       clientId: "trigger",
       type: "trigger:manual",
@@ -76,7 +76,7 @@ module("Unit | lib | discourse-workflows | graph-traversal", function () {
       nodeTypes: [
         {
           identifier: "trigger:manual",
-          output_schema: { topic_id: "integer" },
+          outputSchema: { topic_id: "integer" },
         },
       ],
     };
@@ -112,7 +112,7 @@ module("Unit | lib | discourse-workflows | graph-traversal", function () {
       nodeTypes: [
         {
           identifier: "trigger:manual",
-          output_schema: { topic_id: "integer" },
+          outputSchema: { topic_id: "integer" },
         },
       ],
     };
@@ -166,7 +166,7 @@ module("Unit | lib | discourse-workflows | graph-traversal", function () {
       nodeTypes: [
         {
           identifier: "trigger:manual",
-          output_schema: { topic_id: "integer" },
+          outputSchema: { topic_id: "integer" },
         },
       ],
     };

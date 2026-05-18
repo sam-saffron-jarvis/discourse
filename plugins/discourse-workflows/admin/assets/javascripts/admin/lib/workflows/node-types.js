@@ -63,11 +63,11 @@ export function resolveNodeTypeVersion(
     return nodeType.latest;
   }
 
-  if (nodeType.latest_version && nodeType.versions?.[nodeType.latest_version]) {
-    return nodeType.versions[nodeType.latest_version];
-  }
-
   return nodeType;
+}
+
+export function nodeTypeVersion(nodeTypeOrIdentifier, typeVersion = null) {
+  return resolveNodeTypeVersion(nodeTypeOrIdentifier, typeVersion)?.version;
 }
 
 export function nodeTypeUi(nodeTypeOrIdentifier, typeVersion = null) {
@@ -294,8 +294,7 @@ export function nodeTypeOperations(nodeTypeOrIdentifier) {
     return nodeType.operations;
   }
 
-  const operationField = (nodeType?.properties || nodeType?.property_schema)
-    ?.operation;
+  const operationField = nodeType?.properties?.operation;
   if (
     operationField?.type === "options" &&
     Array.isArray(operationField.options) &&
