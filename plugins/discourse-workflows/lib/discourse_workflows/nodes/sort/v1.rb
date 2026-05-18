@@ -4,6 +4,8 @@ module DiscourseWorkflows
   module Nodes
     module Sort
       class V1 < NodeType
+        RUN_CODE = "runCode"
+
         description(
           name: "action:sort",
           version: "1.0",
@@ -81,14 +83,13 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          item = exec_ctx.input_items.first || { "json" => {} }
-          config = exec_ctx.get_node_parameters(item)
+          config = exec_ctx.get_node_parameters(0)
           type = config.fetch("type") { "simple" }
 
           items =
             case type
             when "simple"
-              sort_simple(exec_ctx, item)
+              sort_simple(exec_ctx)
             when "random"
               sort_random(exec_ctx.input_items)
             when "code"
@@ -101,8 +102,8 @@ module DiscourseWorkflows
 
         private
 
-        def sort_simple(exec_ctx, item)
-          sort_fields = exec_ctx.get_fixed_collection_rows("sort_fields", item)
+        def sort_simple(exec_ctx)
+          sort_fields = exec_ctx.get_fixed_collection_rows("sort_fields", 0)
           return exec_ctx.input_items.dup if sort_fields.blank?
 
           exec_ctx.input_items.sort { |a, b| compare_items(a, b, sort_fields) }
@@ -151,14 +152,27 @@ module DiscourseWorkflows
           end
 
           items = exec_ctx.input_items.map(&:deep_dup)
-          sandbox =
-            DiscourseWorkflows::JsTaskRunnerSandbox.new(
-              exec_ctx.get_mode,
-              exec_ctx,
-              nil,
-              { "items" => items },
+          execution_result =
+            exec_ctx.start_job(
+              "javascript",
+              {
+                code: "return items.sort(function(a, b) { #{code} });",
+                nodeMode: RUN_CODE,
+                workflowMode: exec_ctx.get_mode,
+                continueOnFail: exec_ctx.continue_on_fail,
+                additionalProperties: {
+                  "items" => items,
+                },
+              },
+              0,
             )
-          sandbox.run_code("return items.sort(function(a, b) { #{code} });")
+
+          raise execution_result.error if execution_result.error.is_a?(Exception)
+          unless execution_result.ok
+            raise DiscourseWorkflows::NodeError, execution_result.error.to_s
+          end
+
+          execution_result.result
         end
       end
     end

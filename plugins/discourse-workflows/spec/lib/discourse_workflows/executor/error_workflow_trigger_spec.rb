@@ -131,7 +131,7 @@ RSpec.describe DiscourseWorkflows::Executor::ErrorWorkflowTrigger do
       trigger_and_expect_no_jobs(handler)
     end
 
-    it "includes n8n-compatible execution error data" do
+    it "includes compatible execution error data" do
       failed_step = { "node_id" => "1", "node_name" => "My Node", "status" => "error" }
       _, handler =
         build_workflow_with_error_handler(handler_opts: { last_failed_step: failed_step })

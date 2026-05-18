@@ -1,6 +1,6 @@
 # Node output contract
 
-Nodes must return the n8n-compatible positional output shape from `execute`:
+Nodes must return the runtime-compatible positional output shape from `execute`:
 
 ```ruby
 Array<Array<Item>>

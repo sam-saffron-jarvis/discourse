@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe DiscourseWorkflows::JsTaskRunnerSandbox do
+RSpec.describe DiscourseWorkflows::Nodes::Code::JsTaskRunnerSandbox do
   let(:input_items) { [{ "json" => { "name" => "Ada" } }] }
   let(:runner) { described_class.new("manual", exec_ctx) }
 
@@ -34,7 +34,7 @@ RSpec.describe DiscourseWorkflows::JsTaskRunnerSandbox do
       expect(result).to eq([{ "json" => { "name" => "Ada" } }])
     end
 
-    it "binds $json to the first input item like n8n" do
+    it "binds $json to the first input item" do
       result = runner.run_code_all_items("return { name: $json.name };")
 
       expect(result).to eq([{ "json" => { "name" => "Ada" } }])

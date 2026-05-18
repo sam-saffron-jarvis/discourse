@@ -182,7 +182,7 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       expect(described_class.rules_from_configuration(config)).to eq([{ "interval" => "days" }])
     end
 
-    it "accepts n8n schedule trigger rule shape" do
+    it "accepts imported schedule trigger rule shape" do
       config = {
         "rule" => {
           "interval" => [
@@ -222,7 +222,7 @@ RSpec.describe DiscourseWorkflows::ScheduleRule do
       )
     end
 
-    it "validates n8n cronExpression rules" do
+    it "validates imported cronExpression rules" do
       expect(
         described_class.valid_rule?(
           { "field" => "cronExpression", "expression" => "0 9 * * MON-FRI" },

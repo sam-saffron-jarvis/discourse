@@ -28,9 +28,8 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          item = exec_ctx.input_items.first || { "json" => {} }
-          max = exec_ctx.get_node_parameter("max_items", item, default: 10, ensure_type: :integer)
-          keep = exec_ctx.get_node_parameter("keep", item, default: "first")
+          max = exec_ctx.get_node_parameter("max_items", 0, default: 10, ensure_type: :integer)
+          keep = exec_ctx.get_node_parameter("keep", 0, default: "first")
 
           [keep == "last" ? exec_ctx.input_items.last(max) : exec_ctx.input_items.first(max)]
         end

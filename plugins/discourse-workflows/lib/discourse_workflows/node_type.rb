@@ -202,7 +202,11 @@ module DiscourseWorkflows
     private
 
     def map_input_items(exec_ctx)
-      [exec_ctx.input_items.map { |item| wrap(yield(exec_ctx.get_node_parameters(item), item)) }]
+      [
+        exec_ctx.input_items.map.with_index do |item, item_index|
+          wrap(yield(exec_ctx.get_node_parameters(item_index), item, item_index))
+        end,
+      ]
     end
 
     def wrap(data, paired_item: nil)

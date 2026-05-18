@@ -98,8 +98,7 @@ if defined?(DiscourseWorkflows)
 
           def execute(exec_ctx)
             log = exec_ctx.log
-            item = exec_ctx.input_items.first || { "json" => {} }
-            config = exec_ctx.get_node_parameters(item)
+            config = exec_ctx.get_node_parameters(0)
 
             agent_id = config["agent_id"]
             prompt = config["prompt"]

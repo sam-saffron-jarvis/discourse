@@ -61,7 +61,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Schedule::V1 do
   end
 
   describe "#output" do
-    it "returns n8n-compatible timestamp fields" do
+    it "returns compatible timestamp fields" do
       freeze_time Time.utc(2026, 3, 18, 9, 0)
       trigger = described_class.new
       output = trigger.output

@@ -6,9 +6,10 @@ module DiscourseWorkflows
       class RequestBuilder
         include HttpHelpers
 
-        def initialize(config, exec_ctx = nil)
+        def initialize(config, exec_ctx = nil, item_index = 0)
           @config = config
           @exec_ctx = exec_ctx
+          @item_index = item_index
         end
 
         def build
@@ -19,7 +20,7 @@ module DiscourseWorkflows
 
           uri = build_uri(@config["url"], @config["query_params"])
           headers = (@config["headers"] || {}).to_h.compact
-          Authenticator.apply(@config, headers, @exec_ctx)
+          Authenticator.apply(@config, headers, @exec_ctx, item_index: @item_index)
           body = @config.key?("body") ? @config["body"] : build_body(method, @config, headers)
           [method, uri, headers, body]
         end

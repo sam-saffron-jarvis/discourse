@@ -179,9 +179,8 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          empty_item = { "json" => {} }
-          config = exec_ctx.get_node_parameters(empty_item)
-          fields_to_match = exec_ctx.get_fixed_collection_rows("fields_to_match", empty_item)
+          config = exec_ctx.get_node_parameters(0)
+          fields_to_match = exec_ctx.get_fixed_collection_rows("fields_to_match", 0)
           @input_item_indexes = item_indexes_by_input(exec_ctx.inputs)
 
           items =

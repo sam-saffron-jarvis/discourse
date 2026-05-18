@@ -65,20 +65,19 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          item = exec_ctx.input_items.first || { "json" => {} }
           code =
             exec_ctx.get_node_parameter(
               "code",
-              item,
+              0,
               default: DEFAULT_CODE,
               options: {
                 raw_expressions: true,
               },
             ).to_s
-          mode = exec_ctx.get_node_parameter("mode", item, default: RUN_ONCE_FOR_ALL_ITEMS)
+          mode = exec_ctx.get_node_parameter("mode", 0, default: RUN_ONCE_FOR_ALL_ITEMS)
           validate_mode!(mode)
 
-          sandbox = DiscourseWorkflows::JsTaskRunnerSandbox.new(exec_ctx.get_mode, exec_ctx)
+          sandbox = JsTaskRunnerSandbox.new(exec_ctx.get_mode, exec_ctx)
           [
             if mode == RUN_ONCE_FOR_ALL_ITEMS
               sandbox.run_code_all_items(code)

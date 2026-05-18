@@ -112,8 +112,7 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          item = exec_ctx.input_items.first || { "json" => {} }
-          page_type = exec_ctx.get_node_parameter("page_type", item, default: "page")
+          page_type = exec_ctx.get_node_parameter("page_type", 0, default: "page")
 
           return [exec_ctx.input_items] if page_type == "completion"
 
@@ -171,16 +170,14 @@ module DiscourseWorkflows
         end
 
         def form_data(webhook_ctx)
-          item = webhook_ctx.input_items.first || { "json" => {} }
-
           {
             uuid: webhook_ctx.trigger_node_webhook_id,
-            form_title: webhook_ctx.get_node_parameter("form_title", item),
-            form_description: webhook_ctx.get_node_parameter("form_description", item),
+            form_title: webhook_ctx.get_node_parameter("form_title", 0),
+            form_description: webhook_ctx.get_node_parameter("form_description", 0),
             form_fields:
               fields_with_query_defaults(
                 Workflow.resolve_field_keys(
-                  webhook_ctx.get_fixed_collection_rows("form_fields", item),
+                  webhook_ctx.get_fixed_collection_rows("form_fields", 0),
                 ),
                 webhook_ctx.form_query_parameters,
               ),

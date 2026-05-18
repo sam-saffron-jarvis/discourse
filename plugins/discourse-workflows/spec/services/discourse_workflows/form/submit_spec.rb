@@ -155,7 +155,7 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
         expect(result[:execution]).to be_a(DiscourseWorkflows::Execution)
       end
 
-      it "stores an n8n-compatible top-level trigger payload" do
+      it "stores a compatible top-level trigger payload" do
         freeze_time Time.utc(2026, 1, 1)
 
         result

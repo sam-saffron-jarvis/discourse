@@ -9,14 +9,19 @@ module DiscourseWorkflows
       DEFAULT_MAX_RETRIES = 0
       DEFAULT_RETRY_STATUSES = Set[429, 500, 502, 503, 504].freeze
 
-      def initialize(exec_ctx)
+      def initialize(exec_ctx, item_index = 0)
         @exec_ctx = exec_ctx
+        @item_index = item_index
       end
 
       def request(method:, url:, headers: {}, body: nil, options: {})
         config = build_config(method, url, headers, body, options)
         request_method, uri, request_headers, request_body =
-          DiscourseWorkflows::Nodes::HttpRequest::RequestBuilder.new(config, @exec_ctx).build
+          DiscourseWorkflows::Nodes::HttpRequest::RequestBuilder.new(
+            config,
+            @exec_ctx,
+            @item_index,
+          ).build
         never_error = config.fetch("never_error", false)
         response = run_with_retries(request_method, uri, request_headers, request_body, config)
         if !never_error && !(200..299).cover?(response.status)

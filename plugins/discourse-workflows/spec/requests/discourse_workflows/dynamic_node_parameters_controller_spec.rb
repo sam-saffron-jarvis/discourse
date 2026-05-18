@@ -75,7 +75,7 @@ RSpec.describe DiscourseWorkflows::DynamicNodeParametersController do
       expect(response).to have_http_status(:not_found)
     end
 
-    it "passes n8n-shaped dynamic parameter context to context-aware nodes" do
+    it "passes compatible dynamic parameter context to context-aware nodes" do
       credential =
         Fabricate(
           :discourse_workflows_credential,

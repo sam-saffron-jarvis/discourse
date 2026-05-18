@@ -242,6 +242,7 @@ module DiscourseWorkflows
         if exec_ctx&.condition_details&.any?
           step.add_metadata("conditions", exec_ctx.condition_details)
         end
+        exec_ctx&.metadata&.each { |key, value| step.add_metadata(key, value) }
         step.add_metadata("hints", exec_ctx.execution_hints) if exec_ctx&.execution_hints&.any?
       end
     end

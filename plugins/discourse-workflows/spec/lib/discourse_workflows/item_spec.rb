@@ -26,7 +26,7 @@ RSpec.describe DiscourseWorkflows::Item do
       )
     end
 
-    it "adds n8n-compatible pairedItem metadata" do
+    it "adds compatible pairedItem metadata" do
       expect(described_class.wrap({ "name" => "A" }, paired_item: { item: 1 })).to eq(
         "json" => {
           "name" => "A",
@@ -37,7 +37,7 @@ RSpec.describe DiscourseWorkflows::Item do
       )
     end
 
-    it "normalizes n8n shorthand pairedItem metadata" do
+    it "normalizes shorthand pairedItem metadata" do
       expect(described_class.wrap({ "name" => "A" }, paired_item: 1)).to include(
         "pairedItem" => {
           "item" => 1,

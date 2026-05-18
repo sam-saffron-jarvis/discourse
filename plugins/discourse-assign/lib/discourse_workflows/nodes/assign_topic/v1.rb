@@ -90,8 +90,8 @@ if defined?(DiscourseWorkflows)
           def execute(exec_ctx)
             actor = exec_ctx.user
             items =
-              exec_ctx.input_items.map do |item|
-                config = exec_ctx.get_node_parameters(item)
+              exec_ctx.input_items.map.with_index do |_item, item_index|
+                config = exec_ctx.get_node_parameters(item_index)
                 result = process(actor, config)
                 wrap(result)
               end

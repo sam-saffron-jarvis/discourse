@@ -17,7 +17,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Merge::V1 do
     ).first
   end
 
-  it "uses n8n v3 input wait semantics" do
+  it "uses imported input wait semantics" do
     expect(described_class.input_ports("mode" => "append", "number_inputs" => 3)).to all(
       include(required: false),
     )

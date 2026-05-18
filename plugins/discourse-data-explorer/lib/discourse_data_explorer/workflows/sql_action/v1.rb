@@ -153,14 +153,13 @@ module DiscourseDataExplorer
         end
 
         def execute(exec_ctx)
-          item = exec_ctx.input_items.first || { "json" => {} }
-          config = exec_ctx.get_node_parameters(item)
+          config = exec_ctx.get_node_parameters(0)
           operation = config.fetch("operation") { "queries" }
 
           if operation == "queries"
             execute_saved_query(config)
           else
-            execute_raw_sql(config, item, exec_ctx)
+            execute_raw_sql(config, exec_ctx)
           end
         end
 
@@ -188,7 +187,7 @@ module DiscourseDataExplorer
           rows_to_items(result[:pg_result])
         end
 
-        def execute_raw_sql(config, item, exec_ctx)
+        def execute_raw_sql(config, exec_ctx)
           sql = config["query"].to_s
           if sql.blank?
             raise ArgumentError,
@@ -197,7 +196,7 @@ module DiscourseDataExplorer
 
           req_params = {}
           exec_ctx
-            .get_fixed_collection_rows("params", item)
+            .get_fixed_collection_rows("params", 0)
             .each do |param|
               req_params[param["name"].to_sym] = param["value"] if param["name"].present?
             end

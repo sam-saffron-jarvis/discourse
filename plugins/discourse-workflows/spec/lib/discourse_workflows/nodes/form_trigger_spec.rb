@@ -2,7 +2,7 @@
 
 RSpec.describe DiscourseWorkflows::Nodes::FormTrigger::V1 do
   describe "#output" do
-    it "returns n8n-compatible form data and metadata" do
+    it "returns compatible form data and metadata" do
       trigger =
         described_class.new(
           form_data: {

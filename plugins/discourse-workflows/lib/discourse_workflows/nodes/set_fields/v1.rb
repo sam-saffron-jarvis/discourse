@@ -89,14 +89,16 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          map_input_items(exec_ctx) { |config, item| process(exec_ctx, item, config) }
+          map_input_items(exec_ctx) do |config, item, item_index|
+            process(exec_ctx, item, item_index, config)
+          end
         end
 
         private
 
-        def process(exec_ctx, item, config)
+        def process(exec_ctx, item, item_index, config)
           item_json = item.fetch("json") { {} }
-          options = exec_ctx.get_collection_options("options", item)
+          options = exec_ctx.get_collection_options("options", item_index)
           result = included_fields(item_json, config, options)
 
           if config["mode"] == "raw"
@@ -104,7 +106,7 @@ module DiscourseWorkflows
           else
             apply_assignments(
               result,
-              exec_ctx.get_fixed_collection_rows("assignments", item, group: "assignments"),
+              exec_ctx.get_fixed_collection_rows("assignments", item_index, group: "assignments"),
               options,
             )
           end

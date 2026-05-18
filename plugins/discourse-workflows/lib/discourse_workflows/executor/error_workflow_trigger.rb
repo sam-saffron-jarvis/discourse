@@ -57,10 +57,13 @@ module DiscourseWorkflows
             "retryOf" => nil,
             "error" => serialized_error(error),
             "lastNodeExecuted" => last_failed_step_node_name,
-            "mode" => n8n_execution_mode,
+            "mode" => compatible_execution_mode,
           }
         else
-          data["trigger"] = { "error" => serialized_error(error), "mode" => n8n_execution_mode }
+          data["trigger"] = {
+            "error" => serialized_error(error),
+            "mode" => compatible_execution_mode,
+          }
         end
 
         data
@@ -80,7 +83,7 @@ module DiscourseWorkflows
         serialized
       end
 
-      def n8n_execution_mode
+      def compatible_execution_mode
         return "error" if @execution_mode == :error_mode
         return "manual" if @execution_mode == :manual
 

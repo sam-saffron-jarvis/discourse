@@ -61,7 +61,7 @@ RSpec.describe DiscourseWorkflows::Workflow::ManualExecute do
           Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
         end
 
-        it "uses n8n-style mock error data" do
+        it "uses compatible mock error data" do
           result
 
           expect(result[:execution].trigger_data).to include(

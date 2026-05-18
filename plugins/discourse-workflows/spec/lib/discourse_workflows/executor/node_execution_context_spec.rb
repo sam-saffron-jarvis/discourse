@@ -2,13 +2,24 @@
 
 RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
   describe "#get_context" do
-    it "exposes only node-scoped mutable context to node implementations" do
-      ctx = described_class.new(input_items: [], resolver: nil, node_context: { "index" => 1 })
+    it "exposes mutable execution contexts to node implementations" do
+      ctx =
+        described_class.new(
+          input_items: [],
+          resolver: nil,
+          node_context: {
+            "index" => 1,
+          },
+          flow_context: {
+            "shared" => true,
+          },
+        )
 
       expect(ctx.get_context).to eq("index" => 1)
-      expect { ctx.get_context(:flow) }.to raise_error(
+      expect(ctx.get_context(:flow)).to eq("shared" => true)
+      expect { ctx.get_context(:global) }.to raise_error(
         ArgumentError,
-        "Unknown context scope: flow. Use :node",
+        "Unknown context scope: global. Use :node or :flow",
       )
     end
   end
@@ -17,7 +28,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     it "returns the public input context for node execution" do
       ctx =
         described_class.new(
-          input_items: [],
+          input_items: [{ "json" => { "username" => "item-user" } }],
           resolver: nil,
           node_context: {
             "no_items_left" => true,
@@ -29,7 +40,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
   end
 
   describe "#helpers" do
-    it "normalizes n8n-compatible items through execution helpers" do
+    it "normalizes runtime-compatible items through execution helpers" do
       ctx = described_class.new(input_items: [], resolver: nil)
 
       expect(ctx.helpers.normalize_items([{ json: { name: "Ada" }, pairedItem: 0 }])).to eq(
@@ -42,7 +53,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     it "returns a signed action id for interactive resume nodes" do
       ctx =
         described_class.new(
-          input_items: [],
+          input_items: [{ "json" => { "username" => "item-user" } }],
           resolver: nil,
           execution_id: 123,
           resume_token: "resume-token",
@@ -55,6 +66,16 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
   end
 
+  describe "#set_metadata" do
+    it "merges execution metadata with string keys" do
+      ctx = described_class.new(input_items: [], resolver: nil)
+
+      ctx.set_metadata(resumeFormUrl: "/resume")
+
+      expect(ctx.metadata).to eq("resumeFormUrl" => "/resume")
+    end
+  end
+
   describe "#get_node_parameters" do
     it "resolves $json expressions against the item passed in, not a cached first item" do
       config = { "value" => "={{ $json.x }}" }
@@ -64,14 +85,14 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
 
       ctx =
         described_class.new(
-          input_items: [],
+          input_items: [{ "json" => { "x" => "ITEM_ONE" } }, { "json" => { "x" => "ITEM_TWO" } }],
           parameters: config,
           property_schema: schema,
           resolver: resolver,
         )
 
-      first = ctx.get_node_parameters({ "json" => { "x" => "ITEM_ONE" } })
-      second = ctx.get_node_parameters({ "json" => { "x" => "ITEM_TWO" } })
+      first = ctx.get_node_parameters(0)
+      second = ctx.get_node_parameters(1)
 
       expect(first).to eq("value" => "ITEM_ONE")
       expect(second).to eq("value" => "ITEM_TWO")
@@ -84,9 +105,12 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
   describe "#get_node_parameter" do
     it "resolves a nested parameter path against the current item" do
       ctx, resolver, sandbox =
-        build_parameter_context({ "outer" => { "inner" => "={{ $json.value }}" } })
+        build_parameter_context(
+          { "outer" => { "inner" => "={{ $json.value }}" } },
+          input_items: [{ "json" => { "value" => "resolved" } }],
+        )
 
-      value = ctx.get_node_parameter("outer.inner", { "json" => { "value" => "resolved" } })
+      value = ctx.get_node_parameter("outer.inner", 0)
 
       expect(value).to eq("resolved")
     ensure
@@ -97,7 +121,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     it "returns the default for a missing parameter path" do
       ctx, resolver, sandbox = build_parameter_context({ "outer" => {} })
 
-      value = ctx.get_node_parameter("outer.inner", { "json" => {} }, default: "default-value")
+      value = ctx.get_node_parameter("outer.inner", 0, default: "default-value")
 
       expect(value).to eq("default-value")
     ensure
@@ -109,7 +133,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx, resolver, sandbox =
         build_parameter_context({}, schema: { conditions: { ui: { control: :condition_builder } } })
 
-      value = ctx.get_node_parameter(:conditions, { "json" => {} })
+      value = ctx.get_node_parameter(:conditions, 0)
 
       expect(value).to eq(true)
     ensure
@@ -127,9 +151,10 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
               no_data_expression: true,
             },
           },
+          input_items: [{ "json" => { "value" => "resolved" } }],
         )
 
-      value = ctx.get_node_parameter("code", { "json" => { "value" => "resolved" } })
+      value = ctx.get_node_parameter("code", 0)
 
       expect(value).to eq("={{ $json.value }}")
     ensure
@@ -138,17 +163,14 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
 
     it "returns raw stored values when raw_expressions is requested" do
-      ctx, resolver, sandbox = build_parameter_context({ "message" => "={{ $json.value }}" })
-
-      resolved = ctx.get_node_parameter("message", { "json" => { "value" => "resolved" } })
-      raw =
-        ctx.get_node_parameter(
-          "message",
-          { "json" => { "value" => "resolved" } },
-          options: {
-            raw_expressions: true,
-          },
+      ctx, resolver, sandbox =
+        build_parameter_context(
+          { "message" => "={{ $json.value }}" },
+          input_items: [{ "json" => { "value" => "resolved" } }],
         )
+
+      resolved = ctx.get_node_parameter("message", 0)
+      raw = ctx.get_node_parameter("message", 0, options: { raw_expressions: true })
 
       expect(resolved).to eq("resolved")
       expect(raw).to eq("={{ $json.value }}")
@@ -158,10 +180,13 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
 
     it "coerces resolved values when an ensure_type is provided" do
-      ctx, resolver, sandbox = build_parameter_context({ "count" => "={{ $json.count }}" })
+      ctx, resolver, sandbox =
+        build_parameter_context(
+          { "count" => "={{ $json.count }}" },
+          input_items: [{ "json" => { "count" => "4" } }],
+        )
 
-      value =
-        ctx.get_node_parameter("count", { "json" => { "count" => "4" } }, ensure_type: :integer)
+      value = ctx.get_node_parameter("count", 0, ensure_type: :integer)
 
       expect(value).to eq(4)
     ensure
@@ -175,9 +200,10 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx, resolver, sandbox =
         build_parameter_context(
           { "params" => { "values" => [{ "name" => "user_id", "value" => "={{ $json.id }}" }] } },
+          input_items: [{ "json" => { "id" => 42 } }],
         )
 
-      rows = ctx.get_fixed_collection_rows("params", { "json" => { "id" => 42 } })
+      rows = ctx.get_fixed_collection_rows("params", 0)
 
       expect(rows).to eq([{ "name" => "user_id", "value" => 42 }])
     ensure
@@ -212,13 +238,10 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
               ],
             },
           },
+          input_items: [{ "json" => { "label" => "Name", "value" => "Ada" } }],
         )
 
-      rows =
-        ctx.get_fixed_collection_rows(
-          "columns",
-          { "json" => { "label" => "Name", "value" => "Ada" } },
-        )
+      rows = ctx.get_fixed_collection_rows("columns", 0)
 
       expect(rows).to eq([{ "header" => "={{ $json.label }}", "value" => "Ada" }])
     ensure
@@ -230,7 +253,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       default = [{ "name" => "fallback", "value" => "1" }]
       ctx, resolver, sandbox = build_parameter_context({})
 
-      rows = ctx.get_fixed_collection_rows("params", { "json" => {} }, default: default)
+      rows = ctx.get_fixed_collection_rows("params", 0, default: default)
 
       expect(rows).to eq(default)
     ensure
@@ -242,7 +265,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       default = [{ "name" => "fallback", "value" => "1" }]
       ctx, resolver, sandbox = build_parameter_context({ "params" => { "values" => [] } })
 
-      rows = ctx.get_fixed_collection_rows("params", { "json" => {} }, default: default)
+      rows = ctx.get_fixed_collection_rows("params", 0, default: default)
 
       expect(rows).to eq([])
     ensure
@@ -256,7 +279,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       ctx, resolver, sandbox =
         build_parameter_context({ "options" => { "ignore_conversion_errors" => "={{ true }}" } })
 
-      options = ctx.get_collection_options("options", { "json" => {} })
+      options = ctx.get_collection_options("options", 0)
 
       expect(options).to eq("ignore_conversion_errors" => true)
     ensure
@@ -268,7 +291,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       default = { "dot_notation" => true }
       ctx, resolver, sandbox = build_parameter_context({})
 
-      options = ctx.get_collection_options("options", { "json" => {} }, default: default)
+      options = ctx.get_collection_options("options", 0, default: default)
 
       expect(options).to eq(default)
     ensure
@@ -277,7 +300,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
   end
 
-  describe "#get_credential" do
+  describe "#get_credentials" do
     fab!(:admin)
     fab!(:credential) do
       Fabricate(
@@ -296,7 +319,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       resolver = DiscourseWorkflows::ExpressionResolver.new(resolver_context, sandbox: sandbox)
       ctx =
         described_class.new(
-          input_items: [],
+          input_items: [{ "json" => { "username" => "item-user" } }],
           parameters: {
             "authentication" => "basic_auth",
           },
@@ -310,8 +333,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
           resolver: resolver,
         )
 
-      resolved =
-        ctx.with_item({ "json" => { "username" => "item-user" } }) { ctx.get_credential("auth") }
+      resolved = ctx.get_credentials("auth", 0)
 
       expect(resolved).to eq("user" => "item-user", "password" => "static-password")
     ensure
@@ -321,12 +343,13 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
 
     it "allows access when the current workflow node references the credential" do
       workflow = workflow_with_credential_dependency(credential)
-      ctx, resolver, sandbox = build_credential_context(workflow: workflow)
+      ctx, resolver, sandbox =
+        build_credential_context(
+          workflow: workflow,
+          input_items: [{ "json" => { "username" => "dependency-user" } }],
+        )
 
-      resolved =
-        ctx.with_item({ "json" => { "username" => "dependency-user" } }) do
-          ctx.get_credential("auth")
-        end
+      resolved = ctx.get_credentials("auth", 0)
 
       expect(resolved).to eq("user" => "dependency-user", "password" => "static-password")
     ensure
@@ -339,7 +362,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       DiscourseWorkflows::WorkflowDependency.where(workflow_id: workflow.id).delete_all
       ctx, resolver, sandbox = build_credential_context(workflow: workflow)
 
-      expect { ctx.get_credential("auth") }.to raise_error(Discourse::InvalidAccess)
+      expect { ctx.get_credentials("auth") }.to raise_error(Discourse::InvalidAccess)
     ensure
       resolver&.dispose
       sandbox&.dispose
@@ -356,7 +379,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
           },
         )
 
-      expect { ctx.get_credential("other") }.to raise_error(Discourse::InvalidAccess)
+      expect { ctx.get_credentials("other") }.to raise_error(Discourse::InvalidAccess)
     ensure
       resolver&.dispose
       sandbox&.dispose
@@ -382,7 +405,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
           resolver: resolver,
         )
 
-      expect { ctx.get_credential("auth") }.to raise_error(Discourse::InvalidAccess)
+      expect { ctx.get_credentials("auth") }.to raise_error(Discourse::InvalidAccess)
     ensure
       resolver&.dispose
       sandbox&.dispose
@@ -676,14 +699,15 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
   def build_credential_context(
     workflow: nil,
     configuration: { "authentication" => "basic_auth" },
-    credentials: { "auth" => { "id" => credential.id, "credential_type" => "basic_auth" } }
+    credentials: { "auth" => { "id" => credential.id, "credential_type" => "basic_auth" } },
+    input_items: []
   )
     resolver_context = { "$json" => {} }
     sandbox = DiscourseWorkflows::JsSandbox.new(resolver_context)
     resolver = DiscourseWorkflows::ExpressionResolver.new(resolver_context, sandbox: sandbox)
     ctx =
       described_class.new(
-        input_items: [],
+        input_items: input_items,
         parameters: configuration,
         credentials: credentials,
         credential_schema: DiscourseWorkflows::Nodes::HttpRequest::V1.credentials,
@@ -694,14 +718,19 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     [ctx, resolver, sandbox]
   end
 
-  def build_parameter_context(parameters = nil, schema: {}, **keyword_parameters)
+  def build_parameter_context(
+    parameters = nil,
+    schema: {},
+    input_items: [{ "json" => {} }],
+    **keyword_parameters
+  )
     parameters ||= keyword_parameters
     resolver_context = { "$json" => {} }
     sandbox = DiscourseWorkflows::JsSandbox.new(resolver_context)
     resolver = DiscourseWorkflows::ExpressionResolver.new(resolver_context, sandbox: sandbox)
     ctx =
       described_class.new(
-        input_items: [],
+        input_items: input_items,
         parameters: parameters,
         property_schema: schema,
         resolver: resolver,

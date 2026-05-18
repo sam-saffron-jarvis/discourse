@@ -593,7 +593,7 @@ RSpec.describe DiscourseWorkflows::Executor do
         DiscourseWorkflows::Registry.reset_indexes!
       end
 
-      it "accepts n8n-style positional output arrays" do
+      it "accepts positional output arrays" do
         graph =
           build_workflow_graph do |g|
             g.node "trigger-1", "trigger:topic_closed"

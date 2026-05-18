@@ -73,8 +73,7 @@ if defined?(DiscourseWorkflows)
           end
 
           def execute(exec_ctx)
-            item = exec_ctx.input_items.first || { "json" => {} }
-            config = exec_ctx.get_node_parameters(item)
+            config = exec_ctx.get_node_parameters(0)
 
             message_text = config.fetch("message")
             approve_label =

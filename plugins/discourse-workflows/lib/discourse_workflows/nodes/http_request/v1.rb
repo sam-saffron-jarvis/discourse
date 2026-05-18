@@ -174,27 +174,25 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           items =
-            exec_ctx.input_items.flat_map do |item|
-              exec_ctx.with_item(item) do
-                config = exec_ctx.get_node_parameters(item)
-                result = process(config, item, exec_ctx)
-                wrap_result(result, paired_item: exec_ctx.paired_item_for(item))
-              end
+            exec_ctx.input_items.flat_map.with_index do |item, item_index|
+              config = exec_ctx.get_node_parameters(item_index)
+              result = process(config, item_index, exec_ctx)
+              wrap_result(result, paired_item: exec_ctx.paired_item_for(item))
             end
           [items]
         end
 
         private
 
-        def process(config, item, exec_ctx)
+        def process(config, item_index, exec_ctx)
           method = config.fetch("method") { "GET" }.downcase.to_sym
-          headers = normalize_headers(exec_ctx.get_fixed_collection_rows("headers", item))
+          headers = normalize_headers(exec_ctx.get_fixed_collection_rows("headers", item_index))
           body =
             build_body(
               method,
               config,
               headers,
-              form_params: exec_ctx.get_fixed_collection_rows("body_form", item),
+              form_params: exec_ctx.get_fixed_collection_rows("body_form", item_index),
             )
           log_request(exec_ctx.log, method, config["url"], headers, body)
           response =
@@ -203,8 +201,12 @@ module DiscourseWorkflows
               url: config["url"],
               headers: headers,
               body: body,
+              item_index: item_index,
               options:
-                request_options(config, exec_ctx.get_fixed_collection_rows("query_params", item)),
+                request_options(
+                  config,
+                  exec_ctx.get_fixed_collection_rows("query_params", item_index),
+                ),
             )
           if full_response?(config)
             {

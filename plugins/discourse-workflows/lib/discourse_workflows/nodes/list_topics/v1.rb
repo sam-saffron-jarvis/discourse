@@ -43,8 +43,7 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          item = exec_ctx.input_items.first || { "json" => {} }
-          config = exec_ctx.get_node_parameters(item)
+          config = exec_ctx.get_node_parameters(0)
 
           query = config["query"]
           limit = [[Integer(config.fetch("limit") { DEFAULT_LIMIT }), 1].max, MAX_LIMIT].min

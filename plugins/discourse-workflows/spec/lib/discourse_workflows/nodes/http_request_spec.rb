@@ -323,6 +323,58 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
         result = execute_node(configuration: config, item: item)
         expect(result).to eq("ok" => true)
       end
+
+      it "resolves credential expressions against each input item" do
+        credential.update!(
+          data:
+            DiscourseWorkflows::CredentialEncryptor.encrypt(
+              { "user" => "={{ $json.username }}", "password" => "api_pass" },
+            ),
+        )
+
+        stub_request(:get, "https://api.example.com/data").with(
+          headers: {
+            "Authorization" => "Basic #{Base64.strict_encode64("alice:api_pass")}",
+          },
+        ).to_return(
+          status: 200,
+          body: { user: "alice" }.to_json,
+          headers: {
+            "content-type" => "application/json",
+          },
+        )
+        stub_request(:get, "https://api.example.com/data").with(
+          headers: {
+            "Authorization" => "Basic #{Base64.strict_encode64("bob:api_pass")}",
+          },
+        ).to_return(
+          status: 200,
+          body: { user: "bob" }.to_json,
+          headers: {
+            "content-type" => "application/json",
+          },
+        )
+
+        config = {
+          "method" => "GET",
+          "url" => "https://api.example.com/data",
+          "authentication" => "basic_auth",
+          "credentials" => {
+            "auth" => {
+              "id" => credential.id,
+              "credential_type" => "basic_auth",
+            },
+          },
+        }
+        input_items = [
+          { "json" => { "username" => "alice" } },
+          { "json" => { "username" => "bob" } },
+        ]
+
+        result = execute_node_output(configuration: config, input_items: input_items).first
+
+        expect(result.map { |output_item| output_item["json"]["user"] }).to eq(%w[alice bob])
+      end
     end
 
     context "with bearer_token authentication" do

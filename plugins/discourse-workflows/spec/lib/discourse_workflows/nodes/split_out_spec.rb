@@ -75,7 +75,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       expect(hints).to eq([])
     end
 
-    it "falls back to n8n field names when local fields are blank" do
+    it "falls back to imported field names when local fields are blank" do
       input = [{ "json" => { "items" => [1] } }]
       result = execute(input, "field" => "", "fieldToSplitOut" => "items")
 
@@ -140,7 +140,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       expect(result.first["json"]).to eq("company" => "Acme", "items" => 1)
     end
 
-    it "falls back to n8n fields to include when local fields are blank" do
+    it "falls back to imported fields to include when local fields are blank" do
       input = [{ "json" => { "company" => "Acme", "items" => [1] } }]
       result =
         execute(
@@ -221,7 +221,7 @@ RSpec.describe DiscourseWorkflows::Nodes::SplitOut::V1 do
       expect(result[0]["json"]).to have_key("result")
     end
 
-    it "falls back to n8n destination field names when local destination is blank" do
+    it "falls back to imported destination field names when local destination is blank" do
       input = [{ "json" => { "items" => [1] } }]
       result =
         execute(

@@ -38,7 +38,11 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          exec_ctx.input_items.partition { |item| exec_ctx.get_node_parameter(:conditions, item) }
+          exec_ctx
+            .input_items
+            .each_with_index
+            .partition { |_item, item_index| exec_ctx.get_node_parameter(:conditions, item_index) }
+            .map { |items| items.map(&:first) }
         end
       end
     end

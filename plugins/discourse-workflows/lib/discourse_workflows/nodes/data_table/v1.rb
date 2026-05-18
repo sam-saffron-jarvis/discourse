@@ -156,7 +156,7 @@ module DiscourseWorkflows
 
         def execute(exec_ctx)
           item = exec_ctx.input_items.first || { "json" => {} }
-          config = exec_ctx.get_node_parameters(item)
+          config = exec_ctx.get_node_parameters(0)
 
           [Array.wrap(execute_with_config(config, item, exec_ctx))]
         end

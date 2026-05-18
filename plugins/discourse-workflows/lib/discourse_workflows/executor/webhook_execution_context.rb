@@ -64,9 +64,8 @@ module DiscourseWorkflows
         @snapshot.node_has_reachable_downstream_of_type?(@node_id, type)
       end
 
-      def resolve(value, item = nil)
-        item ||= input_items.first || { "json" => {} }
-        @node_execution_context.with_item(item) { @resolver.resolve(value) }
+      def resolve(value, item_index = 0)
+        @node_execution_context.evaluate_expression(value, item_index)
       end
 
       def dispose

@@ -283,7 +283,7 @@ module DiscourseWorkflows
       rules = CollectionParameters.rows(configuration, :rules)
       return rules if rules.present?
 
-      Array.wrap(configuration.dig(:rule, :interval)).map { |rule| normalize_n8n_rule(rule) }
+      Array.wrap(configuration.dig(:rule, :interval)).map { |rule| normalize_interval_rule(rule) }
     end
 
     def valid_rule?(rule)
@@ -491,7 +491,7 @@ module DiscourseWorkflows
       valid_timezone?(timezone) ? timezone : default_timezone
     end
 
-    def normalize_n8n_rule(rule)
+    def normalize_interval_rule(rule)
       rule = rule.with_indifferent_access
       return rule if rule[:field].blank?
 

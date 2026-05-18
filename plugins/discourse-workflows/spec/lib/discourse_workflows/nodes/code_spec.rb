@@ -37,7 +37,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
   end
 
   describe "#execute" do
-    it "defaults to runOnceForAllItems like n8n" do
+    it "defaults to runOnceForAllItems" do
       parameters = { "code" => "return $input.all();" }
       action = described_class.new(parameters: parameters)
       result =
@@ -151,7 +151,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
       expect(result.first["pairedItem"]).to eq("item" => 0)
     end
 
-    it "preserves n8n item-shaped return values" do
+    it "preserves item-shaped return values" do
       result =
         execute_code(
           "return { json: { name: $json.name }, pairedItem: 0 };",
@@ -192,7 +192,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
       expect(result.first["json"]["item"]["json"]["name"]).to eq("Alice")
     end
 
-    it "exposes the n8n global item alias in per-item mode" do
+    it "exposes the global item alias in per-item mode" do
       result = execute_code("return item;", items: [{ "json" => { "name" => "Alice" } }])
 
       expect(result.first["json"]["name"]).to eq("Alice")
@@ -400,25 +400,6 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
       )
     end
 
-    it "uses a single sandbox for all input items" do
-      items = (1..5).map { |i| { "json" => { "x" => i } } }
-      parameters = { "code" => "return { val: $json.x * 2 };", "mode" => "runOnceForEachItem" }
-      action = described_class.new(parameters: parameters)
-      exec_ctx = build_exec_ctx(items, parameters: parameters)
-      sandbox_calls = 0
-      original_start_job = exec_ctx.method(:start_job)
-
-      exec_ctx.define_singleton_method(:start_job) do |*args, **kwargs|
-        sandbox_calls += 1
-        original_start_job.call(*args, **kwargs)
-      end
-
-      result = action.execute(exec_ctx)[0]
-
-      expect(sandbox_calls).to eq(1)
-      expect(result.map { |r| r["json"]["val"] }).to eq([2, 4, 6, 8, 10])
-    end
-
     it "raises on invalid JavaScript" do
       expect { execute_code("this is not valid js {{{") }.to raise_error(
         DiscourseWorkflows::JsSandbox::SandboxError,
@@ -437,7 +418,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
         expect(result.map { |r| r["json"]["doubled"] }).to eq([2, 4, 6])
       end
 
-      it "exposes n8n all-items input helpers" do
+      it "exposes all-items input helpers" do
         items = [{ "json" => { "a" => 1 } }, { "json" => { "b" => 2 } }]
         result =
           execute_all(
@@ -448,7 +429,7 @@ RSpec.describe DiscourseWorkflows::Nodes::Code::V1 do
         expect(result.first["json"]).to include("all" => 2, "first" => 1, "last" => 2)
       end
 
-      it "exposes the n8n global items alias in all-items mode" do
+      it "exposes the global items alias in all-items mode" do
         result =
           execute_all(
             "return { count: items.length };",

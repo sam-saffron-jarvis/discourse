@@ -24,7 +24,6 @@ module DiscourseWorkflows
             field: {
               type: :string,
               required: true,
-              no_data_expression: true,
             },
             include: {
               type: :options,
@@ -49,8 +48,8 @@ module DiscourseWorkflows
         def execute(exec_ctx)
           field_tracker = {}
           items =
-            exec_ctx.input_items.flat_map do |item|
-              config = split_config(exec_ctx.get_node_parameters(item))
+            exec_ctx.input_items.flat_map.with_index do |item, item_index|
+              config = split_config(exec_ctx.get_node_parameters(item_index))
 
               split_item(item, config, exec_ctx.paired_item_for(item), field_tracker)
             end
@@ -277,9 +276,12 @@ module DiscourseWorkflows
           field_tracker.each do |field, found|
             next if found
 
-            exec_ctx.add_execution_hint(
-              I18n.t("discourse_workflows.hints.split_out.field_not_found", field: field),
-              location: "outputPane",
+            exec_ctx.add_execution_hints(
+              {
+                message:
+                  I18n.t("discourse_workflows.hints.split_out.field_not_found", field: field),
+                location: "outputPane",
+              },
             )
           end
         end

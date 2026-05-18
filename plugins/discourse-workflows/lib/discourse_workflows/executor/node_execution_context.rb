@@ -4,6 +4,9 @@ module DiscourseWorkflows
   class Executor
     class NodeExecutionContext
       MISSING = Object.new.freeze
+      RUN_CODE = "runCode"
+      RUN_ONCE_FOR_ALL_ITEMS = "runOnceForAllItems"
+      RUN_ONCE_FOR_EACH_ITEM = "runOnceForEachItem"
       JAVASCRIPT_UNDEFINED =
         Object
           .new
@@ -25,6 +28,7 @@ module DiscourseWorkflows
                   :condition_details,
                   :log,
                   :execution_hints,
+                  :metadata,
                   :execution_id,
                   :resume_token,
                   :node_id,
@@ -83,6 +87,7 @@ module DiscourseWorkflows
         @condition_details = []
         @log = StepLog.new
         @execution_hints = []
+        @metadata = {}
         @waiting = false
         @waiting_until = nil
         @workflow_dependencies = workflow_dependencies
@@ -92,8 +97,10 @@ module DiscourseWorkflows
         case scope
         when :node
           @node_context
+        when :flow
+          @flow_context
         else
-          raise ArgumentError, "Unknown context scope: #{scope}. Use :node"
+          raise ArgumentError, "Unknown context scope: #{scope}. Use :node or :flow"
         end
       end
 
@@ -136,7 +143,7 @@ module DiscourseWorkflows
         JobResult.new(ok: false, result: nil, error: e)
       end
 
-      def get_node_parameter(path, item = nil, default: nil, ensure_type: nil, options: {})
+      def get_node_parameter(path, item_index = 0, default: nil, ensure_type: nil, options: {})
         path_str = path.to_s
         if raw_expressions?(options)
           raw_value = raw_parameter_path(path_str)
@@ -144,33 +151,31 @@ module DiscourseWorkflows
           return ensure_parameter_type(value, ensure_type, path_str)
         end
 
-        item ||= input_items.first || { "json" => {} }
-        with_item(item) do
+        with_item_index(item_index) do
           resolved = resolve_parameter_path(path_str)
           value = resolved.equal?(MISSING) ? default : resolved
           ensure_parameter_type(value, ensure_type, path_str)
         end
       end
 
-      def get_node_parameters(item = nil)
-        item ||= input_items.first || { "json" => {} }
-        with_item(item) { resolve_all_parameters }
+      def get_node_parameters(item_index = 0)
+        with_item_index(item_index) { resolve_all_parameters }
       end
 
       def get_fixed_collection_rows(
         path,
-        item,
+        item_index = 0,
         group: CollectionParameters::DEFAULT_GROUP,
         default: []
       )
-        value = get_node_parameter(path, item, default: MISSING)
+        value = get_node_parameter(path, item_index, default: MISSING)
         return default if value.equal?(MISSING)
 
         CollectionParameters.rows_from_value(value, group: group)
       end
 
-      def get_collection_options(path, item, default: {})
-        value = get_node_parameter(path, item, default: MISSING)
+      def get_collection_options(path, item_index = 0, default: {})
+        value = get_node_parameter(path, item_index, default: MISSING)
         return default if value.equal?(MISSING)
 
         value.is_a?(Hash) ? value : default
@@ -190,7 +195,7 @@ module DiscourseWorkflows
         declared_credential_slot?(slot) && credential_id_for(slot).present?
       end
 
-      def get_credential(slot)
+      def get_credentials(slot, item_index = 0)
         raise ArgumentError, "credential slot is required" if slot.blank?
 
         credential_id = credential_id_for(slot)
@@ -201,7 +206,7 @@ module DiscourseWorkflows
           raise Discourse::InvalidAccess
         end
 
-        @resolver.resolve_hash(credential.decrypted_data)
+        with_item_index(item_index) { @resolver.resolve_hash(credential.decrypted_data) }
       end
 
       def find_user(username: nil, id: nil)
@@ -220,8 +225,8 @@ module DiscourseWorkflows
         user
       end
 
-      def http_request(method:, url:, headers: {}, body: nil, options: {})
-        HttpClient.new(self).request(method:, url:, headers:, body:, options:)
+      def http_request(method:, url:, headers: {}, body: nil, options: {}, item_index: 0)
+        HttpClient.new(self, item_index).request(method:, url:, headers:, body:, options:)
       end
 
       def collect_errors!
@@ -241,16 +246,20 @@ module DiscourseWorkflows
         )
       end
 
-      def add_execution_hint(message, location: "outputPane")
-        @execution_hints << { "message" => message, "location" => location }
+      def set_metadata(metadata)
+        @metadata.merge!(metadata.deep_stringify_keys)
+      end
+
+      def add_execution_hints(*hints)
+        @execution_hints.concat(hints.map(&:deep_stringify_keys))
       end
 
       def waiting?
         @waiting
       end
 
-      def with_item(item)
-        @resolver.with_item(item, item_index: item_index_for(item)) { yield }
+      def evaluate_expression(expression, item_index = 0)
+        with_item_index(item_index) { @resolver.resolve(expression) }
       end
 
       def paired_item_for(item, input: 0)
@@ -261,6 +270,13 @@ module DiscourseWorkflows
       end
 
       private
+
+      def with_item_index(item_index = 0)
+        normalized_item_index = normalize_item_index(item_index)
+        item = input_items.fetch(normalized_item_index) { { "json" => {} } }
+
+        @resolver.with_item(item, item_index: normalized_item_index) { yield item }
+      end
 
       def ensure_data_table_access!(data_table_id)
         if @workflow && @node_id
@@ -301,34 +317,36 @@ module DiscourseWorkflows
         @sandbox_budget_tracker ||= DiscourseWorkflows::SandboxBudget.new(@flow_context)
       end
 
-      def run_javascript_job(settings, _item_index)
+      def run_javascript_job(settings, item_index)
+        item_index = normalize_item_index(item_index)
+
         case settings.fetch("nodeMode")
-        when DiscourseWorkflows::JsTaskRunnerSandbox::RUN_CODE
-          run_javascript_code(settings)
-        when DiscourseWorkflows::JsTaskRunnerSandbox::RUN_ONCE_FOR_ALL_ITEMS
-          run_javascript_for_all_items(settings)
-        when DiscourseWorkflows::JsTaskRunnerSandbox::RUN_ONCE_FOR_EACH_ITEM
+        when RUN_CODE
+          run_javascript_code(settings, item_index)
+        when RUN_ONCE_FOR_ALL_ITEMS
+          run_javascript_for_all_items(settings, item_index)
+        when RUN_ONCE_FOR_EACH_ITEM
           run_javascript_for_each_item(settings)
         else
           raise ArgumentError, "Unsupported JavaScript node mode: #{settings["nodeMode"]}"
         end
       end
 
-      def run_javascript_code(settings)
-        with_javascript_sandbox do |sandbox|
+      def run_javascript_code(settings, item_index)
+        with_javascript_sandbox(item_index:) do |sandbox|
           declare_additional_properties(sandbox, settings["additionalProperties"])
           raw_javascript_result(sandbox, settings.fetch("code"))
         end
       end
 
-      def run_javascript_for_all_items(settings)
-        with_javascript_sandbox do |sandbox|
+      def run_javascript_for_all_items(settings, item_index)
+        with_javascript_sandbox(item_index:) do |sandbox|
           setup_code_sandbox!(
             sandbox,
             input_items,
             @parameters,
             input_context,
-            item_alias: input_items.first || { "json" => {} },
+            item_alias: input_items.fetch(item_index) { input_items.first || { "json" => {} } },
           )
           declare_additional_properties(
             sandbox,
@@ -343,7 +361,7 @@ module DiscourseWorkflows
         start_index = chunk.fetch("startIndex") { 0 }.to_i
         end_index = start_index + chunk.fetch("count") { input_items.length }.to_i
 
-        with_javascript_sandbox do |sandbox|
+        with_javascript_sandbox(item_index: start_index) do |sandbox|
           setup_code_sandbox!(
             sandbox,
             input_items,
@@ -365,10 +383,10 @@ module DiscourseWorkflows
         end
       end
 
-      def with_javascript_sandbox(capture_logs: true)
+      def with_javascript_sandbox(capture_logs: true, item_index: 0)
         sandbox =
           JsSandbox.new(
-            @resolver_context,
+            resolver_context_for_item_index(item_index),
             user: @user,
             vars: @vars,
             capture_logs: capture_logs,
@@ -378,6 +396,15 @@ module DiscourseWorkflows
       ensure
         @log.merge(sandbox.log) if capture_logs && sandbox&.log
         sandbox&.dispose
+      end
+
+      def resolver_context_for_item_index(item_index)
+        item = input_items.fetch(item_index) { { "json" => {} } }
+        @resolver_context.merge(
+          "__input_item" => item,
+          "$json" => item.fetch("json") { {} },
+          "$itemIndex" => item_index,
+        )
       end
 
       def declare_additional_properties(sandbox, additional_properties)
@@ -512,6 +539,13 @@ module DiscourseWorkflows
         return match[1].to_i - 1 if match
 
         value.to_i
+      end
+
+      def normalize_item_index(item_index)
+        return 0 if item_index.nil?
+        return item_index if item_index.is_a?(Integer)
+
+        raise ArgumentError, "item_index must be an Integer"
       end
 
       def raw_expressions?(options)

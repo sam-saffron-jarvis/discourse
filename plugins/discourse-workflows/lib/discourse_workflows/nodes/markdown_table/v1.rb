@@ -55,9 +55,8 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          item = exec_ctx.input_items.first || { "json" => {} }
           headers, rows =
-            if exec_ctx.get_node_parameter("mapping_mode", item, default: "manual") == "auto"
+            if exec_ctx.get_node_parameter("mapping_mode", 0, default: "manual") == "auto"
               auto_table(exec_ctx.input_items)
             else
               configured_table(exec_ctx)
@@ -81,12 +80,11 @@ module DiscourseWorkflows
         end
 
         def configured_table(exec_ctx)
-          header_item = exec_ctx.input_items.first || { "json" => {} }
-          columns = exec_ctx.get_fixed_collection_rows("columns", header_item)
+          columns = exec_ctx.get_fixed_collection_rows("columns", 0)
           headers = columns.map { |c| c["header"].to_s }
           rows =
-            exec_ctx.input_items.map do |item|
-              resolved = exec_ctx.get_fixed_collection_rows("columns", item)
+            exec_ctx.input_items.each_with_index.map do |_item, item_index|
+              resolved = exec_ctx.get_fixed_collection_rows("columns", item_index)
               resolved.map { |c| format_cell(c["value"]) }
             end
           [headers, rows]
