@@ -89,26 +89,31 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          map_input_items(exec_ctx) { |config, item| process(item, config) }
+          map_input_items(exec_ctx) { |config, item| process(exec_ctx, item, config) }
         end
 
         private
 
-        def process(item, config)
+        def process(exec_ctx, item, config)
           item_json = item.fetch("json") { {} }
-          result = included_fields(item_json, config)
+          options = exec_ctx.get_collection_options("options", item)
+          result = included_fields(item_json, config, options)
 
           if config["mode"] == "raw"
             result.merge(parse_json_fields(config))
           else
-            apply_assignments(result, config)
+            apply_assignments(
+              result,
+              exec_ctx.get_fixed_collection_rows("assignments", item, group: "assignments"),
+              options,
+            )
           end
         end
 
-        def included_fields(item_json, config)
+        def included_fields(item_json, config, options)
           return {} unless config.fetch("include_other_fields", true)
 
-          dot_notation = dot_notation?(config)
+          dot_notation = dot_notation?(options)
           fields =
             case config.fetch("include") { "all" }
             when "selected"
@@ -136,19 +141,17 @@ module DiscourseWorkflows
           parsed
         end
 
-        def apply_assignments(result, config)
-          dot_notation = dot_notation?(config)
-          ignore_errors = advanced_options(config).fetch("ignore_conversion_errors", false)
+        def apply_assignments(result, assignments, options)
+          dot_notation = dot_notation?(options)
+          ignore_errors = options.fetch("ignore_conversion_errors", false)
 
-          CollectionParameters
-            .assignments(config)
-            .each do |field|
-              key = field["name"].to_s
-              next if key.blank?
+          assignments.each do |field|
+            key = field["name"].to_s
+            next if key.blank?
 
-              value = cast_value(field["value"], field.fetch("type") { "string" }, ignore_errors)
-              set_field(result, key, value, dot_notation)
-            end
+            value = cast_value(field["value"], field.fetch("type") { "string" }, ignore_errors)
+            set_field(result, key, value, dot_notation)
+          end
 
           result
         end
@@ -173,12 +176,8 @@ module DiscourseWorkflows
           field_list.to_s.split(",").map(&:strip).reject(&:blank?)
         end
 
-        def advanced_options(config)
-          CollectionParameters.option_bag(config, "options")
-        end
-
-        def dot_notation?(config)
-          advanced_options(config).fetch("dot_notation", true)
+        def dot_notation?(options)
+          options.fetch("dot_notation", true)
         end
 
         def cast_value(value, type, ignore_errors)

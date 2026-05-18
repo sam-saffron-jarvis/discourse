@@ -90,12 +90,12 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          map_input_items(exec_ctx) { |config| process(config) }
+          map_input_items(exec_ctx) { |config, item| process(exec_ctx, item, config) }
         end
 
         private
 
-        def process(config)
+        def process(exec_ctx, item, config)
           response_type = config.fetch("response_type") { "json" }
           status_code = (config["status_code"].presence || DEFAULT_STATUS_CODES[response_type]).to_i
           status_code = DEFAULT_STATUS_CODES[response_type] if response_type == "redirect"
@@ -105,16 +105,18 @@ module DiscourseWorkflows
             status_code: status_code,
             redirect_url: config["redirect_url"],
             allowed_redirect_domains:
-              normalize_allowed_redirect_domains(config["allowed_redirect_domains"]),
+              normalize_allowed_redirect_domains(
+                exec_ctx.get_fixed_collection_rows("allowed_redirect_domains", item),
+              ),
             response_body: config["response_body"],
-            headers: normalize_headers(config["headers"]),
+            headers: normalize_headers(exec_ctx.get_fixed_collection_rows("headers", item)),
           }
         end
 
-        def normalize_allowed_redirect_domains(domains_config)
-          CollectionParameters
-            .rows_from_value(domains_config)
-            .filter_map { |domain_config| domain_config["domain"].to_s.strip.downcase.presence }
+        def normalize_allowed_redirect_domains(domain_rows)
+          domain_rows.filter_map do |domain_config|
+            domain_config["domain"].to_s.strip.downcase.presence
+          end
         end
       end
     end

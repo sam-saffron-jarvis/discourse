@@ -90,7 +90,7 @@ module DiscourseWorkflows
           items =
             case type
             when "simple"
-              sort_simple(exec_ctx.input_items, config)
+              sort_simple(exec_ctx, item)
             when "random"
               sort_random(exec_ctx.input_items)
             when "code"
@@ -103,11 +103,11 @@ module DiscourseWorkflows
 
         private
 
-        def sort_simple(input_items, config)
-          sort_fields = CollectionParameters.rows(config, "sort_fields")
-          return input_items.dup if sort_fields.blank?
+        def sort_simple(exec_ctx, item)
+          sort_fields = exec_ctx.get_fixed_collection_rows("sort_fields", item)
+          return exec_ctx.input_items.dup if sort_fields.blank?
 
-          input_items.sort { |a, b| compare_items(a, b, sort_fields) }
+          exec_ctx.input_items.sort { |a, b| compare_items(a, b, sort_fields) }
         end
 
         def compare_items(a, b, sort_fields)

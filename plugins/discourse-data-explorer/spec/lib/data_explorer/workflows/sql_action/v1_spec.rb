@@ -20,6 +20,26 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
         expect(result["username"]).to eq(user.username)
       end
 
+      it "resolves named params against the current input item" do
+        result =
+          execute_node(
+            configuration: {
+              "operation" => "raw",
+              "query" => "SELECT username FROM users WHERE id = :user_id",
+              "params" => {
+                "values" => [{ "name" => "user_id", "value" => "={{ $json.user_id }}" }],
+              },
+            },
+            item: {
+              "json" => {
+                "user_id" => user.id,
+              },
+            },
+          )
+
+        expect(result["username"]).to eq(user.username)
+      end
+
       it "raises when no query is provided" do
         expect {
           execute_node(configuration: { "operation" => "raw", "query" => "" })

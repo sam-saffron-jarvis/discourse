@@ -3,6 +3,8 @@
 module DiscourseWorkflows
   class Executor
     class NodeExecutionContext
+      MISSING = Object.new.freeze
+
       attr_reader :user,
                   :vars,
                   :expression_errors,
@@ -108,14 +110,35 @@ module DiscourseWorkflows
         sandbox&.dispose
       end
 
-      def get_parameter(name, item)
-        name_str = name.to_s
-        schema = @property_schema[name.to_sym] || @property_schema[name_str]
-        with_item(item) { resolve_parameter(name_str, schema) }
+      def get_parameter(path, item, default: nil)
+        path_str = path.to_s
+        with_item(item) do
+          resolved = resolve_parameter_path(path_str)
+          resolved.equal?(MISSING) ? default : resolved
+        end
       end
 
       def get_parameters(item)
         with_item(item) { resolve_all_parameters }
+      end
+
+      def get_fixed_collection_rows(
+        path,
+        item,
+        group: CollectionParameters::DEFAULT_GROUP,
+        default: []
+      )
+        value = get_parameter(path, item, default: MISSING)
+        return default if value.equal?(MISSING)
+
+        CollectionParameters.rows_from_value(value, group: group)
+      end
+
+      def get_collection_options(path, item, default: {})
+        value = get_parameter(path, item, default: MISSING)
+        return default if value.equal?(MISSING)
+
+        value.is_a?(Hash) ? value : default
       end
 
       def data_table(id)
@@ -284,7 +307,7 @@ module DiscourseWorkflows
       end
 
       def resolve_parameter(name, schema)
-        if schema.is_a?(Hash) && schema.dig(:ui, :control) == :condition_builder
+        if condition_builder_schema?(schema)
           conditions = @parameters.fetch("conditions") { [] }
           combinator = @parameters.fetch("combinator") { "and" }
           options = @parameters.fetch("options") { {} }
@@ -293,8 +316,58 @@ module DiscourseWorkflows
           @condition_details.concat(result["details"])
           result["passed"]
         else
-          @resolver.resolve(@parameters[name])
+          resolve_parameter_value(@parameters[name])
         end
+      end
+
+      def resolve_parameter_value(value)
+        case value
+        when Hash
+          @resolver.resolve_hash(value)
+        when Array
+          value.map { |entry| resolve_parameter_value(entry) }
+        else
+          @resolver.resolve(value)
+        end
+      end
+
+      def resolve_parameter_path(path)
+        segments = path.split(".").reject(&:blank?)
+        return MISSING if segments.empty?
+
+        name = segments.first
+        schema = @property_schema[name.to_sym] || @property_schema[name]
+        if !@parameters.key?(name)
+          return resolve_parameter(name, schema) if condition_builder_schema?(schema)
+
+          return MISSING
+        end
+
+        resolved = resolve_parameter(name, schema)
+        return resolved if segments.one?
+
+        dig_parameter_path(resolved, segments.drop(1))
+      end
+
+      def dig_parameter_path(value, segments)
+        segments.reduce(value) do |current, segment|
+          case current
+          when Hash
+            return MISSING unless current.key?(segment)
+
+            current[segment]
+          when Array
+            return MISSING unless segment.match?(/\A\d+\z/)
+
+            current.fetch(segment.to_i) { return MISSING }
+          else
+            return MISSING
+          end
+        end
+      end
+
+      def condition_builder_schema?(schema)
+        schema.is_a?(Hash) && schema.dig(:ui, :control) == :condition_builder
       end
 
       def resolve_all_parameters

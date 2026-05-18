@@ -160,7 +160,7 @@ module DiscourseDataExplorer
           if operation == "queries"
             execute_saved_query(config)
           else
-            execute_raw_sql(config)
+            execute_raw_sql(config, item, exec_ctx)
           end
         end
 
@@ -188,7 +188,7 @@ module DiscourseDataExplorer
           rows_to_items(result[:pg_result])
         end
 
-        def execute_raw_sql(config)
+        def execute_raw_sql(config, item, exec_ctx)
           sql = config["query"].to_s
           if sql.blank?
             raise ArgumentError,
@@ -196,8 +196,8 @@ module DiscourseDataExplorer
           end
 
           req_params = {}
-          DiscourseWorkflows::CollectionParameters
-            .rows(config, "params")
+          exec_ctx
+            .get_fixed_collection_rows("params", item)
             .each do |param|
               req_params[param["name"].to_sym] = param["value"] if param["name"].present?
             end

@@ -63,7 +63,7 @@ module DiscourseWorkflows
             if @configuration["mapping_mode"] == "auto"
               auto_table(exec_ctx.input_items)
             else
-              configured_table(exec_ctx, CollectionParameters.rows(@configuration, "columns"))
+              configured_table(exec_ctx)
             end
 
           return [[wrap({ "markdown" => "" })]] if headers.empty?
@@ -83,11 +83,13 @@ module DiscourseWorkflows
           [headers, rows]
         end
 
-        def configured_table(exec_ctx, columns)
+        def configured_table(exec_ctx)
+          header_item = exec_ctx.input_items.first || { "json" => {} }
+          columns = exec_ctx.get_fixed_collection_rows("columns", header_item)
           headers = columns.map { |c| c["header"].to_s }
           rows =
             exec_ctx.input_items.map do |item|
-              resolved = CollectionParameters.rows(exec_ctx.get_parameters(item), "columns")
+              resolved = exec_ctx.get_fixed_collection_rows("columns", item)
               resolved.map { |c| format_cell(c["value"]) }
             end
           [headers, rows]

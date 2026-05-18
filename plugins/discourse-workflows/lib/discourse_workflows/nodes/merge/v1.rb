@@ -183,7 +183,9 @@ module DiscourseWorkflows
         )
 
         def execute(exec_ctx)
-          config = exec_ctx.get_parameters({ "json" => {} })
+          empty_item = { "json" => {} }
+          config = exec_ctx.get_parameters(empty_item)
+          fields_to_match = exec_ctx.get_fixed_collection_rows("fields_to_match", empty_item)
           @input_item_indexes = item_indexes_by_input(exec_ctx.inputs)
 
           items =
@@ -193,7 +195,7 @@ module DiscourseWorkflows
             when "choose_branch"
               choose_branch(two_inputs(exec_ctx), config)
             when "combine"
-              combine(two_inputs(exec_ctx), config)
+              combine(two_inputs(exec_ctx), config, fields_to_match)
             else
               exec_ctx.input_items("main")
             end
@@ -231,14 +233,14 @@ module DiscourseWorkflows
           selected_input_index(config) == 0 ? inputs[0] : inputs[1]
         end
 
-        def combine(inputs, config)
+        def combine(inputs, config, fields_to_match)
           case config.fetch("combine_by") { "matching_fields" }
           when "position"
             combine_by_position(inputs, config)
           when "all"
             combine_all(inputs, config)
           else
-            combine_by_fields(inputs, config)
+            combine_by_fields(inputs, config, fields_to_match)
           end
         end
 
@@ -267,11 +269,11 @@ module DiscourseWorkflows
           end
         end
 
-        def combine_by_fields(inputs, config)
+        def combine_by_fields(inputs, config, fields_to_match)
           input_1, input_2 = inputs
           join_mode = config.fetch("join_mode") { "keep_matches" }
           output_data_from = config.fetch("output_data_from") { "both" }
-          fields = match_fields(config)
+          fields = match_fields(fields_to_match)
           validate_match_fields!(fields)
           if input_1.blank? || input_2.blank?
             return combine_by_fields_with_empty_input(input_1, input_2, join_mode, output_data_from)
@@ -316,20 +318,17 @@ module DiscourseWorkflows
           end
         end
 
-        def match_fields(config)
-          CollectionParameters
-            .rows(config, "fields_to_match")
-            .map
-            .with_index do |field, index|
-              field_1 = field["field_1"].presence || field["field1"].presence
-              field_2 = field["field_2"].presence || field["field2"].presence || field_1
-              if field_1.blank? || field_2.blank?
-                raise DiscourseWorkflows::NodeError,
-                      "Fields to match pair #{index + 1} must define both input fields"
-              end
-
-              [field_1, field_2]
+        def match_fields(fields_to_match)
+          fields_to_match.map.with_index do |field, index|
+            field_1 = field["field_1"].presence || field["field1"].presence
+            field_2 = field["field_2"].presence || field["field2"].presence || field_1
+            if field_1.blank? || field_2.blank?
+              raise DiscourseWorkflows::NodeError,
+                    "Fields to match pair #{index + 1} must define both input fields"
             end
+
+            [field_1, field_2]
+          end
         end
 
         def validate_match_fields!(fields)

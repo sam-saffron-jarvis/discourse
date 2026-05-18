@@ -315,6 +315,7 @@ module DiscourseWorkflows
         execution_id: @store.execution&.id,
         resume_token: @context.resume_token,
         node_id: node.id.to_s,
+        node_identifier: node.type,
         flow_context: @context.context,
         resolver_context: resolver_ctx,
         workflow_dependencies: preloaded_workflow_dependencies,

@@ -179,7 +179,7 @@ module DiscourseWorkflows
             exec_ctx.input_items.flat_map do |item|
               exec_ctx.with_item(item) do
                 config = exec_ctx.get_parameters(item)
-                result = process(config, exec_ctx)
+                result = process(config, item, exec_ctx)
                 wrap_result(result, paired_item: exec_ctx.paired_item_for(item))
               end
             end
@@ -188,10 +188,16 @@ module DiscourseWorkflows
 
         private
 
-        def process(config, exec_ctx)
+        def process(config, item, exec_ctx)
           method = config.fetch("method") { "GET" }.downcase.to_sym
-          headers = normalize_headers(config["headers"])
-          body = build_body(method, config, headers)
+          headers = normalize_headers(exec_ctx.get_fixed_collection_rows("headers", item))
+          body =
+            build_body(
+              method,
+              config,
+              headers,
+              form_params: exec_ctx.get_fixed_collection_rows("body_form", item),
+            )
           log_request(exec_ctx.log, method, config["url"], headers, body)
           response =
             exec_ctx.http_request(
@@ -199,7 +205,8 @@ module DiscourseWorkflows
               url: config["url"],
               headers: headers,
               body: body,
-              options: request_options(config),
+              options:
+                request_options(config, exec_ctx.get_fixed_collection_rows("query_params", item)),
             )
           if full_response?(config)
             {
@@ -249,8 +256,10 @@ module DiscourseWorkflows
           end
         end
 
-        def request_options(config)
-          config.slice("authentication", "never_error", "query_params", "max_response_size_kb")
+        def request_options(config, query_params)
+          config.slice("authentication", "never_error", "max_response_size_kb").merge(
+            "query_params" => query_params,
+          )
         end
       end
     end

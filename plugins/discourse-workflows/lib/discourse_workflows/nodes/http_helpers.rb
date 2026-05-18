@@ -18,14 +18,14 @@ module DiscourseWorkflows
         CollectionParameters.rows(configuration, field_name, group: group)
       end
 
-      def build_body(method, config, headers)
+      def build_body(method, config, headers, form_params: nil)
         return nil if BODY_METHODS.exclude?(method)
 
         content_type = config.fetch("content_type") { "json" }
 
         case content_type
         when "form_urlencoded"
-          form_params = fixed_collection_rows(config, "body_form")
+          form_params ||= fixed_collection_rows(config, "body_form")
           return nil if form_params.blank?
           headers["Content-Type"] = "application/x-www-form-urlencoded"
           URI.encode_www_form(

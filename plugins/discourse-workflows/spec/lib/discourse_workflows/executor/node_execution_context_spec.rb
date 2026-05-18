@@ -77,6 +77,109 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
   end
 
+  describe "#get_parameter" do
+    it "resolves a nested parameter path against the current item" do
+      ctx, resolver, sandbox =
+        build_parameter_context({ "outer" => { "inner" => "={{ $json.value }}" } })
+
+      value = ctx.get_parameter("outer.inner", { "json" => { "value" => "resolved" } })
+
+      expect(value).to eq("resolved")
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "returns the default for a missing parameter path" do
+      ctx, resolver, sandbox = build_parameter_context({ "outer" => {} })
+
+      value = ctx.get_parameter("outer.inner", { "json" => {} }, default: "default-value")
+
+      expect(value).to eq("default-value")
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "evaluates condition-builder parameters even when the root key is absent" do
+      ctx, resolver, sandbox =
+        build_parameter_context({}, schema: { conditions: { ui: { control: :condition_builder } } })
+
+      value = ctx.get_parameter(:conditions, { "json" => {} })
+
+      expect(value).to eq(true)
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+  end
+
+  describe "#get_fixed_collection_rows" do
+    it "returns resolved fixed collection rows for the current item" do
+      ctx, resolver, sandbox =
+        build_parameter_context(
+          { "params" => { "values" => [{ "name" => "user_id", "value" => "={{ $json.id }}" }] } },
+        )
+
+      rows = ctx.get_fixed_collection_rows("params", { "json" => { "id" => 42 } })
+
+      expect(rows).to eq([{ "name" => "user_id", "value" => 42 }])
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "returns the default when the collection path is missing" do
+      default = [{ "name" => "fallback", "value" => "1" }]
+      ctx, resolver, sandbox = build_parameter_context({})
+
+      rows = ctx.get_fixed_collection_rows("params", { "json" => {} }, default: default)
+
+      expect(rows).to eq(default)
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "returns an empty array when the collection is present but empty" do
+      default = [{ "name" => "fallback", "value" => "1" }]
+      ctx, resolver, sandbox = build_parameter_context({ "params" => { "values" => [] } })
+
+      rows = ctx.get_fixed_collection_rows("params", { "json" => {} }, default: default)
+
+      expect(rows).to eq([])
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+  end
+
+  describe "#get_collection_options" do
+    it "returns resolved option bag values" do
+      ctx, resolver, sandbox =
+        build_parameter_context({ "options" => { "ignore_conversion_errors" => "={{ true }}" } })
+
+      options = ctx.get_collection_options("options", { "json" => {} })
+
+      expect(options).to eq("ignore_conversion_errors" => true)
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+
+    it "returns the default when the option bag path is missing" do
+      default = { "dot_notation" => true }
+      ctx, resolver, sandbox = build_parameter_context({})
+
+      options = ctx.get_collection_options("options", { "json" => {} }, default: default)
+
+      expect(options).to eq(default)
+    ensure
+      resolver&.dispose
+      sandbox&.dispose
+    end
+  end
+
   describe "#get_credential" do
     fab!(:admin)
     fab!(:credential) do
@@ -189,28 +292,41 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
     end
   end
 
-  describe "#data_table" do
+  describe "#helpers" do
     fab!(:admin)
     fab!(:data_table, :discourse_workflows_data_table)
 
-    it "returns a NodeProxy for the requested data table when config references it" do
+    it "returns a Data Table node proxy for the requested data table when config references it" do
       ctx =
         described_class.new(
           input_items: [],
           parameters: {
             "data_table_id" => data_table.id,
           },
+          node_identifier: "action:data_table",
           resolver: nil,
         )
 
-      expect(ctx.data_table(data_table.id)).to be_a(DiscourseWorkflows::DataTables::NodeProxy)
+      expect(ctx.helpers.get_data_table_proxy(data_table.id)).to be_a(
+        DiscourseWorkflows::DataTables::NodeProxy,
+      )
     end
 
     it "allows access when the current workflow node references the data table" do
       workflow = workflow_with_data_table_dependency(data_table)
       ctx = build_data_table_context(workflow: workflow)
 
-      expect(ctx.data_table(data_table.id)).to be_a(DiscourseWorkflows::DataTables::NodeProxy)
+      expect(ctx.helpers.get_data_table_proxy(data_table.id)).to be_a(
+        DiscourseWorkflows::DataTables::NodeProxy,
+      )
+    end
+
+    it "returns a Data Table aggregate proxy for allowed nodes" do
+      ctx = build_data_table_context
+
+      expect(ctx.helpers.get_data_table_aggregate_proxy).to be_a(
+        DiscourseWorkflows::DataTables::AggregateNodeProxy,
+      )
     end
 
     it "denies access when the current workflow node does not reference the data table" do
@@ -218,13 +334,17 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       DiscourseWorkflows::WorkflowDependency.where(workflow_id: workflow.id).delete_all
       ctx = build_data_table_context(workflow: workflow)
 
-      expect { ctx.data_table(data_table.id) }.to raise_error(Discourse::InvalidAccess)
+      expect { ctx.helpers.get_data_table_proxy(data_table.id) }.to raise_error(
+        Discourse::InvalidAccess,
+      )
     end
 
     it "does not reveal whether an unauthorized data table id exists" do
       ctx = build_data_table_context(configuration: { "data_table_id" => data_table.id + 1 })
 
-      expect { ctx.data_table(data_table.id) }.to raise_error(Discourse::InvalidAccess)
+      expect { ctx.helpers.get_data_table_proxy(data_table.id) }.to raise_error(
+        Discourse::InvalidAccess,
+      )
     end
 
     it "raises when the node is not configured to use the requested data table" do
@@ -234,10 +354,29 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
           parameters: {
             "data_table_id" => data_table.id + 1,
           },
+          node_identifier: "action:data_table",
           resolver: nil,
         )
 
-      expect { ctx.data_table(data_table.id) }.to raise_error(Discourse::InvalidAccess)
+      expect { ctx.helpers.get_data_table_proxy(data_table.id) }.to raise_error(
+        Discourse::InvalidAccess,
+      )
+    end
+
+    it "does not expose Data Table helpers to other node types" do
+      ctx =
+        described_class.new(
+          input_items: [],
+          parameters: {
+            "data_table_id" => data_table.id,
+          },
+          node_identifier: "action:badge",
+          resolver: nil,
+        )
+
+      expect { ctx.helpers.get_data_table_proxy(data_table.id) }.to raise_error(
+        Discourse::InvalidAccess,
+      )
     end
   end
 
@@ -415,6 +554,7 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
       resolver: nil,
       workflow: workflow,
       node_id: workflow ? "dt-1" : nil,
+      node_identifier: "action:data_table",
     )
   end
 
@@ -453,6 +593,21 @@ RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
         resolver: resolver,
         workflow: workflow,
         node_id: workflow ? "http-1" : nil,
+      )
+    [ctx, resolver, sandbox]
+  end
+
+  def build_parameter_context(parameters = nil, schema: {}, **keyword_parameters)
+    parameters ||= keyword_parameters
+    resolver_context = { "$json" => {} }
+    sandbox = DiscourseWorkflows::JsSandbox.new(resolver_context)
+    resolver = DiscourseWorkflows::ExpressionResolver.new(resolver_context, sandbox: sandbox)
+    ctx =
+      described_class.new(
+        input_items: [],
+        parameters: parameters,
+        property_schema: schema,
+        resolver: resolver,
       )
     [ctx, resolver, sandbox]
   end
