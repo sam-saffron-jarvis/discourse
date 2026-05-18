@@ -33,6 +33,7 @@ module DiscourseWorkflows
     def serializable_version(klass, version)
       output_schema = klass.output_schema
       properties = klass.property_schema
+      webhooks = serializable_webhooks(klass)
       description =
         klass
           .description
@@ -46,6 +47,7 @@ module DiscourseWorkflows
             outputs: klass.ports,
             properties: properties,
             outputSchema: output_schema,
+            webhooks: webhooks,
           )
 
       {
@@ -58,7 +60,7 @@ module DiscourseWorkflows
         properties: properties,
         outputSchema: output_schema,
         credentials: description[:credentials],
-        webhooks: description[:webhooks],
+        webhooks: webhooks,
         description: description,
         identifier: @identifier,
         kind: klass.kind,
@@ -69,6 +71,10 @@ module DiscourseWorkflows
         available: klass.available?,
         unavailable_reason_key: (klass.unavailable_reason_key unless klass.available?),
       }.compact
+    end
+
+    def serializable_webhooks(klass)
+      klass.webhooks.map { |webhook| webhook.except(:handler) }
     end
   end
 end

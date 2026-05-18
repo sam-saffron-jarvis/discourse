@@ -1,6 +1,18 @@
 # frozen_string_literal: true
 
 RSpec.describe DiscourseWorkflows::Executor::NodeExecutionContext do
+  describe "#get_context" do
+    it "exposes only node-scoped mutable context to node implementations" do
+      ctx = described_class.new(input_items: [], resolver: nil, node_context: { "index" => 1 })
+
+      expect(ctx.get_context).to eq("index" => 1)
+      expect { ctx.get_context(:flow) }.to raise_error(
+        ArgumentError,
+        "Unknown context scope: flow. Use :node",
+      )
+    end
+  end
+
   describe "#input_context" do
     it "returns the public input context for node execution" do
       ctx =

@@ -182,6 +182,20 @@ RSpec.describe DiscourseWorkflows::Form::Show do
       end
     end
 
+    context "when form_description references $execution.resumeFormUrl" do
+      before do
+        trigger_node = workflow.nodes.find { |n| n["type"] == "trigger:form" }
+        trigger_node["parameters"]["form_description"] = "={{ $execution.resumeFormUrl }}"
+        workflow.update!(nodes: workflow.nodes)
+        publish_workflow!(workflow)
+      end
+
+      it "resolves $execution.resumeFormUrl without materializing an execution" do
+        expect(result).to run_successfully
+        expect(result[:form_data][:form_description]).to eq("")
+      end
+    end
+
     context "when a non-adjacent downstream form action exists" do
       before do
         extra =
@@ -290,6 +304,34 @@ RSpec.describe DiscourseWorkflows::Form::Show do
             DiscourseWorkflows::WaitingExecution.webhook_url(
               execution_id: execution.id,
               resume_token: resume_token,
+            ),
+          )
+        end
+      end
+
+      context "when form_description references $execution.resumeFormUrl" do
+        fab!(:waiting_workflow) do
+          graph =
+            build_workflow_graph do |g|
+              g.node "trigger-1", "trigger:manual"
+              g.node "form-action-1",
+                     "action:form",
+                     configuration: {
+                       "form_title" => "Waiting Form",
+                       "form_description" => "={{ $execution.resumeFormUrl }}",
+                       "form_fields" => [{ "field_label" => "Feedback", "field_type" => "text" }],
+                     }
+              g.chain "trigger-1", "form-action-1"
+            end
+          Fabricate(:discourse_workflows_workflow, published: true, **graph)
+        end
+
+        it "resolves $execution.resumeFormUrl from the execution context" do
+          expect(result[:form_data][:form_description]).to eq(
+            DiscourseWorkflows::WaitingExecution.form_waiting_url_for(
+              execution_id: execution.id,
+              resume_token: resume_token,
+              absolute: true,
             ),
           )
         end

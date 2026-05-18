@@ -33,5 +33,19 @@ RSpec.describe DiscourseWorkflows::Nodes::Form::V1 do
       expect(exec_ctx.waiting_until).to be_nil
       expect(result).to eq([exec_ctx.input_items])
     end
+
+    it "passes completion forms through without reaching into flow context" do
+      config = {
+        "page_type" => "completion",
+        "on_submission" => "completion_screen",
+        "completion_title" => "Done",
+      }
+      exec_ctx = build_exec_ctx(config, resume_token: "tok-xyz")
+
+      result = described_class.new(parameters: config).execute(exec_ctx)
+
+      expect(exec_ctx).not_to be_waiting
+      expect(result).to eq([exec_ctx.input_items])
+    end
   end
 end

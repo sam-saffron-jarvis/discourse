@@ -48,18 +48,43 @@ module DiscourseWorkflows
       DiscourseWorkflows::Executor.resume(execution, response_items, user: user)
     end
 
+    def self.form_urls(execution)
+      {
+        form_channel: form_channel(execution),
+        form_waiting_url: form_waiting_url(execution),
+        form_submit_url: form_waiting_url(execution),
+        form_status_url: form_status_url(execution),
+      }
+    end
+
     def self.form_waiting_url(execution, absolute: false)
+      form_waiting_url_for(
+        execution_id: execution.id,
+        resume_token: execution.resume_token,
+        absolute: absolute,
+      )
+    end
+
+    def self.form_waiting_url_for(execution_id:, resume_token:, absolute: false)
       signed_url(
-        "/workflows/forms/waiting/#{execution.id}.json",
-        resume_signature(execution_id: execution.id, resume_token: execution.resume_token),
+        "/workflows/forms/waiting/#{execution_id.to_i}.json",
+        resume_signature(execution_id: execution_id, resume_token: resume_token),
         absolute: absolute,
       )
     end
 
     def self.form_status_url(execution, absolute: false)
+      form_status_url_for(
+        execution_id: execution.id,
+        resume_token: execution.resume_token,
+        absolute: absolute,
+      )
+    end
+
+    def self.form_status_url_for(execution_id:, resume_token:, absolute: false)
       signed_url(
-        "/workflows/forms/waiting/#{execution.id}/status.json",
-        resume_signature(execution_id: execution.id, resume_token: execution.resume_token),
+        "/workflows/forms/waiting/#{execution_id.to_i}/status.json",
+        resume_signature(execution_id: execution_id, resume_token: resume_token),
         absolute: absolute,
       )
     end

@@ -194,6 +194,8 @@ module DiscourseWorkflows
             webhook_id: node.webhook_id,
           ).execute(exec_ctx)
 
+        attach_form_completion(step, node, resolver)
+
         if exec_ctx.waiting?
           step.mark_waiting!
           @waiting_node = node
@@ -258,6 +260,15 @@ module DiscourseWorkflows
       return if step_log.nil? || step_log.empty?
 
       step.add_metadata("logs", step_log.as_json)
+    end
+
+    def attach_form_completion(step, node, resolver)
+      return unless DiscourseWorkflows::FormCompletion.completion_node?(node)
+
+      step.add_metadata(
+        DiscourseWorkflows::FormCompletion::METADATA_KEY,
+        DiscourseWorkflows::FormCompletion.for_node(node, resolver: resolver),
+      )
     end
 
     def handle_unknown_node(node, input_items)

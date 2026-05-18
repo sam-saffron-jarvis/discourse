@@ -100,6 +100,24 @@ module DiscourseWorkflows
       description_value(:credentials)
     end
 
+    def self.webhooks(configuration = {})
+      Array(description_value(:webhooks, configuration: configuration)).map do |webhook|
+        webhook.deep_symbolize_keys
+      end
+    end
+
+    def self.waiting_webhook_for(http_method:, path:, node_type:)
+      webhooks.find do |webhook|
+        webhook[:restart_webhook] == true && webhook[:node_type].to_s == node_type.to_s &&
+          webhook[:http_method].to_s.casecmp?(http_method.to_s) &&
+          webhook.fetch(:path) { "" }.to_s == path.to_s
+      end
+    end
+
+    def self.handle_waiting_webhook(_webhook, _request)
+      raise NotImplementedError
+    end
+
     def self.property_schema
       properties
     end

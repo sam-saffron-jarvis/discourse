@@ -6,7 +6,6 @@ module DiscourseWorkflows
       RESERVED_KEYS = %w[
         $trigger
         __resume_token
-        __form_completion
         __sandbox_elapsed_ms
         __node_contexts
         __node_runs
@@ -110,10 +109,6 @@ module DiscourseWorkflows
         @context["__resume_token"]
       end
 
-      def form_completion
-        @context["__form_completion"].presence
-      end
-
       private
 
       EXECUTION_VALUE_SOURCES = {
@@ -133,6 +128,18 @@ module DiscourseWorkflows
               execution_id: execution_id,
               resume_token: token,
               suffix: suffix,
+            )
+          end,
+        "resumeFormUrl" =>
+          lambda do |execution_context, _extra_context|
+            token = execution_context.resume_token
+            execution_id = execution_context.execution&.id
+            return if token.blank? || execution_id.blank?
+
+            DiscourseWorkflows::WaitingExecution.form_waiting_url_for(
+              execution_id: execution_id,
+              resume_token: token,
+              absolute: true,
             )
           end,
       }.freeze

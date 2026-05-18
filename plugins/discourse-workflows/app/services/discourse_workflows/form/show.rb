@@ -123,6 +123,12 @@ module DiscourseWorkflows
                 execution_id: waiting_execution.id,
                 resume_token: resume_token,
               ),
+            "resumeFormUrl" =>
+              DiscourseWorkflows::WaitingExecution.form_waiting_url_for(
+                execution_id: waiting_execution.id,
+                resume_token: resume_token,
+                absolute: true,
+              ),
           },
         )
 
@@ -171,6 +177,7 @@ module DiscourseWorkflows
           "workflow_id" => workflow.id,
           "workflow_name" => workflow_version.name,
           "resume_url" => "",
+          "resumeFormUrl" => "",
         },
       }
 

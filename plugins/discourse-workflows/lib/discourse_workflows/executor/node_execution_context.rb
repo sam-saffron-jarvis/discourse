@@ -88,14 +88,12 @@ module DiscourseWorkflows
         @workflow_dependencies = workflow_dependencies
       end
 
-      def get_context(scope = :flow)
+      def get_context(scope = :node)
         case scope
-        when :flow
-          @flow_context
         when :node
           @node_context
         else
-          raise ArgumentError, "Unknown context scope: #{scope}. Use :flow or :node"
+          raise ArgumentError, "Unknown context scope: #{scope}. Use :node"
         end
       end
 

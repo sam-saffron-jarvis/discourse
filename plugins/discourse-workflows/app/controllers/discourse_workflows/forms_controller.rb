@@ -48,61 +48,15 @@ module DiscourseWorkflows
     end
 
     def waiting_status
-      execution = find_waiting_form_execution
-      return render json: { error: "not_found" }, status: :not_found if execution.nil?
-
-      render json: waiting_status_payload(execution)
+      render_waiting_dispatch(path: "status")
     end
 
     def waiting_show
-      execution = find_waiting_form_execution
-      return render json: { error: "not_found" }, status: :not_found if execution.nil?
-
-      DiscourseWorkflows::Form::Show.call(
-        service_params.deep_merge(
-          params: {
-            execution_id: execution.id,
-            signature: waiting_signature,
-          },
-        ),
-      ) do
-        on_success { |form_data:| render json: form_data.merge(waiting_form_urls(execution)) }
-        on_failed_policy(:authenticated_if_required) { raise Discourse::NotLoggedIn }
-        on_failed_policy(:valid_waiting_request) { raise Discourse::NotFound }
-        on_failed_policy(:action_form) { raise Discourse::NotFound }
-        on_failure { render(json: failed_json, status: :unprocessable_entity) }
-        on_model_not_found(:waiting_execution) { raise Discourse::NotFound }
-        on_model_not_found(:form_node) { raise Discourse::NotFound }
-      end
+      render_waiting_dispatch(path: "")
     end
 
     def waiting_create
-      DiscourseWorkflows::Form::Resume.call(
-        service_params.deep_merge(
-          params: {
-            execution_id: params[:execution_id].to_i,
-            signature: waiting_signature,
-            form_data: submitted_form_data,
-          },
-        ),
-      ) do
-        on_success do |claimed_execution:|
-          render json: waiting_submission_response(claimed_execution.reload)
-        end
-        on_failed_step(:ensure_form_valid) do |form_validation:|
-          render json: { errors: form_validation.errors.map(&:to_h) }, status: :unprocessable_entity
-        end
-        on_failed_policy(:action_form) { raise Discourse::NotFound }
-        on_model_not_found(:claimed_execution) do
-          render json: {
-                   error: I18n.t("discourse_workflows.errors.already_resumed"),
-                 },
-                 status: :conflict
-        end
-        on_failure { render(json: failed_json, status: :unprocessable_entity) }
-        on_model_not_found(:execution) { raise Discourse::NotFound }
-        on_model_not_found(:waiting_node) { raise Discourse::NotFound }
-      end
+      render_waiting_dispatch(path: "", dispatch_params: { form_data: submitted_form_data })
     end
 
     private
@@ -150,12 +104,19 @@ module DiscourseWorkflows
       form_data
     end
 
-    def find_waiting_form_execution
-      DiscourseWorkflows::WaitingExecution.find(
-        execution_id: params[:execution_id].to_i,
-        signature: waiting_signature,
-        expected_node_type: "action:form",
-      )
+    def render_waiting_dispatch(path:, dispatch_params: {})
+      result =
+        DiscourseWorkflows::WaitingDispatch.call(
+          execution_id: params[:execution_id].to_i,
+          signature: waiting_signature,
+          http_method: request.method,
+          path: path,
+          node_type: "form",
+          params: dispatch_params,
+          service_params: service_params,
+        )
+
+      render json: result.body, status: result.status
     end
 
     def form_submission_response(execution, response_metadata)
@@ -165,8 +126,8 @@ module DiscourseWorkflows
         status: execution&.status,
       }
 
-      if execution&.waiting? && execution.find_waiting_node&.dig("type") == "action:form"
-        payload.merge!(waiting_form_urls(execution))
+      if DiscourseWorkflows::WaitingDispatch.waiting_for?(execution, node_type: "form")
+        payload.merge!(DiscourseWorkflows::WaitingExecution.form_urls(execution))
       elsif execution&.success?
         payload[:form_completion] = form_completion(execution)
       end
@@ -174,39 +135,8 @@ module DiscourseWorkflows
       payload.compact
     end
 
-    def waiting_submission_response(execution)
-      payload = { status: execution.status }
-
-      if execution.waiting? && execution.find_waiting_node&.dig("type") == "action:form"
-        payload.merge!(waiting_form_urls(execution))
-      elsif execution.success?
-        payload[:form_completion] = form_completion(execution)
-      end
-
-      payload.compact
-    end
-
     def form_completion(execution)
-      execution.execution_data&.context_data&.dig("__form_completion")
-    end
-
-    def waiting_status_payload(execution)
-      status =
-        if execution.find_waiting_node&.dig("type") == "action:form"
-          "form_waiting"
-        else
-          execution.status
-        end
-      { status: status }
-    end
-
-    def waiting_form_urls(execution)
-      {
-        form_channel: DiscourseWorkflows::WaitingExecution.form_channel(execution),
-        form_waiting_url: DiscourseWorkflows::WaitingExecution.form_waiting_url(execution),
-        form_submit_url: DiscourseWorkflows::WaitingExecution.form_waiting_url(execution),
-        form_status_url: DiscourseWorkflows::WaitingExecution.form_status_url(execution),
-      }
+      DiscourseWorkflows::FormCompletion.from_execution(execution)
     end
   end
 end

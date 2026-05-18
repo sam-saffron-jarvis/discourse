@@ -44,6 +44,17 @@ module DiscourseWorkflows
               },
             },
           },
+          "resumeFormUrl" => {
+            type: :string,
+            visible_if: {
+              node_present: {
+                type: "action:form",
+                parameters: {
+                  page_type: "page",
+                },
+              },
+            },
+          },
         },
       },
     }.freeze

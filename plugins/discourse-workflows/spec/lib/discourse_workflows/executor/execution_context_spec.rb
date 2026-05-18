@@ -50,10 +50,19 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionContext do
     it "includes execution variables from the schema" do
       context = execution_context.resolver_context
 
-      expect(context["__execution"]).to include("id", "workflow_id", "workflow_name", "resume_url")
+      expect(context["__execution"]).to include(
+        "id",
+        "workflow_id",
+        "workflow_name",
+        "resume_url",
+        "resumeFormUrl",
+      )
       expect(context["__execution"]["workflow_id"]).to eq(workflow.id)
       expect(context["__execution"]["resume_url"]).to match(
         %r{/workflows/waiting/\d+/webhook\?signature=[a-f0-9-]+},
+      )
+      expect(context["__execution"]["resumeFormUrl"]).to match(
+        %r{/workflows/forms/waiting/\d+\.json\?signature=[a-f0-9-]+},
       )
     end
 

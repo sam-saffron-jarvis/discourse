@@ -100,6 +100,18 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
         expect(form.dig(:ui, :palette_group, :id)).to eq("human_review")
       end
 
+      it "does not serialize internal waiting webhook handlers" do
+        form = result[:node_types].find { |nt| nt[:identifier] == "action:form" }
+
+        expect(form[:webhooks]).to include(
+          a_hash_including(name: "setup", restart_webhook: true, node_type: "form"),
+          a_hash_including(name: "default", restart_webhook: true, node_type: "form"),
+          a_hash_including(name: "status", restart_webhook: true, node_type: "form"),
+        )
+        expect(form[:webhooks]).to all(exclude(:handler))
+        expect(form.dig(:description, :webhooks)).to all(exclude(:handler))
+      end
+
       it "serializes ui and operations for data_table node" do
         data_table = result[:node_types].find { |nt| nt[:identifier] == "action:data_table" }
 

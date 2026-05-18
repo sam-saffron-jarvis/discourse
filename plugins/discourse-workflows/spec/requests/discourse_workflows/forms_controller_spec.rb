@@ -196,8 +196,8 @@ RSpec.describe DiscourseWorkflows::FormsController do
                    configuration: {
                      "page_type" => "completion",
                      "on_submission" => "completion_screen",
-                     "completion_title" => "Done",
-                     "completion_message" => "Thanks",
+                     "completion_title" => "={{ $json.email }}",
+                     "completion_message" => "={{ $trigger.name }}",
                    }
           end
         workflow.update!(
@@ -294,8 +294,19 @@ RSpec.describe DiscourseWorkflows::FormsController do
         expect(response).to have_http_status(:ok)
         expect(response.parsed_body["status"]).to eq("success")
         expect(response.parsed_body["form_completion"]).to include(
-          "completion_title" => "Done",
-          "completion_message" => "Thanks",
+          "completion_title" => "test@example.com",
+          "completion_message" => "Test User",
+        )
+        expect(DiscourseWorkflows::Execution.last.execution_data.context_data).not_to have_key(
+          "__form_completion",
+        )
+        completion_step =
+          DiscourseWorkflows::Execution.last.execution_data.steps_array.find do |step|
+            step["node_id"] == "form-completion-1"
+          end
+        expect(completion_step.dig("metadata", "form_completion")).to include(
+          "completion_title" => "test@example.com",
+          "completion_message" => "Test User",
         )
       end
 

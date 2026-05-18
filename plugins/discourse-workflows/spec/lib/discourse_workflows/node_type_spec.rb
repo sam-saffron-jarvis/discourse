@@ -19,6 +19,71 @@ RSpec.describe DiscourseWorkflows::NodeType do
     end
   end
 
+  describe ".webhooks" do
+    it "defaults to an empty array" do
+      expect(described_class.webhooks).to eq([])
+    end
+
+    it "normalizes webhook descriptors to symbol keys" do
+      klass =
+        Class.new(described_class) do
+          description(
+            webhooks: [
+              {
+                "path" => "status",
+                "http_method" => "GET",
+                "restart_webhook" => true,
+                "node_type" => "form",
+              },
+            ],
+          )
+        end
+
+      expect(klass.webhooks).to contain_exactly(
+        path: "status",
+        http_method: "GET",
+        restart_webhook: true,
+        node_type: "form",
+      )
+    end
+  end
+
+  describe ".waiting_webhook_for" do
+    it "finds a matching restart webhook descriptor" do
+      klass =
+        Class.new(described_class) do
+          description(
+            webhooks: [
+              {
+                path: "",
+                http_method: "POST",
+                restart_webhook: true,
+                node_type: "form",
+                handler: "waiting_submit",
+              },
+            ],
+          )
+        end
+
+      expect(klass.waiting_webhook_for(http_method: "post", path: "", node_type: "form")).to eq(
+        path: "",
+        http_method: "POST",
+        restart_webhook: true,
+        node_type: "form",
+        handler: "waiting_submit",
+      )
+    end
+
+    it "ignores non-restart webhook descriptors" do
+      klass =
+        Class.new(described_class) do
+          description(webhooks: [{ path: "", http_method: "POST", node_type: "form" }])
+        end
+
+      expect(klass.waiting_webhook_for(http_method: "POST", path: "", node_type: "form")).to be_nil
+    end
+  end
+
   describe ".branching?" do
     it "returns false when single output" do
       expect(described_class.branching?).to eq(false)
