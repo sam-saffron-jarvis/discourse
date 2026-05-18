@@ -2,7 +2,9 @@ import Component from "@glimmer/component";
 import { cached, tracked } from "@glimmer/tracking";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
+import { trustHTML } from "@ember/template";
 import ConditionalLoadingSpinner from "discourse/components/conditional-loading-spinner";
+import DecoratedHtml from "discourse/components/decorated-html";
 import Form from "discourse/components/form";
 import { ajax } from "discourse/lib/ajax";
 import autoFocus from "discourse/modifiers/auto-focus";
@@ -52,10 +54,20 @@ export default class WorkflowsForm extends Component {
 
   @cached
   get fields() {
-    return (this.formKitSchema?.fields || []).map((field, index) => ({
-      ...field,
-      autofocus: index === 0,
-    }));
+    return (this.formKitSchema?.fields || []).map((field, index) => {
+      if (field.type === "html") {
+        return {
+          ...field,
+          html: trustHTML(field.html || ""),
+          autofocus: index === 0,
+        };
+      }
+
+      return {
+        ...field,
+        autofocus: index === 0,
+      };
+    });
   }
 
   @action
@@ -204,7 +216,12 @@ export default class WorkflowsForm extends Component {
 
         <Form @data={{this.formData}} @onSubmit={{this.handleSubmit}} as |form|>
           {{#each this.fields as |field|}}
-            {{#if (isFormKitType field "checkbox")}}
+            {{#if (isFormKitType field "html")}}
+              <DecoratedHtml
+                @html={{field.html}}
+                @className="workflows-form__html"
+              />
+            {{else if (isFormKitType field "checkbox")}}
               <form.Field
                 @type="checkbox"
                 @name={{field.name}}
@@ -247,6 +264,27 @@ export default class WorkflowsForm extends Component {
                   {{/each}}
                 </f.Control>
               </form.Field>
+            {{else if (isFormKitType field "radio-group")}}
+              <form.Field
+                @type="radio-group"
+                @name={{field.name}}
+                @title={{field.title}}
+                @description={{field.description}}
+                @format="full"
+                @validation={{field.validation}}
+                as |f|
+              >
+                <f.Control
+                  {{(if field.autofocus (modifier autoFocus))}}
+                  as |RadioGroup|
+                >
+                  {{#each (fieldOptions field) as |opt|}}
+                    <RadioGroup.Radio
+                      @value={{opt.value}}
+                    >{{opt.label}}</RadioGroup.Radio>
+                  {{/each}}
+                </f.Control>
+              </form.Field>
             {{else}}
               <form.Field
                 @type={{field.type}}
@@ -258,7 +296,10 @@ export default class WorkflowsForm extends Component {
                 @placeholder={{field.placeholder}}
                 as |f|
               >
-                <f.Control {{(if field.autofocus (modifier autoFocus))}} />
+                <f.Control
+                  placeholder={{field.placeholder}}
+                  {{(if field.autofocus (modifier autoFocus))}}
+                />
               </form.Field>
             {{/if}}
           {{/each}}

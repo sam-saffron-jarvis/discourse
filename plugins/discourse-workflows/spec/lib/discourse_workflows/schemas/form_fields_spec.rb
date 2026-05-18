@@ -166,6 +166,135 @@ RSpec.describe DiscourseWorkflows::Schemas::FormFields do
       expect(result.data).to eq("first_name" => "Joffrey", "user_email" => "j@example.com")
     end
 
+    it "supports n8n-style scalar form field types" do
+      fields = [
+        { "field_label" => "Email", "field_type" => "email", "required" => true },
+        { "field_label" => "Password", "field_type" => "password" },
+        { "field_label" => "Start Date", "field_type" => "date" },
+        { "field_label" => "Plan", "field_type" => "radio" },
+        {
+          "field_label" => "Tracking ID",
+          "field_type" => "hiddenField",
+          "field_value" => "server-value",
+        },
+        { "field_label" => "Intro", "field_type" => "html", "html" => "<strong>Hello</strong>" },
+      ]
+
+      result =
+        described_class.validate_submission(
+          fields,
+          {
+            "email" => "a@example.com",
+            "password" => "secret",
+            "start_date" => "2026-05-18",
+            "plan" => "pro",
+            "tracking_id" => "client-value",
+          },
+        )
+
+      expect(result).to be_valid
+      expect(result.data).to eq(
+        "email" => "a@example.com",
+        "password" => "secret",
+        "start_date" => "2026-05-18",
+        "plan" => "pro",
+        "tracking_id" => "server-value",
+      )
+    end
+
+    it "uses signed query parameters for hidden fields without configured values" do
+      fields = [
+        { "field_label" => "Tracking ID", "field_type" => "hiddenField", "key" => "tracking_id" },
+      ]
+
+      result =
+        described_class.validate_submission(
+          fields,
+          { "tracking_id" => "client-value" },
+          query_parameters: {
+            "tracking_id" => "query-value",
+          },
+        )
+
+      expect(result).to be_valid
+      expect(result.data).to eq("tracking_id" => "query-value")
+    end
+
+    it "reports invalid email values" do
+      result =
+        described_class.validate_submission(
+          [{ "field_label" => "Email", "field_type" => "email" }],
+          { "email" => "not-an-email" },
+        )
+
+      expect(result).not_to be_valid
+      expect(result.errors).to contain_exactly(
+        described_class::ValidationError.new(field_label: "Email", code: :invalid_value),
+      )
+    end
+
+    it "applies query defaults without pre-filling password or HTML fields" do
+      fields =
+        described_class.with_keys(
+          [
+            { "field_label" => "Name", "field_type" => "text" },
+            { "field_label" => "Password", "field_type" => "password" },
+            { "field_label" => "Intro", "field_type" => "html" },
+            { "field_label" => "Tracking ID", "field_type" => "hiddenField" },
+            {
+              "field_label" => "Configured ID",
+              "field_type" => "hiddenField",
+              "field_value" => "configured",
+            },
+          ],
+        )
+
+      result =
+        described_class.apply_query_defaults(
+          fields,
+          {
+            "name" => "Query User",
+            "password" => "secret",
+            "intro" => "<strong>Query</strong>",
+            "tracking_id" => "query-tracking",
+            "configured_id" => "query-configured",
+          },
+        )
+
+      expect(result).to contain_exactly(
+        a_hash_including("key" => "name", "default_value" => "Query User"),
+        a_hash_including("key" => "password"),
+        a_hash_including("key" => "intro"),
+        a_hash_including("key" => "tracking_id", "field_value" => "query-tracking"),
+        a_hash_including("key" => "configured_id", "field_value" => "configured"),
+      )
+      expect(result.find { |field| field["key"] == "password" }).not_to have_key("default_value")
+      expect(result.find { |field| field["key"] == "intro" }).not_to have_key("default_value")
+    end
+
+    it "removes hidden values and password defaults from public fields" do
+      fields = [
+        {
+          "field_label" => "Tracking ID",
+          "field_type" => "hiddenField",
+          "field_value" => "secret-tracking",
+          "default_value" => "old-secret",
+        },
+        {
+          "field_label" => "Password",
+          "field_type" => "password",
+          "default_value" => "secret-password",
+        },
+      ]
+
+      expect(described_class.public_fields(fields)).to eq(
+        [
+          { "field_label" => "Tracking ID", "field_type" => "hiddenField" },
+          { "field_label" => "Password", "field_type" => "password" },
+        ],
+      )
+    end
+
     it "tolerates empty fields" do
       result = described_class.validate_submission([], { "anything" => "value" })
 

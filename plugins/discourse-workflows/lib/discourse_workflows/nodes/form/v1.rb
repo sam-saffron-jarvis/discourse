@@ -148,6 +148,7 @@ module DiscourseWorkflows
             Schemas::FormFields.validate_submission(
               form_fields(webhook_ctx),
               form_data_param(webhook_ctx),
+              query_parameters: webhook_ctx.form_query_parameters,
             )
 
           unless form_validation.valid?
@@ -169,6 +170,7 @@ module DiscourseWorkflows
                     DiscourseWorkflows::Forms::Payload.build(
                       form_validation.data,
                       form_mode: webhook_ctx.form_mode,
+                      query_parameters: webhook_ctx.form_query_parameters,
                     ),
                 },
               ],
@@ -183,13 +185,16 @@ module DiscourseWorkflows
 
         def form_data(webhook_ctx)
           fields =
-            fields_with_query_defaults(form_fields(webhook_ctx), webhook_ctx.form_query_parameters)
+            Schemas::FormFields.apply_query_defaults(
+              form_fields(webhook_ctx),
+              webhook_ctx.form_query_parameters,
+            )
 
           {
             uuid: webhook_ctx.trigger_node_webhook_id,
             form_title: webhook_ctx.get_node_parameter("form_title", 0),
             form_description: webhook_ctx.get_node_parameter("form_description", 0),
-            form_fields: fields,
+            form_fields: Schemas::FormFields.public_fields(fields),
             form_kit_schema: DiscourseWorkflows::Forms::FormKitSchema.build(fields),
             response_mode: "on_received",
             has_downstream_form:
@@ -201,17 +206,6 @@ module DiscourseWorkflows
 
         def form_fields(webhook_ctx)
           Schemas::FormFields.with_keys(webhook_ctx.get_fixed_collection_rows("form_fields", 0))
-        end
-
-        def fields_with_query_defaults(fields, query_parameters)
-          normalized_query_parameters = query_parameters.with_indifferent_access
-
-          fields.map do |field|
-            key = field["key"]
-            next field unless normalized_query_parameters.key?(key)
-
-            field.merge("default_value" => normalized_query_parameters[key])
-          end
         end
       end
     end

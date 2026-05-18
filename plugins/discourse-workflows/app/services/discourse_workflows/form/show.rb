@@ -72,7 +72,7 @@ module DiscourseWorkflows
         )
 
       fields =
-        fields_with_query_defaults(
+        Schemas::FormFields.apply_query_defaults(
           Schemas::FormFields.with_keys(CollectionParameters.rows(config, "form_fields")),
           params.form_query_parameters,
         )
@@ -81,7 +81,7 @@ module DiscourseWorkflows
         uuid: params.uuid,
         form_title: config["form_title"],
         form_description: config["form_description"],
-        form_fields: fields,
+        form_fields: Schemas::FormFields.public_fields(fields),
         form_kit_schema: DiscourseWorkflows::Forms::FormKitSchema.build(fields),
         response_mode: config["response_mode"] || "on_received",
         has_downstream_form:
@@ -92,17 +92,6 @@ module DiscourseWorkflows
           ),
         resume_token: resume_token,
       }
-    end
-
-    def fields_with_query_defaults(fields, query_parameters)
-      normalized_query_parameters = query_parameters.with_indifferent_access
-
-      fields.map do |field|
-        key = field["key"]
-        next field unless normalized_query_parameters.key?(key)
-
-        field.merge("default_value" => normalized_query_parameters[key])
-      end
     end
   end
 end

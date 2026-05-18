@@ -31,9 +31,13 @@ function fieldsFromConfig(configArray) {
 }
 
 const FORM_FIELD_TYPE_MAP = {
-  number: "integer",
+  number: "number",
   checkbox: "boolean",
 };
+
+function formFieldEmitsOutput(field) {
+  return field.field_type !== "html";
+}
 
 function fieldsFromFormFields(
   formFields,
@@ -43,9 +47,14 @@ function fieldsFromFormFields(
   if (!rows.length) {
     return null;
   }
-  const fields = rows.map((f) =>
-    toFieldEntry(formFieldKey(f), FORM_FIELD_TYPE_MAP[f.field_type] || "string")
-  );
+  const fields = rows
+    .filter(formFieldEmitsOutput)
+    .map((f) =>
+      toFieldEntry(
+        formFieldKey(f),
+        FORM_FIELD_TYPE_MAP[f.field_type] || "string"
+      )
+    );
 
   fields.push(
     toFieldEntry("submittedAt", "string"),

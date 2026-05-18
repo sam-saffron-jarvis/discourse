@@ -151,6 +151,31 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         end
       end
 
+      context "with hidden fields and URL query parameters" do
+        let(:params) do
+          { uuid: uuid, form_query_parameters: { "tracking_id" => "query-tracking" } }
+        end
+
+        before do
+          trigger_node = workflow.nodes.find { |node| node["id"] == "trigger-1" }
+          trigger_node["parameters"]["form_fields"] = [
+            {
+              "field_label" => "Tracking ID",
+              "field_name" => "tracking_id",
+              "field_type" => "hiddenField",
+            },
+          ]
+          workflow.update!(nodes: workflow.nodes)
+          publish_workflow!(workflow)
+        end
+
+        it "keeps hidden values server-side and out of public form data" do
+          expect(result[:form_data][:form_fields].first).not_to have_key("field_value")
+          expect(result[:form_data][:form_kit_schema][:data]).to be_empty
+          expect(result[:form_data][:form_kit_schema][:fields]).to be_empty
+        end
+      end
+
       context "when the draft workflow name changes after publishing" do
         before do
           trigger_node = workflow.nodes.find { |node| node["id"] == "trigger-1" }

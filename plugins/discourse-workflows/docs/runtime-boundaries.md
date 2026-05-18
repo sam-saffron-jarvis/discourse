@@ -64,6 +64,13 @@ that schema with `discourse/components/form`. n8n parity means matching form tri
 semantics, field output, response modes, and wait/resume behavior. It does not mean copying n8n's
 Handlebars form templates.
 
+Form fields share one contract across `trigger:form` and `action:form`. Hidden fields are never
+trusted from browser-submitted `form_data`; their output values come from configured `field_value`
+or signed URL query parameters. Password fields are never prefilled from `default_value` or query
+parameters. Custom HTML fields are display-only unless explicitly extended later, and any rendered
+HTML must be sanitized on the backend before the frontend treats it as trusted HTML. Do not allow
+arbitrary iframes in public form HTML without a dedicated allowlist and sandbox policy.
+
 Webhook nodes use `webhook_ctx` for request data and graph access:
 
 - Request data: `get_request_object`, `get_body_data`, `get_query_data`, `get_header_data`

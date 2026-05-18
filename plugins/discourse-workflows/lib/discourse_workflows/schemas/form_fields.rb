@@ -4,6 +4,7 @@ module DiscourseWorkflows
   module Schemas
     module FormFields
       MAX_FIELD_VALUE_LENGTH = 10_000
+      EMAIL_REGEX = URI::MailTo::EMAIL_REGEXP
 
       ValidationResult =
         Struct.new(:errors, :data, keyword_init: true) do
@@ -23,7 +24,19 @@ module DiscourseWorkflows
           type: :options,
           required: true,
           default: "text",
-          options: %w[text textarea number checkbox dropdown],
+          options: %w[
+            text
+            textarea
+            number
+            email
+            password
+            date
+            checkbox
+            dropdown
+            radio
+            hiddenField
+            html
+          ],
           ui: {
             expression: true,
           },
@@ -37,20 +50,29 @@ module DiscourseWorkflows
         required: {
           type: :boolean,
           default: false,
+          visible_unless: {
+            field_type: %w[hiddenField html],
+          },
         },
         description: {
           type: :string,
         },
         placeholder: {
           type: :string,
+          visible_if: {
+            field_type: %w[text textarea number email password],
+          },
         },
         default_value: {
           type: :string,
+          visible_unless: {
+            field_type: %w[password hiddenField html],
+          },
         },
         options: {
           type: :fixed_collection,
           visible_if: {
-            field_type: %w[dropdown],
+            field_type: %w[dropdown radio],
           },
           type_options: {
             multiple_values: true,
@@ -69,6 +91,21 @@ module DiscourseWorkflows
               },
             },
           ],
+        },
+        field_value: {
+          type: :string,
+          visible_if: {
+            field_type: %w[hiddenField],
+          },
+        },
+        html: {
+          type: :string,
+          visible_if: {
+            field_type: %w[html],
+          },
+          ui: {
+            control: :textarea,
+          },
         },
       }.freeze
 
@@ -96,13 +133,55 @@ module DiscourseWorkflows
         Array.wrap(fields).map { |field| field.merge("key" => field_key(field)) }
       end
 
-      def validate_submission(fields, submitted_params)
+      def apply_query_defaults(fields, query_parameters)
+        normalized_query_parameters = (query_parameters || {}).to_h.with_indifferent_access
+
+        fields.map do |field|
+          key = field["key"] || field_key(field)
+          next field unless normalized_query_parameters.key?(key)
+
+          case field["field_type"]
+          when "hiddenField"
+            next field if field["field_value"].present?
+
+            field.merge("field_value" => normalized_query_parameters[key])
+          when "password", "html"
+            field
+          else
+            field.merge("default_value" => normalized_query_parameters[key])
+          end
+        end
+      end
+
+      def public_fields(fields)
+        fields.map do |field|
+          case field["field_type"]
+          when "hiddenField"
+            field.except("field_value", "default_value")
+          when "password"
+            field.except("default_value")
+          else
+            field
+          end
+        end
+      end
+
+      def validate_submission(fields, submitted_params, query_parameters: nil)
         submitted = (submitted_params || {}).with_indifferent_access
+        query_parameters = (query_parameters || {}).to_h.with_indifferent_access
         errors = []
         data = {}
 
         with_keys(fields).each do |field|
+          next if field["field_type"] == "html"
+
           key = field["key"]
+
+          if field["field_type"] == "hiddenField"
+            data[key] = hidden_value(field, query_parameters)
+            next
+          end
+
           value = submitted[key]
 
           if missing?(field, value)
@@ -111,7 +190,12 @@ module DiscourseWorkflows
           end
 
           begin
-            data[key] = coerce(value, field["field_type"])
+            coerced_value = coerce(value, field["field_type"])
+            if valid_value?(coerced_value, field)
+              data[key] = coerced_value
+            else
+              errors << build_error(field, :invalid_value)
+            end
           rescue ArgumentError, TypeError
             errors << build_error(field, :invalid_value)
           end
@@ -123,8 +207,16 @@ module DiscourseWorkflows
       def missing?(field, value)
         return false unless field["required"]
         return false if field["field_type"] == "checkbox"
+        return false if field["field_type"] == "hiddenField"
+        return false if field["field_type"] == "html"
 
         value.blank?
+      end
+
+      def hidden_value(field, query_parameters)
+        value = (field["field_value"].presence || query_parameters[field["key"]])
+
+        coerce(value.presence || "", "hiddenField")
       end
 
       def coerce(value, field_type)
@@ -138,6 +230,13 @@ module DiscourseWorkflows
         else
           value.is_a?(String) ? value.truncate(MAX_FIELD_VALUE_LENGTH) : value
         end
+      end
+
+      def valid_value?(value, field)
+        return true if value.blank?
+        return true unless field["field_type"] == "email"
+
+        EMAIL_REGEX.match?(value)
       end
 
       def build_error(field, code)

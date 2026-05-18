@@ -80,6 +80,9 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
           values: [
             { field_label: "Name", field_type: "text" },
             { field_label: "Age", field_type: "number" },
+            { field_label: "Contact method", field_type: "radio" },
+            { field_label: "Tracking ID", field_type: "hiddenField" },
+            { field_label: "Intro", field_type: "html" },
           ],
         },
       },
@@ -88,7 +91,9 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
     const fields = resolveNodeFields(node, []);
     assert.deepEqual(fields, [
       { key: "name", type: "string", id: "name" },
-      { key: "age", type: "integer", id: "age" },
+      { key: "age", type: "number", id: "age" },
+      { key: "contact_method", type: "string", id: "contact_method" },
+      { key: "tracking_id", type: "string", id: "tracking_id" },
       { key: "submittedAt", type: "string", id: "submittedAt" },
       { key: "formMode", type: "string", id: "formMode" },
       {

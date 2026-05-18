@@ -190,6 +190,71 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
         end
       end
 
+      context "with hidden form fields" do
+        before do
+          trigger_node = workflow.nodes.find { |node| node["id"] == "trigger-1" }
+          trigger_node["parameters"]["form_fields"] = [
+            { "field_label" => "Name", "field_type" => "text", "required" => true },
+            {
+              "field_label" => "Tracking ID",
+              "field_name" => "tracking_id",
+              "field_type" => "hiddenField",
+              "field_value" => "server-value",
+            },
+          ]
+          workflow.update!(nodes: workflow.nodes)
+          publish_workflow!(workflow)
+        end
+
+        let(:form_data) { { "name" => "Test User", "tracking_id" => "client-value" } }
+
+        it "stores the configured hidden value instead of the client-submitted value" do
+          result
+
+          expect(result[:execution].trigger_data).to include(
+            "name" => "Test User",
+            "tracking_id" => "server-value",
+          )
+        end
+      end
+
+      context "with query-backed hidden form fields" do
+        before do
+          trigger_node = workflow.nodes.find { |node| node["id"] == "trigger-1" }
+          trigger_node["parameters"]["form_fields"] = [
+            { "field_label" => "Name", "field_type" => "text", "required" => true },
+            {
+              "field_label" => "Tracking ID",
+              "field_name" => "tracking_id",
+              "field_type" => "hiddenField",
+            },
+          ]
+          workflow.update!(nodes: workflow.nodes)
+          publish_workflow!(workflow)
+        end
+
+        let(:resume_token) do
+          DiscourseWorkflows::FormTriggerToken.generate(
+            workflow_id: workflow.id,
+            trigger_node_id: "trigger-1",
+            uuid: uuid,
+            form_query_parameters: {
+              tracking_id: "query-value",
+            },
+          )
+        end
+        let(:form_data) { { "name" => "Test User", "tracking_id" => "client-value" } }
+
+        it "stores the signed query value instead of the client-submitted value" do
+          result
+
+          expect(result[:execution].trigger_data).to include(
+            "name" => "Test User",
+            "tracking_id" => "query-value",
+          )
+        end
+      end
+
       context "when the initial form URL had query parameters" do
         let(:resume_token) do
           DiscourseWorkflows::FormTriggerToken.generate(

@@ -21,7 +21,7 @@ module DiscourseWorkflows
         payload["form_query_parameters"] = normalized_query_parameters
       end
 
-      verifier.generate(payload, purpose: PURPOSE, expires_in: TTL)
+      encryptor.encrypt_and_sign(JSON.generate(payload), purpose: PURPOSE, expires_in: TTL)
     end
 
     def self.valid?(token, workflow_id:, trigger_node_id:, uuid:)
@@ -45,22 +45,24 @@ module DiscourseWorkflows
     end
 
     def self.verify(token)
-      verifier.verified(token, purpose: PURPOSE)
-    rescue ActiveSupport::MessageVerifier::InvalidSignature
+      decrypted = encryptor.decrypt_and_verify(token, purpose: PURPOSE)
+      return if decrypted.blank?
+
+      JSON.parse(decrypted)
+    rescue ActiveSupport::MessageEncryptor::InvalidMessage, JSON::ParserError
       nil
     end
 
-    def self.verifier
-      @verifier ||=
-        ActiveSupport::MessageVerifier.new(
+    def self.encryptor
+      @encryptor ||=
+        ActiveSupport::MessageEncryptor.new(
           ActiveSupport::KeyGenerator.new(Rails.application.secret_key_base).generate_key(
             SALT,
             KEY_LENGTH,
           ),
-          digest: "SHA256",
-          serializer: JSON,
+          cipher: "aes-256-gcm",
         )
     end
-    private_class_method :verifier
+    private_class_method :encryptor
   end
 end

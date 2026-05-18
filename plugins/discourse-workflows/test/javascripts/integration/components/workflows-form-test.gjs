@@ -15,7 +15,11 @@ module("Integration | Component | workflows-form", function (hooks) {
           name: "",
           age: "",
           bio: "",
+          email: "",
+          password: "",
+          starts_on: "",
           plan: "basic",
+          contact_method: "",
         },
         fields: [
           {
@@ -37,6 +41,21 @@ module("Integration | Component | workflows-form", function (hooks) {
             placeholder: "Tell us more",
           },
           {
+            name: "email",
+            title: "Email",
+            type: "input-email",
+          },
+          {
+            name: "password",
+            title: "Password",
+            type: "password",
+          },
+          {
+            name: "starts_on",
+            title: "Starts on",
+            type: "input-date",
+          },
+          {
             name: "plan",
             title: "Plan",
             type: "select",
@@ -44,6 +63,21 @@ module("Integration | Component | workflows-form", function (hooks) {
               { value: "basic", label: "Basic" },
               { value: "pro", label: "Pro" },
             ],
+          },
+          {
+            name: "contact_method",
+            title: "Contact method",
+            type: "radio-group",
+            options: [
+              { value: "email", label: "Email" },
+              { value: "phone", label: "Phone" },
+            ],
+          },
+          {
+            name: "intro",
+            title: "Intro",
+            type: "html",
+            html: "<strong>Escaped intro</strong>",
           },
         ],
       },
@@ -59,8 +93,16 @@ module("Integration | Component | workflows-form", function (hooks) {
     assert
       .dom('textarea[name="bio"]')
       .hasAttribute("placeholder", "Tell us more");
+    assert.dom('input[name="email"]').hasAttribute("type", "email");
+    assert.dom('input[name="password"]').hasAttribute("type", "password");
+    assert.dom('input[name="starts_on"]').hasAttribute("type", "date");
     assert.dom('select[name="plan"]').exists();
     assert.dom('option[value="basic"]').hasText("Basic");
     assert.dom('option[value="pro"]').hasText("Pro");
+    assert.dom('input[name="contact_method"][value="email"]').exists();
+    assert.dom('input[name="contact_method"][value="phone"]').exists();
+    assert.dom(".workflows-form__html strong").hasText("Escaped intro");
+    assert.dom(".workflows-form__html").doesNotIncludeText("<strong>");
+    assert.dom('input[name="tracking_id"]').doesNotExist();
   });
 });

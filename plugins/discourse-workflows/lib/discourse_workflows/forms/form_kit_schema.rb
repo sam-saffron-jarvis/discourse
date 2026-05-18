@@ -3,6 +3,64 @@
 module DiscourseWorkflows
   module Forms
     module FormKitSchema
+      HTML_SANITIZE_CONFIG = {
+        elements: %w[
+          a
+          b
+          br
+          code
+          div
+          em
+          h1
+          h2
+          h3
+          h4
+          h5
+          h6
+          i
+          img
+          li
+          ol
+          p
+          pre
+          source
+          span
+          strong
+          sub
+          sup
+          table
+          tbody
+          td
+          th
+          thead
+          tr
+          u
+          ul
+          video
+        ],
+        attributes: {
+          "a" => %w[href target title],
+          "img" => %w[alt height src title width],
+          "source" => %w[src type],
+          "video" => %w[controls height poster src width],
+        },
+        protocols: {
+          "a" => {
+            "href" => %w[http https mailto],
+          },
+          "img" => {
+            "src" => %w[http https],
+          },
+          "source" => {
+            "src" => %w[http https],
+          },
+          "video" => {
+            "poster" => %w[http https],
+            "src" => %w[http https],
+          },
+        },
+      }.freeze
+
       module_function
 
       def build(fields)
@@ -17,6 +75,7 @@ module DiscourseWorkflows
       def initial_data(fields)
         fields.each_with_object({}) do |field, data|
           next if field["field_type"] == "html"
+          next if field["field_type"] == "hiddenField"
 
           data[field["key"]] = initial_value(field)
         end
@@ -28,6 +87,8 @@ module DiscourseWorkflows
         case field["field_type"]
         when "checkbox"
           ActiveModel::Type::Boolean.new.cast(default_value)
+        when "password"
+          ""
         else
           default_value.presence || ""
         end
@@ -35,6 +96,7 @@ module DiscourseWorkflows
 
       def field_schema(field)
         type = field["field_type"].presence || "text"
+        return if type == "hiddenField"
 
         schema = {
           name: field["key"],
@@ -47,8 +109,10 @@ module DiscourseWorkflows
         }.compact
 
         case type
-        when "dropdown"
+        when "dropdown", "radio"
           schema[:options] = options_for(field)
+        when "html"
+          schema[:html] = sanitize_html(field["html"])
         end
 
         schema
@@ -64,13 +128,25 @@ module DiscourseWorkflows
           "select"
         when "number"
           "input-number"
+        when "email"
+          "input-email"
+        when "password"
+          "password"
+        when "date"
+          "input-date"
+        when "radio"
+          "radio-group"
+        when "html"
+          "html"
         else
           "input"
         end
       end
 
       def validation_for(field)
-        "required" if field["required"] && field["field_type"] != "checkbox"
+        return if %w[checkbox hiddenField html].include?(field["field_type"])
+
+        "required" if field["required"]
       end
 
       def options_for(field)
@@ -85,6 +161,10 @@ module DiscourseWorkflows
 
             { value: value, label: value }
           end
+      end
+
+      def sanitize_html(html)
+        Sanitize.fragment(html.to_s, HTML_SANITIZE_CONFIG)
       end
     end
   end
