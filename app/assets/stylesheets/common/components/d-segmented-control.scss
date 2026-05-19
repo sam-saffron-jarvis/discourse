@@ -9,7 +9,6 @@
   border-radius: var(--d-border-radius);
   padding: var(--space-1) var(--space-2);
   height: var(--space-9);
-  box-sizing: border-box;
 
   &__legend {
     position: absolute;
@@ -58,6 +57,7 @@
   &--small {
     gap: 2px;
     padding: 1px;
+    height: auto;
 
     .d-segmented-control__slider {
       top: 1px;
