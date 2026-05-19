@@ -165,8 +165,7 @@ function stepSummary(step) {
   if (!step.error) {
     return null;
   }
-  const msg = String(step.error);
-  return msg.length > 100 ? msg.slice(0, 100) + "…" : msg;
+  return String(step.error);
 }
 
 function isFilterStep(step) {
