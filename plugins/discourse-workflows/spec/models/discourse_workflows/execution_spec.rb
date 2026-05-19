@@ -151,4 +151,72 @@ RSpec.describe DiscourseWorkflows::Execution do
       expect(described_class.compute_run_time_ms(steps)).to eq(500)
     end
   end
+
+  describe ".purge_old" do
+    fab!(:workflow, :discourse_workflows_workflow)
+
+    let(:old_time) { 60.days.ago }
+    let(:recent_time) { 1.day.ago }
+
+    before { SiteSetting.workflow_executions_retention_days = 30 }
+
+    def fabricate_at(status, created_at)
+      execution = Fabricate(:discourse_workflows_execution, workflow: workflow, status: status)
+      Fabricate(:discourse_workflows_execution_data, execution: execution)
+      described_class.where(id: execution.id).update_all(created_at: created_at)
+      execution
+    end
+
+    it "deletes old terminal executions and their execution_data" do
+      old_success = fabricate_at(:success, old_time)
+      old_error = fabricate_at(:error, old_time)
+      old_skipped = fabricate_at(:skipped, old_time)
+      old_rate_limited = fabricate_at(:rate_limited, old_time)
+      recent_success = fabricate_at(:success, recent_time)
+
+      described_class.purge_old
+
+      expect(described_class.where(id: old_success.id)).to be_empty
+      expect(described_class.where(id: old_error.id)).to be_empty
+      expect(described_class.where(id: old_skipped.id)).to be_empty
+      expect(described_class.where(id: old_rate_limited.id)).to be_empty
+      expect(described_class.where(id: recent_success.id)).to exist
+      expect(
+        DiscourseWorkflows::ExecutionData.where(
+          execution_id: [old_success.id, old_error.id, old_skipped.id, old_rate_limited.id],
+        ),
+      ).to be_empty
+    end
+
+    it "preserves in-flight statuses even when older than the cutoff" do
+      old_waiting = fabricate_at(:waiting, old_time)
+      old_running = fabricate_at(:running, old_time)
+      old_pending = fabricate_at(:pending, old_time)
+
+      described_class.purge_old
+
+      expect(described_class.where(id: old_waiting.id)).to exist
+      expect(described_class.where(id: old_running.id)).to exist
+      expect(described_class.where(id: old_pending.id)).to exist
+    end
+
+    it "is a no-op when retention is set to 0" do
+      SiteSetting.workflow_executions_retention_days = 0
+      old_success = fabricate_at(:success, old_time)
+
+      described_class.purge_old
+
+      expect(described_class.where(id: old_success.id)).to exist
+    end
+
+    it "batches through more rows than PURGE_BATCH_SIZE" do
+      stub_const(DiscourseWorkflows::Execution, :PURGE_BATCH_SIZE, 2) do
+        4.times { fabricate_at(:success, old_time) }
+
+        described_class.purge_old
+
+        expect(described_class.where(workflow: workflow, status: :success)).to be_empty
+      end
+    end
+  end
 end

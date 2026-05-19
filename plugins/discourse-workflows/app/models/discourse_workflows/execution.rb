@@ -23,6 +23,29 @@ module DiscourseWorkflows
 
     scope :expired_waiting, -> { where(status: :waiting).where("waiting_until < ?", Time.current) }
 
+    TERMINAL_STATUSES_FOR_PURGE = %i[success error rate_limited skipped].freeze
+    PURGE_BATCH_SIZE = 5_000
+
+    def self.purge_old
+      retention_days = SiteSetting.workflow_executions_retention_days
+      return if retention_days <= 0
+
+      cutoff = retention_days.days.ago
+      terminal_ids = statuses.values_at(*TERMINAL_STATUSES_FOR_PURGE)
+
+      loop do
+        ids =
+          where(status: terminal_ids)
+            .where("created_at < ?", cutoff)
+            .limit(PURGE_BATCH_SIZE)
+            .pluck(:id)
+        break if ids.empty?
+
+        ExecutionData.where(execution_id: ids).delete_all
+        where(id: ids).delete_all
+      end
+    end
+
     def self.claim_for_resume(execution, resume_token: nil)
       scope = where(id: execution.id, status: :waiting)
       scope = scope.where(resume_token: resume_token) if resume_token
@@ -177,6 +200,7 @@ end
 #
 # Indexes
 #
+#  idx_dwf_executions_retention                             (created_at) WHERE (status = ANY (ARRAY[2, 3, 5, 6]))
 #  idx_dwf_executions_workflow_created_at_id_desc           (workflow_id,created_at DESC,id DESC)
 #  idx_executions_waiting_until                             (waiting_until) WHERE ((waiting_until IS NOT NULL) AND (status = 4))
 #  idx_on_status_waiting_until_a4b17cf9af                   (status,waiting_until)

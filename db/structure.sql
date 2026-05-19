@@ -16357,6 +16357,13 @@ CREATE INDEX idx_dwf_deps_workflow_version_id ON public.discourse_workflows_work
 
 
 --
+-- Name: idx_dwf_executions_retention; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_dwf_executions_retention ON public.discourse_workflows_executions USING btree (created_at) WHERE (status = ANY (ARRAY[2, 3, 5, 6]));
+
+
+--
 -- Name: idx_dwf_executions_workflow_created_at_id_desc; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -21419,6 +21426,7 @@ ALTER TABLE ONLY public.ad_plugin_house_ads_groups
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260519135533'),
 ('20260519000000'),
 ('20260518104900'),
 ('20260518054805'),
