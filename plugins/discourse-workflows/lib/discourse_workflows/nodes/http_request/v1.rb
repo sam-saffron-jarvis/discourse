@@ -236,8 +236,8 @@ module DiscourseWorkflows
             {
               body: response.body,
               headers: response.headers,
-              statusCode: response.status,
-              statusMessage: response.status_message,
+              status_code: response.status,
+              status_message: response.status_message,
             }
           else
             response.body

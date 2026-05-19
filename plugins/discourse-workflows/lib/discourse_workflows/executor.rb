@@ -56,7 +56,7 @@ module DiscourseWorkflows
       @waiting_step = nil
     end
 
-    def self.resume(execution, response_items, user: nil)
+    def self.resume(execution, response_items, user: nil, webhook_context: nil)
       unless execution.running?
         raise ArgumentError,
               "Cannot resume execution #{execution.id} with status '#{execution.status}' " \
@@ -77,7 +77,12 @@ module DiscourseWorkflows
         raise "Trigger node #{trigger_node_id} not found in workflow #{workflow.id}"
       end
 
-      options = ExecutionOptions.new(user: user, execution_mode: execution.execution_mode.to_sym)
+      options =
+        ExecutionOptions.new(
+          user: user,
+          execution_mode: execution.execution_mode.to_sym,
+          webhook_context: webhook_context,
+        )
       new(workflow, trigger_node_id, execution.trigger_data, options).resume_from(
         execution,
         response_items,
@@ -334,6 +339,7 @@ module DiscourseWorkflows
         resolver_context: resolver_ctx,
         workflow_dependencies: preloaded_workflow_dependencies,
         workflow_snapshot: @snapshot,
+        webhook_context: @options.webhook_context,
         runtime_state: runtime_state,
       )
     end

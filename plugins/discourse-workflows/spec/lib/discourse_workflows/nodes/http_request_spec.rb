@@ -40,9 +40,9 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
           "result" => "ok",
         },
         "headers" => include("content-type" => "application/json"),
-        "statusCode" => 200,
+        "status_code" => 200,
       )
-      expect(result).to have_key("statusMessage")
+      expect(result).to have_key("status_message")
     end
 
     it "splits top-level JSON array responses into separate output items" do
@@ -281,7 +281,7 @@ RSpec.describe DiscourseWorkflows::Nodes::HttpRequest::V1 do
 
         result = execute_node(configuration: config, item: item)
 
-        expect(result).to include("statusCode" => 404, "body" => { "error" => "not found" })
+        expect(result).to include("status_code" => 404, "body" => { "error" => "not found" })
       end
     end
 

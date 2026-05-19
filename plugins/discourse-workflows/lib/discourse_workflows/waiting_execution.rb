@@ -44,8 +44,13 @@ module DiscourseWorkflows
       )
     end
 
-    def self.resume_claimed(execution, response_items, user: nil)
-      DiscourseWorkflows::Executor.resume(execution, response_items, user: user)
+    def self.resume_claimed(execution, response_items, user: nil, webhook_context: nil)
+      DiscourseWorkflows::Executor.resume(
+        execution,
+        response_items,
+        user: user,
+        webhook_context: webhook_context,
+      )
     end
 
     def self.form_urls(execution)

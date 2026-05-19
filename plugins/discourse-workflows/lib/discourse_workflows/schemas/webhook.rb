@@ -4,13 +4,22 @@ module DiscourseWorkflows
   module Schemas::Webhook
     HTTP_METHODS = %w[GET POST PUT DELETE PATCH HEAD].freeze
 
-    RESPONSE_MODE_IMMEDIATELY = "immediately"
-    RESPONSE_MODE_WHEN_LAST_NODE = "when_last_node_finishes"
-    RESPONSE_MODE_RESPOND_TO_WEBHOOK = "respond_to_webhook"
+    RESPONSE_MODE_ON_RECEIVED = "on_received"
+    RESPONSE_MODE_LAST_NODE = "last_node"
+    RESPONSE_MODE_RESPONSE_NODE = "response_node"
     RESPONSE_MODES = [
-      RESPONSE_MODE_IMMEDIATELY,
-      RESPONSE_MODE_WHEN_LAST_NODE,
-      RESPONSE_MODE_RESPOND_TO_WEBHOOK,
+      RESPONSE_MODE_ON_RECEIVED,
+      RESPONSE_MODE_LAST_NODE,
+      RESPONSE_MODE_RESPONSE_NODE,
+    ].freeze
+
+    RESPONSE_DATA_FIRST_ENTRY_JSON = "first_entry_json"
+    RESPONSE_DATA_ALL_ENTRIES = "all_entries"
+    RESPONSE_DATA_NO_DATA = "no_data"
+    RESPONSE_DATA_MODES = [
+      RESPONSE_DATA_FIRST_ENTRY_JSON,
+      RESPONSE_DATA_ALL_ENTRIES,
+      RESPONSE_DATA_NO_DATA,
     ].freeze
 
     CONFIGURATION_FIELDS = {
@@ -32,7 +41,7 @@ module DiscourseWorkflows
       response_mode: {
         type: :options,
         required: true,
-        default: "immediately",
+        default: RESPONSE_MODE_ON_RECEIVED,
         options: RESPONSE_MODES,
       },
       response_code: {
@@ -40,8 +49,65 @@ module DiscourseWorkflows
         required: false,
         default: "200",
         visible_if: {
-          response_mode: "when_last_node_finishes",
+          response_mode: [RESPONSE_MODE_ON_RECEIVED, RESPONSE_MODE_LAST_NODE],
         },
+      },
+      response_data: {
+        type: :options,
+        required: false,
+        default: RESPONSE_DATA_FIRST_ENTRY_JSON,
+        options: RESPONSE_DATA_MODES,
+        visible_if: {
+          response_mode: RESPONSE_MODE_LAST_NODE,
+        },
+      },
+      response_body: {
+        type: :string,
+        required: false,
+        visible_if: {
+          response_mode: RESPONSE_MODE_ON_RECEIVED,
+        },
+        ui: {
+          control: :textarea,
+        },
+      },
+      no_response_body: {
+        type: :boolean,
+        required: false,
+        default: false,
+        visible_if: {
+          response_mode: RESPONSE_MODE_ON_RECEIVED,
+        },
+      },
+      response_headers: {
+        type: :fixed_collection,
+        type_options: {
+          multiple_values: true,
+        },
+        options: [
+          {
+            name: "values",
+            values: {
+              key: {
+                type: :string,
+                required: true,
+              },
+              value: {
+                type: :string,
+                required: true,
+              },
+            },
+          },
+        ],
+      },
+      ip_allowlist: {
+        type: :string,
+        required: false,
+      },
+      ignore_bots: {
+        type: :boolean,
+        required: false,
+        default: false,
       },
     }.freeze
 
@@ -50,9 +116,11 @@ module DiscourseWorkflows
     OUTPUT_FIELDS = {
       body: :object,
       headers: :object,
+      params: :object,
       query: :object,
       method: :string,
       webhook_url: :string,
+      raw_body: :string,
     }.freeze
   end
 end

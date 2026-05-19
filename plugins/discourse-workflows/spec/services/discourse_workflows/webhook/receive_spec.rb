@@ -47,7 +47,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
     context "when resuming a waiting execution" do
       let(:resume_token) { "my-hook" }
       let(:webhook_suffix) { "" }
-      let(:response_mode) { "immediately" }
+      let(:response_mode) { "on_received" }
       let(:response_code) { "200" }
       let(:wait_http_method) { "POST" }
 
@@ -106,7 +106,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
         it { is_expected.to fail_a_policy(:valid_http_method) }
       end
 
-      context "when response mode is immediately" do
+      context "when response mode is on_received" do
         it { is_expected.to run_successfully }
 
         it "enqueues a ResumeWebhookWaiting job" do
@@ -147,7 +147,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
       end
 
       context "when response mode is synchronous" do
-        let(:response_mode) { "when_last_node_finishes" }
+        let(:response_mode) { "last_node" }
         let(:response_code) { "200" }
 
         fab!(:resumed_execution) { Fabricate(:discourse_workflows_execution, workflow: workflow) }
@@ -158,7 +158,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
 
         it "sets sync_result on the context" do
           expect(result[:sync_result][:execution]).to eq(resumed_execution)
-          expect(result[:sync_result][:response_mode]).to eq("when_last_node_finishes")
+          expect(result[:sync_result][:response_mode]).to eq("last_node")
           expect(result[:sync_result][:response_code]).to eq("200")
         end
 
@@ -209,6 +209,8 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
               "headers" => {
                 "content-type" => "application/json",
               },
+              "params" => {
+              },
               "query" => {
                 "source" => "test",
               },
@@ -216,6 +218,25 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
               "webhook_url" => "#{Discourse.base_url}/workflows/webhooks/my-hook",
             },
           )
+        end
+      end
+
+      context "with an IP allowlist" do
+        before do
+          update_workflow_node(workflow, "webhook-1") do |node|
+            node.merge(
+              "parameters" => node["parameters"].merge("ip_allowlist" => "not-an-ip, 127.0.0.1"),
+            )
+          end
+          publish_workflow!(workflow)
+        end
+
+        let(:params) { super().merge(remote_ip: "127.0.0.1") }
+
+        it "ignores invalid entries when another entry matches" do
+          result
+          job = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last
+          expect(job["args"].first["trigger_node_id"]).to eq("webhook-1")
         end
       end
 
@@ -382,10 +403,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
           update_workflow_node(workflow, "webhook-1") do |node|
             node.merge(
               "parameters" =>
-                node["parameters"].merge(
-                  "response_mode" => "when_last_node_finishes",
-                  "response_code" => "201",
-                ),
+                node["parameters"].merge("response_mode" => "last_node", "response_code" => "201"),
             )
           end
           publish_workflow!(workflow)
@@ -400,7 +418,7 @@ RSpec.describe DiscourseWorkflows::Webhook::Receive do
 
         it "sets sync_result on the context" do
           expect(result[:sync_result][:execution]).to be_a(DiscourseWorkflows::Execution)
-          expect(result[:sync_result][:response_mode]).to eq("when_last_node_finishes")
+          expect(result[:sync_result][:response_mode]).to eq("last_node")
           expect(result[:sync_result][:response_code]).to eq("201")
         end
       end

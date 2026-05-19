@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "ipaddr"
+
 module DiscourseWorkflows
   class Webhook::Receive
     include Service::Base
@@ -12,7 +14,11 @@ module DiscourseWorkflows
       attribute :http_method, :string
       attribute :body, default: -> { {} }
       attribute :headers, default: -> { {} }
+      attribute :path_params, default: -> { {} }
       attribute :query_params, default: -> { {} }
+      attribute :raw_body, :string
+      attribute :remote_ip, :string
+      attribute :ips, default: -> { [] }
       attribute :raw_authorization, :string
 
       validates :http_method, presence: true
@@ -30,53 +36,63 @@ module DiscourseWorkflows
       end
 
       def trigger_data
-        {
-          body: body,
-          headers: headers,
-          query: query_params,
-          method: http_method,
-          webhook_url: webhook_url,
-        }
+        webhook_request.item_json
       end
 
       def response_items
-        [
-          {
-            "json" => {
-              "body" => body,
-              "headers" => headers,
-              "query" => query_params,
-              "method" => http_method,
-              "webhook_url" => webhook_url,
-            },
-          },
-        ]
+        [{ "json" => webhook_request.item_json }]
+      end
+
+      def webhook_request
+        DiscourseWorkflows::WebhookRequest.new(
+          method: http_method,
+          path: path,
+          headers: headers,
+          params: path_params,
+          query: query_params,
+          body: body,
+          raw_body: raw_body,
+          ip: remote_ip,
+          ips: ips,
+          webhook_url: webhook_url,
+        )
       end
     end
 
     model :waiting_execution, optional: true
+    model :webhook_context, :build_webhook_context
     policy :valid_resume_request
 
     only_if(:resuming_execution) do
       model :waiting_node
       policy :valid_http_method
 
-      only_if(:async_resume?) { step :enqueue_async_resume }
+      only_if(:async_resume?) do
+        step :enqueue_async_resume
+        model :webhook_response, :immediate_resume_response
+      end
 
       only_if(:sync_resume?) do
         model :claimed_execution
         model :sync_result, :resume_execution_synchronously
+        model :webhook_response, :sync_response
       end
     end
 
     only_if(:triggering_new_workflow) do
       model :webhook_nodes, :find_webhook_nodes
       model :authenticated_nodes, :filter_authenticated_nodes
+      model :request_allowed_nodes, :filter_request_allowed_nodes
       step :enqueue_async_workflows
       model :sync_result, :execute_sync_workflows, optional: true
+      model :webhook_response, :trigger_response
     end
 
     private
+
+    def build_webhook_context(params:)
+      DiscourseWorkflows::WebhookContext.new(request: params.webhook_request)
+    end
 
     def valid_resume_request(waiting_execution:, params:)
       params.execution_id.blank? || waiting_execution.present?
@@ -124,35 +140,43 @@ module DiscourseWorkflows
     end
 
     def async_resume?(waiting_node:)
-      response_mode =
-        NodeData.parameters(waiting_node)["response_mode"] ||
-          Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
-      response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
+      wait_node_response_mode(waiting_node) == Schemas::Webhook::RESPONSE_MODE_ON_RECEIVED
     end
 
     def sync_resume?(waiting_node:)
       !async_resume?(waiting_node:)
     end
 
-    def enqueue_async_resume(waiting_execution:, params:)
+    def enqueue_async_resume(waiting_execution:, params:, webhook_context:)
+      webhook_context.resume(params.response_items)
+
       Jobs.enqueue(
         Jobs::DiscourseWorkflows::ResumeWebhookWaiting,
         execution_id: waiting_execution.id,
-        response_items: params.response_items,
+        response_items: webhook_context.resume_items,
       )
     end
 
-    def resume_execution_synchronously(claimed_execution:, waiting_node:, params:)
+    def immediate_resume_response(waiting_node:)
+      WebhookResponseBuilder.immediate(NodeData.parameters(waiting_node))
+    end
+
+    def resume_execution_synchronously(claimed_execution:, waiting_node:, params:, webhook_context:)
       parameters = NodeData.parameters(waiting_node)
+      webhook_context.resume(params.response_items)
       execution =
         DiscourseWorkflows::WaitingExecution.resume_claimed(
           claimed_execution,
-          params.response_items,
+          webhook_context.resume_items,
+          webhook_context: webhook_context,
         )
       {
         execution: execution,
         response_mode: parameters["response_mode"],
         response_code: parameters["response_code"],
+        response_data: parameters["response_data"],
+        response_parameters: parameters,
+        webhook_context: webhook_context,
       }
     end
 
@@ -192,12 +216,17 @@ module DiscourseWorkflows
       end
     end
 
-    def enqueue_async_workflows(authenticated_nodes:, params:)
-      authenticated_nodes.each do |published_trigger|
+    def filter_request_allowed_nodes(authenticated_nodes:, params:)
+      authenticated_nodes.select do |published_trigger|
+        request_allowed?(published_trigger.trigger_node, params)
+      end
+    end
+
+    def enqueue_async_workflows(request_allowed_nodes:, params:)
+      request_allowed_nodes.each do |published_trigger|
         node = published_trigger.trigger_node
-        response_mode =
-          NodeData.parameters(node)["response_mode"] || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
-        next unless response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
+        response_mode = trigger_node_response_mode(node)
+        next unless response_mode == Schemas::Webhook::RESPONSE_MODE_ON_RECEIVED
 
         DiscourseWorkflows::TriggerDispatcher.enqueue(
           published_trigger,
@@ -206,26 +235,101 @@ module DiscourseWorkflows
       end
     end
 
-    def execute_sync_workflows(authenticated_nodes:, params:)
+    def execute_sync_workflows(request_allowed_nodes:, params:, webhook_context:)
       first = nil
-      authenticated_nodes.each do |published_trigger|
+      request_allowed_nodes.each do |published_trigger|
         node = published_trigger.trigger_node
         parameters = NodeData.parameters(node)
-        response_mode = parameters["response_mode"] || Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
-        next if response_mode == Schemas::Webhook::RESPONSE_MODE_IMMEDIATELY
+        response_mode = trigger_node_response_mode(node)
+        next if response_mode == Schemas::Webhook::RESPONSE_MODE_ON_RECEIVED
 
         execution =
           DiscourseWorkflows::TriggerDispatcher.execute(
             published_trigger,
             trigger_data: params.trigger_data,
+            webhook_context: webhook_context,
           )
         first ||= {
           execution: execution,
           response_mode: response_mode,
           response_code: parameters["response_code"],
+          response_data: parameters["response_data"],
+          response_parameters: parameters,
+          webhook_context: webhook_context,
         }
       end
       first
+    end
+
+    def trigger_response(request_allowed_nodes:)
+      sync_result = context[:sync_result]
+
+      if sync_result
+        sync_response(sync_result:)
+      else
+        WebhookResponseBuilder.immediate(
+          NodeData.parameters(request_allowed_nodes.first.trigger_node),
+        )
+      end
+    end
+
+    def sync_response(sync_result:)
+      case sync_result[:response_mode]
+      when Schemas::Webhook::RESPONSE_MODE_RESPONSE_NODE
+        sync_result[:webhook_context].response || WebhookResponse.success
+      when Schemas::Webhook::RESPONSE_MODE_LAST_NODE
+        WebhookResponseBuilder.last_node(
+          sync_result[:execution],
+          sync_result[:response_parameters] || {},
+        )
+      else
+        WebhookResponse.success
+      end
+    end
+
+    def wait_node_response_mode(waiting_node)
+      NodeData.parameters(waiting_node)["response_mode"] ||
+        Schemas::Webhook::RESPONSE_MODE_ON_RECEIVED
+    end
+
+    def trigger_node_response_mode(node)
+      NodeData.parameters(node)["response_mode"] || Schemas::Webhook::RESPONSE_MODE_ON_RECEIVED
+    end
+
+    def request_allowed?(node, params)
+      parameters = NodeData.parameters(node)
+      if parameters["ignore_bots"] == true && bot_user_agent?(params.headers["user-agent"])
+        return false
+      end
+
+      ip_allowlist = parameters["ip_allowlist"].to_s
+      return true if ip_allowlist.blank?
+
+      request_ips = ([params.remote_ip] + Array.wrap(params.ips)).compact.map(&:to_s)
+      request_ips.any? { |ip| ip_allowed?(ip, ip_allowlist) }
+    end
+
+    def bot_user_agent?(user_agent)
+      user_agent.to_s.match?(/bot|crawler|spider|preview|slurp|facebookexternalhit|whatsapp/i)
+    end
+
+    def ip_allowed?(ip, allowlist)
+      return false if ip.blank?
+
+      request_ip = IPAddr.new(ip)
+      allowlist
+        .split(",")
+        .map(&:strip)
+        .reject(&:blank?)
+        .any? { |entry| ip_entry_allowed?(request_ip, entry) }
+    rescue IPAddr::InvalidAddressError
+      false
+    end
+
+    def ip_entry_allowed?(request_ip, entry)
+      IPAddr.new(entry).include?(request_ip)
+    rescue IPAddr::InvalidAddressError
+      false
     end
   end
 end

@@ -58,7 +58,7 @@ module DiscourseWorkflows
         end
       end
 
-      attr_reader :user, :vars, :execution_id, :node_id
+      attr_reader :user, :vars, :execution_id, :node_id, :webhook_ctx
 
       def initialize(
         input_items:,
@@ -83,6 +83,7 @@ module DiscourseWorkflows
         resolver_context: nil,
         workflow_dependencies: nil,
         workflow_snapshot: nil,
+        webhook_context: nil,
         runtime_state: RuntimeState.new
       )
         @input_groups = normalize_input_groups(input_groups, input_items)
@@ -114,6 +115,7 @@ module DiscourseWorkflows
         @runtime_state = runtime_state
         @workflow_dependencies = workflow_dependencies
         @workflow_snapshot = workflow_snapshot
+        @webhook_ctx = webhook_context
       end
 
       def get_context(scope = :node)

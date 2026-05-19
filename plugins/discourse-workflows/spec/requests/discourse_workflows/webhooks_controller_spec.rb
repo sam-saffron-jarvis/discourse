@@ -157,7 +157,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    "flow:wait",
                    configuration: {
                      "http_method" => "POST",
-                     "response_mode" => "immediately",
+                     "response_mode" => "on_received",
                      "webhook_suffix" => "after-approval",
                    }
             g.chain "webhook-1", "wait-1"
@@ -215,7 +215,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
         expect(response).to have_http_status(:not_found)
       end
 
-      it "does not accept the legacy token resume route" do
+      it "does not accept token resume requests on the public webhook path" do
         post "/workflows/webhooks/#{waiting_execution.id}/after-approval.json?token=#{resume_token}",
              params: { foo: "bar" }.to_json,
              headers: {
@@ -255,8 +255,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
           (workflow.nodes + extra[:nodes]).map do |n|
             if n["id"] == "wait-1"
               n.merge(
-                "parameters" =>
-                  (n["parameters"] || {}).merge("response_mode" => "respond_to_webhook"),
+                "parameters" => (n["parameters"] || {}).merge("response_mode" => "response_node"),
               )
             else
               n
@@ -321,7 +320,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    }
           end
         setup_webhook_with_response(
-          response_mode: "respond_to_webhook",
+          response_mode: "response_node",
           target_node_id: "respond-1",
           extra: extra,
         )
@@ -347,7 +346,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    }
           end
         setup_webhook_with_response(
-          response_mode: "respond_to_webhook",
+          response_mode: "response_node",
           target_node_id: "respond-1",
           extra: extra,
         )
@@ -376,7 +375,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    }
           end
         setup_webhook_with_response(
-          response_mode: "respond_to_webhook",
+          response_mode: "response_node",
           target_node_id: "respond-1",
           extra: extra,
         )
@@ -405,7 +404,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    }
           end
         setup_webhook_with_response(
-          response_mode: "respond_to_webhook",
+          response_mode: "response_node",
           target_node_id: "respond-1",
           extra: extra,
         )
@@ -432,7 +431,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    }
           end
         setup_webhook_with_response(
-          response_mode: "respond_to_webhook",
+          response_mode: "response_node",
           target_node_id: "respond-1",
           extra: extra,
         )
@@ -447,6 +446,33 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
         expect(response.parsed_body).to eq("created" => true)
       end
 
+      it "returns JSON null when respond_to_webhook node produces null" do
+        extra =
+          build_workflow_graph do |g|
+            g.node "respond-1",
+                   "action:respond_to_webhook",
+                   configuration: {
+                     "response_type" => "json",
+                     "status_code" => "200",
+                     "response_body" => "null",
+                   }
+          end
+        setup_webhook_with_response(
+          response_mode: "response_node",
+          target_node_id: "respond-1",
+          extra: extra,
+        )
+
+        post "/workflows/webhooks/my-hook.json",
+             params: {}.to_json,
+             headers: {
+               "CONTENT_TYPE" => "application/json",
+             }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to eq("null")
+      end
+
       it "returns text when respond_to_webhook node produces text" do
         extra =
           build_workflow_graph do |g|
@@ -459,7 +485,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    }
           end
         setup_webhook_with_response(
-          response_mode: "respond_to_webhook",
+          response_mode: "response_node",
           target_node_id: "respond-1",
           extra: extra,
         )
@@ -485,7 +511,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    }
           end
         setup_webhook_with_response(
-          response_mode: "respond_to_webhook",
+          response_mode: "response_node",
           target_node_id: "respond-1",
           extra: extra,
         )
@@ -499,7 +525,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
         expect(response).to have_http_status(:no_content)
       end
 
-      it "returns last node output as JSON when mode is when_last_node_finishes" do
+      it "returns last node output as JSON when mode is last_node" do
         extra =
           build_workflow_graph do |g|
             g.node "set-fields-1",
@@ -510,7 +536,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
                    }
           end
         setup_webhook_with_response(
-          response_mode: "when_last_node_finishes",
+          response_mode: "last_node",
           target_node_id: "set-fields-1",
           extra: extra,
           webhook_config: {
@@ -547,7 +573,7 @@ RSpec.describe DiscourseWorkflows::WebhooksController do
             "parameters" => {
               "path" => "my-hook",
               "http_method" => "POST",
-              "response_mode" => "immediately",
+              "response_mode" => "on_received",
               "authentication" => "basic_auth",
             },
             "credentials" => {

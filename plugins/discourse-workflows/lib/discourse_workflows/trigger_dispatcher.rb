@@ -18,11 +18,12 @@ module DiscourseWorkflows
       Jobs.enqueue(Jobs::DiscourseWorkflows::ExecuteWorkflow, args)
     end
 
-    def self.execute(published_trigger, trigger_data:, user: nil)
+    def self.execute(published_trigger, trigger_data:, user: nil, webhook_context: nil)
       options =
         DiscourseWorkflows::Executor::ExecutionOptions.new(
           user: user,
           workflow_version: published_trigger.workflow_version,
+          webhook_context: webhook_context,
         )
 
       DiscourseWorkflows::Executor.new(

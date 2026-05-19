@@ -209,7 +209,9 @@ RSpec.describe DiscourseWorkflows::NodeType do
   describe "Wait.output_exemplar" do
     it "does not leak schema metadata into the exemplar" do
       exemplar = DiscourseWorkflows::Nodes::Wait::V1.output_exemplar
-      expect(exemplar.keys).to match_array(%w[body headers query method webhook_url])
+      expect(exemplar.keys).to match_array(
+        %w[body headers method params query raw_body webhook_url],
+      )
       expect(exemplar).not_to have_key("visible_if")
       expect(exemplar["method"]).to eq("")
       expect(exemplar["body"]).to eq({})

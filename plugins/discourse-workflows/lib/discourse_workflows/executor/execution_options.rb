@@ -3,12 +3,13 @@
 module DiscourseWorkflows
   class Executor
     ExecutionOptions =
-      Data.define(:user, :execution_mode, :draft_execution, :workflow_version) do
+      Data.define(:user, :execution_mode, :draft_execution, :workflow_version, :webhook_context) do
         def initialize(
           user: nil,
           execution_mode: :normal,
           draft_execution: false,
-          workflow_version: nil
+          workflow_version: nil,
+          webhook_context: nil
         )
           super
         end

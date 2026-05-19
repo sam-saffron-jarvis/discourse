@@ -45,23 +45,28 @@ module DiscourseWorkflows
           webhooks: [{ name: "default", path: "path", http_method: "http_method" }],
         )
 
-        def initialize(body:, headers:, query:, method:, webhook_url:)
+        def initialize(body:, headers:, params: {}, query:, method:, webhook_url:, raw_body: nil)
           super(parameters: {})
           @body = body
           @headers = headers
+          @params = params
           @query = query
           @method = method
           @webhook_url = webhook_url
+          @raw_body = raw_body
         end
 
         def output
-          {
+          data = {
             body: @body,
             headers: @headers,
+            params: @params,
             query: @query,
             method: @method,
             webhook_url: @webhook_url,
           }
+          data[:raw_body] = @raw_body if @raw_body.present?
+          data
         end
       end
     end

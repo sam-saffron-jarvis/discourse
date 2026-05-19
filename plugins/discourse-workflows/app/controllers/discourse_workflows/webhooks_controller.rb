@@ -18,11 +18,7 @@ module DiscourseWorkflows
         service_params.deep_merge(params: webhook_params),
       ) do |result|
         on_success do
-          if result[:sync_result]
-            render_sync_response(result[:sync_result])
-          else
-            render json: { success: true }
-          end
+          DiscourseWorkflows::WebhookResponseRenderer.render(self, result[:webhook_response])
         end
         on_model_not_found(:webhook_nodes) do
           render json: { error: "not_found" }, status: :not_found
@@ -37,6 +33,9 @@ module DiscourseWorkflows
           response.headers["WWW-Authenticate"] = 'Basic realm="Webhook"'
           render json: { error: "unauthorized" }, status: :unauthorized
         end
+        on_model_not_found(:request_allowed_nodes) do
+          render json: { error: "forbidden" }, status: :forbidden
+        end
         on_model_not_found(:claimed_execution) do
           render json: {
                    error: I18n.t("discourse_workflows.errors.already_resumed"),
@@ -48,81 +47,6 @@ module DiscourseWorkflows
     end
 
     private
-
-    def render_sync_response(sync_result)
-      case sync_result[:response_mode]
-      when Schemas::Webhook::RESPONSE_MODE_RESPOND_TO_WEBHOOK
-        render_respond_to_webhook(sync_result[:execution])
-      when Schemas::Webhook::RESPONSE_MODE_WHEN_LAST_NODE
-        render_last_node_output(sync_result[:execution], sync_result[:response_code])
-      end
-    end
-
-    def render_respond_to_webhook(execution)
-      step = find_last_respond_step(execution)
-      return render json: { success: true } unless step
-
-      output = step["output"].first["json"]
-      apply_custom_headers(output["headers"])
-      render_webhook_response(output)
-    end
-
-    def find_last_respond_step(execution)
-      steps = execution.execution_data&.find_steps_by_type("action:respond_to_webhook") || []
-      step = steps.max_by { |s| s["position"] || 0 }
-      step if step&.dig("output", 0)
-    end
-
-    def apply_custom_headers(headers)
-      (headers || {}).each { |key, value| response.headers[key] = value }
-    end
-
-    def render_webhook_response(output)
-      status_code = sanitize_status_code(output["status_code"])
-
-      case output["response_type"]
-      when "redirect"
-        render_webhook_redirect(
-          output["redirect_url"],
-          status_code,
-          output["allowed_redirect_domains"],
-        )
-      when "json"
-        render json: parse_json_body(output["response_body"]), status: status_code
-      when "text"
-        render plain: output["response_body"], status: status_code
-      when "no_data"
-        head status_code
-      else
-        render json: { success: true }
-      end
-    end
-
-    def render_webhook_redirect(url, status_code, allowed_domains)
-      unless valid_redirect_url?(url, allowed_domains)
-        return render json: { error: "invalid_redirect_url" }, status: :bad_request
-      end
-      redirect_to url, status: status_code, allow_other_host: true
-    end
-
-    def parse_json_body(body)
-      return body unless body.is_a?(String)
-      JSON.parse(body)
-    rescue JSON::ParserError
-      body
-    end
-
-    def render_last_node_output(execution, response_code)
-      status = sanitize_status_code(response_code)
-      last_step = execution.execution_data&.last_step_with_status("success")
-      output = last_step&.dig("output", 0, "json")
-
-      if output.present?
-        render json: output, status: status
-      else
-        head status
-      end
-    end
 
     def check_webhook_rate_limit
       key = "workflow_webhook:#{request.remote_ip}"
@@ -144,50 +68,14 @@ module DiscourseWorkflows
         http_method: request.method,
         body: parser.parse_body,
         headers: parser.extract_headers,
+        path_params: {
+        },
         query_params: is_resume ? query.except("signature") : query,
+        raw_body: request.raw_post,
+        remote_ip: request.remote_ip,
+        ips: request.respond_to?(:ips) ? request.ips : [],
         raw_authorization: request.headers["Authorization"],
       }
-    end
-
-    def valid_redirect_url?(url, allowed_domains)
-      return false if url.blank?
-      uri = URI.parse(url)
-      return true if uri.relative?
-      return false unless uri.scheme.in?(%w[http https]) && uri.host.present?
-      return true if uri.host.casecmp?(Discourse.current_hostname)
-
-      redirect_host_allowed?(uri.host, allowed_domains)
-    rescue URI::InvalidURIError
-      false
-    end
-
-    def redirect_host_allowed?(host, allowed_domains)
-      host = host.to_s.downcase
-      Array(allowed_domains).any? do |domain|
-        domain = domain.to_s.strip.downcase
-        valid_redirect_domain_entry?(domain) && redirect_domain_matches?(host, domain)
-      end
-    end
-
-    def valid_redirect_domain_entry?(domain)
-      return false if domain.blank? || domain == "*"
-      return false if domain.include?("/") || domain.include?(":")
-
-      domain.start_with?("*.") ? domain.length > 2 : !domain.include?("*")
-    end
-
-    def redirect_domain_matches?(host, domain)
-      if domain.start_with?("*.")
-        suffix = domain.delete_prefix("*.")
-        host.end_with?(".#{suffix}") && host != suffix
-      else
-        host == domain
-      end
-    end
-
-    def sanitize_status_code(code)
-      status = (code.presence || 200).to_i
-      (200..599).cover?(status) ? status : 200
     end
   end
 end

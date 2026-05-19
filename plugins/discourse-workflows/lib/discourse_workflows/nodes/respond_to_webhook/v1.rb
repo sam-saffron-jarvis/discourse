@@ -6,7 +6,14 @@ module DiscourseWorkflows
       class V1 < NodeType
         include Nodes::HttpHelpers
 
-        DEFAULT_STATUS_CODES = { "redirect" => 302, "json" => 200, "text" => 200, "no_data" => 204 }
+        DEFAULT_STATUS_CODES = {
+          "redirect" => 302,
+          "json" => 200,
+          "text" => 200,
+          "no_data" => 204,
+          "first_incoming_item" => 200,
+          "all_incoming_items" => 200,
+        }
 
         description(
           name: "action:respond_to_webhook",
@@ -20,14 +27,14 @@ module DiscourseWorkflows
               type: :options,
               required: true,
               default: "json",
-              options: %w[json redirect text no_data],
+              options: %w[json redirect text no_data first_incoming_item all_incoming_items],
             },
             status_code: {
               type: :string,
               required: false,
               default: "200",
               visible_if: {
-                response_type: %w[json text no_data],
+                response_type: %w[json text no_data first_incoming_item all_incoming_items],
               },
             },
             redirect_url: {
@@ -57,7 +64,14 @@ module DiscourseWorkflows
                 control: :textarea,
               },
             },
-            headers: {
+            response_key: {
+              type: :string,
+              required: false,
+              visible_if: {
+                response_type: %w[first_incoming_item all_incoming_items],
+              },
+            },
+            response_headers: {
               type: :fixed_collection,
               type_options: {
                 multiple_values: true,
@@ -80,63 +94,101 @@ module DiscourseWorkflows
             },
           },
           output_schema: {
-            response_type: :string,
-            status_code: :integer,
-            redirect_url: :string,
-            allowed_redirect_domains: :array,
-            response_body: :string,
-            headers: :object,
           },
         )
 
         def execute(exec_ctx)
-          items =
-            exec_ctx.input_items.map.with_index do |_item, item_index|
-              config = {
-                "response_type" =>
-                  exec_ctx.get_node_parameter("response_type", item_index, default: "json"),
-                "status_code" => exec_ctx.get_node_parameter("status_code", item_index),
-                "redirect_url" => exec_ctx.get_node_parameter("redirect_url", item_index),
-                "response_body" => exec_ctx.get_node_parameter("response_body", item_index),
-              }
+          unless exec_ctx.webhook_ctx
+            raise DiscourseWorkflows::NodeError, "No webhook response context available"
+          end
 
-              wrap(process(exec_ctx, item_index, config))
-            end
-
-          [items]
+          exec_ctx.webhook_ctx.respond(build_response(exec_ctx))
+          [exec_ctx.input_items]
         end
 
         private
 
-        def process(exec_ctx, item_index, config)
+        def build_response(exec_ctx)
+          item_index = 0
+          config = {
+            "response_type" =>
+              exec_ctx.get_node_parameter("response_type", item_index, default: "json"),
+            "status_code" => exec_ctx.get_node_parameter("status_code", item_index),
+            "redirect_url" => exec_ctx.get_node_parameter("redirect_url", item_index),
+            "response_body" => exec_ctx.get_node_parameter("response_body", item_index),
+            "response_key" => exec_ctx.get_node_parameter("response_key", item_index),
+          }
+
           response_type = config.fetch("response_type") { "json" }
           status_code = (config["status_code"].presence || DEFAULT_STATUS_CODES[response_type]).to_i
           status_code = DEFAULT_STATUS_CODES[response_type] if response_type == "redirect"
+          headers =
+            normalize_headers(
+              exec_ctx.get_node_parameter("response_headers.values", item_index, default: []),
+            )
 
-          {
-            response_type: response_type,
+          body =
+            case response_type
+            when "redirect"
+              redirect_url = config["redirect_url"]
+              allowed_redirect_domains =
+                normalize_allowed_redirect_domains(
+                  exec_ctx.get_node_parameter(
+                    "allowed_redirect_domains.values",
+                    item_index,
+                    default: [],
+                  ),
+                )
+              unless RedirectUrlValidator.valid?(redirect_url, allowed_redirect_domains)
+                return(
+                  WebhookResponse.new(body: { error: "invalid_redirect_url" }, status_code: 400)
+                )
+              end
+              headers["Location"] = redirect_url
+              nil
+            when "json"
+              parse_json_body(config["response_body"])
+            when "text"
+              headers["Content-Type"] ||= "text/plain; charset=utf-8"
+              config["response_body"].to_s
+            when "no_data"
+              nil
+            when "all_incoming_items"
+              maybe_wrap_response_key(
+                config["response_key"],
+                exec_ctx.input_items.map { |item| item["json"] || {} },
+              )
+            when "first_incoming_item"
+              maybe_wrap_response_key(
+                config["response_key"],
+                exec_ctx.input_items.dig(0, "json") || {},
+              )
+            end
+
+          WebhookResponse.new(
+            body: body,
+            headers: headers,
+            no_body: response_type == "no_data",
             status_code: status_code,
-            redirect_url: config["redirect_url"],
-            allowed_redirect_domains:
-              normalize_allowed_redirect_domains(
-                exec_ctx.get_node_parameter(
-                  "allowed_redirect_domains.values",
-                  item_index,
-                  default: [],
-                ),
-              ),
-            response_body: config["response_body"],
-            headers:
-              normalize_headers(
-                exec_ctx.get_node_parameter("headers.values", item_index, default: []),
-              ),
-          }
+          )
         end
 
         def normalize_allowed_redirect_domains(domain_rows)
           domain_rows.filter_map do |domain_config|
             domain_config["domain"].to_s.strip.downcase.presence
           end
+        end
+
+        def parse_json_body(body)
+          return body unless body.is_a?(String)
+
+          JSON.parse(body)
+        rescue JSON::ParserError
+          raise DiscourseWorkflows::NodeError, "Invalid JSON in response_body"
+        end
+
+        def maybe_wrap_response_key(response_key, body)
+          response_key.present? ? { response_key => body } : body
         end
       end
     end
