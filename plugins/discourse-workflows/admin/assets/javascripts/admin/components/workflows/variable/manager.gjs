@@ -1,12 +1,12 @@
 import { concat, fn } from "@ember/helper";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
-import DButton from "discourse/components/d-button";
-import avatar from "discourse/helpers/avatar";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { userPath } from "discourse/lib/url";
 import { clipboardCopy } from "discourse/lib/utilities";
+import DButton from "discourse/ui-kit/d-button";
+import dAvatar from "discourse/ui-kit/helpers/d-avatar";
 import { i18n } from "discourse-i18n";
 import AdminTable from "../admin-table";
 import CrudManager from "../crud-manager";
@@ -14,6 +14,7 @@ import EmptyState from "../empty-state";
 import VariableModal from "./modal";
 
 export default class VariablesManager extends CrudManager {
+  @service toasts;
   @service workflowsNodeTypes;
 
   get itemsKey() {
@@ -81,6 +82,10 @@ export default class VariablesManager extends CrudManager {
   @action
   async copySyntax(key) {
     await clipboardCopy(`$vars.${key}`);
+    this.toasts.success({
+      duration: "short",
+      data: { message: i18n("discourse_workflows.variables.copied") },
+    });
   }
 
   <template>
@@ -147,7 +152,7 @@ export default class VariablesManager extends CrudManager {
             href={{userPath variable.created_by.username}}
             class="workflows-variables__creator"
           >
-            {{avatar variable.created_by imageSize="tiny"}}
+            {{dAvatar variable.created_by imageSize="tiny"}}
             <span>{{variable.created_by.username}}</span>
           </a>
         </td>

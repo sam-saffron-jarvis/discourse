@@ -725,6 +725,7 @@ en:
         add_first: "Add first variable"
         usage_syntax: "Usage syntax"
         copy_syntax: "Copy to clipboard"
+        copied: "Copied to clipboard"
         edit: "Edit variable"
       credentials:
         title: "Credentials"
