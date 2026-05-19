@@ -1,3 +1,7 @@
 import WorkflowsForm from "../components/workflows-form";
 
-<template><WorkflowsForm @model={{@model}} /></template>
+<template>
+  <div class="workflows-form-page">
+    <WorkflowsForm @model={{@model}} />
+  </div>
+</template>
