@@ -12,7 +12,7 @@ import DButton from "discourse/ui-kit/d-button";
 import DDropdownMenu from "discourse/ui-kit/d-dropdown-menu";
 import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 import dIcon from "discourse/ui-kit/helpers/d-icon";
-
+import { i18n } from "discourse-i18n";
 
 export default class TopicAdminMenu extends Component {
   @service adminTopicMenuButtons;
@@ -368,7 +368,6 @@ export default class TopicAdminMenu extends Component {
                 </dropdown.item>
               {{/if}}
 
-
               {{#each this.extraButtonGroups as |group index|}}
                 {{#if group.label}}
                   {{#if
@@ -382,15 +381,15 @@ export default class TopicAdminMenu extends Component {
                 {{/if}}
 
                 {{#each group.buttons as |button|}}
-                <dropdown.item>
+                  <dropdown.item>
                     <DButton
-                    @label={{button.label}}
-                    @translatedLabel={{button.translatedLabel}}
-                    @icon={{button.icon}}
-                    class={{dConcatClass "btn-transparent" button.className}}
-                    @action={{fn this.onExtraButtonAction button.action}}
+                      @label={{button.label}}
+                      @translatedLabel={{button.translatedLabel}}
+                      @icon={{button.icon}}
+                      class={{dConcatClass "btn-transparent" button.className}}
+                      @action={{fn this.onExtraButtonAction button.action}}
                     />
-                </dropdown.item>
+                  </dropdown.item>
                 {{/each}}
               {{/each}}
             {{/if}}
