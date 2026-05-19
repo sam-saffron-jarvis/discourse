@@ -27,11 +27,6 @@ module DiscourseWorkflows
       }.freeze
 
       class << self
-        # IMPORTANT: data_table_id MUST be a numeric DataTable#id. The result
-        # is interpolated into DDL (create_table / drop_table / add_column /
-        # rename_column / remove_column) and into Arel::Table.new. Do NOT pass
-        # DataTable#name here -- the `name` column allows spaces and is purely
-        # display metadata. Always derive identifiers from the integer id.
         def table_name(data_table_id)
           "#{TABLE_NAME_PREFIX}#{Integer(data_table_id)}#{TABLE_NAME_SUFFIX}"
         end
