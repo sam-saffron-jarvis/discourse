@@ -1,4 +1,4 @@
-import { render } from "@ember/test-helpers";
+import { render, settled } from "@ember/test-helpers";
 import { module, test } from "qunit";
 import { setupRenderingTest } from "discourse/tests/helpers/component-test";
 import pretender, { response } from "discourse/tests/helpers/create-pretender";
@@ -142,7 +142,7 @@ module("Integration | Component | workflows-form", function (hooks) {
       () =>
         response(500, {
           status: "error",
-          error: "Error in workflow",
+          errors: ["Error in workflow"],
         })
     );
 
@@ -158,6 +158,88 @@ module("Integration | Component | workflows-form", function (hooks) {
     await formKit().submit();
 
     assert.dom(".workflows-form__error").hasText("Error in workflow");
+  });
+
+  test("renders structured validation errors returned by submit", async function (assert) {
+    pretender.post(
+      "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      () =>
+        response(422, {
+          errors: [
+            { field_label: "Name", code: "missing" },
+            { field_label: "Email", code: "invalid_value" },
+          ],
+        })
+    );
+
+    this.set("model", {
+      form_title: "Intake",
+      form_submit_url:
+        "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      data: {},
+      fields: [],
+    });
+
+    await render(<template><WorkflowsForm @model={{this.model}} /></template>);
+    await formKit().submit();
+
+    assert
+      .dom(".workflows-form__error")
+      .hasText("Name is required, Email is invalid");
+  });
+
+  test("renders generic error when submit returns no errors", async function (assert) {
+    pretender.post(
+      "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      () =>
+        response(500, {
+          status: "error",
+        })
+    );
+
+    this.set("model", {
+      form_title: "Intake",
+      form_submit_url:
+        "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      data: {},
+      fields: [],
+    });
+
+    await render(<template><WorkflowsForm @model={{this.model}} /></template>);
+    await formKit().submit();
+
+    assert
+      .dom(".workflows-form__error")
+      .hasText(i18n("discourse_workflows.form.error_message"));
+  });
+
+  test("renders waiting form load errors returned from errors", async function (assert) {
+    pretender.post(
+      "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      () =>
+        response(200, {
+          form_waiting_url: "/workflows/forms/waiting/1.json",
+        })
+    );
+    pretender.get("/workflows/forms/waiting/1.json", () =>
+      response(404, {
+        errors: ["Waiting form not found"],
+      })
+    );
+
+    this.set("model", {
+      form_title: "Intake",
+      form_submit_url:
+        "/workflows/form/a1b2c3d4-e5f6-7890-abcd-ef0123456789.json",
+      data: {},
+      fields: [],
+    });
+
+    await render(<template><WorkflowsForm @model={{this.model}} /></template>);
+    await formKit().submit();
+    await settled();
+
+    assert.dom(".workflows-form__error").hasText("Waiting form not found");
   });
 
   test("completes empty successful workflow_finishes submissions", async function (assert) {

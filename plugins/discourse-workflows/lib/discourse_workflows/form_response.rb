@@ -22,7 +22,7 @@ module DiscourseWorkflows
 
         payload[:form_completion] = form_completion
       elsif execution&.error?
-        payload[:error] = workflow_error_message
+        payload[:errors] = [workflow_error_message]
       elsif no_data_response?(execution, response_mode)
         return
       end
@@ -50,7 +50,7 @@ module DiscourseWorkflows
 
         body[:form_completion] = form_completion
       elsif execution.error?
-        body[:error] = workflow_error_message
+        body[:errors] = [workflow_error_message]
       elsif no_data_response?(execution, response_mode)
         return
       end

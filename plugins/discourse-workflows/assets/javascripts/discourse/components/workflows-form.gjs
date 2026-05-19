@@ -19,8 +19,37 @@ function fieldOptions(field) {
   return field.options || [];
 }
 
+const STRUCTURED_ERROR_TRANSLATIONS = {
+  invalid: "discourse_workflows.form.errors.invalid",
+  invalid_value: "discourse_workflows.form.errors.invalid",
+  missing: "discourse_workflows.form.errors.missing",
+};
+
 function responseErrorMessage(responseJSON) {
-  return responseJSON?.error || i18n("discourse_workflows.form.error_message");
+  const errors = responseJSON?.errors;
+
+  if (errors?.length) {
+    return errors.map(formatResponseError).join(", ");
+  }
+
+  return i18n("discourse_workflows.form.error_message");
+}
+
+function formatResponseError(error) {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error?.message) {
+    return error.message;
+  }
+
+  const translationKey = STRUCTURED_ERROR_TRANSLATIONS[error?.code];
+  if (translationKey && error?.field_label) {
+    return i18n(translationKey, { field: error.field_label });
+  }
+
+  return i18n("discourse_workflows.form.error_message");
 }
 
 export default class WorkflowsForm extends Component {
@@ -175,9 +204,9 @@ export default class WorkflowsForm extends Component {
       this.state = "form";
       this.pendingFormWaitingUrl = null;
       this.#unsubscribe();
-    } catch {
+    } catch (e) {
       this.state = "error";
-      this.errorMessage = i18n("discourse_workflows.form.error_message");
+      this.errorMessage = responseErrorMessage(e?.jqXHR?.responseJSON);
     }
   }
 

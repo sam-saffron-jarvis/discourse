@@ -592,6 +592,9 @@ en:
         thank_you: "Thank you! Your response has been recorded."
         redirecting: "Redirecting..."
         error_message: "Something went wrong. Please try again."
+        errors:
+          invalid: "%{field} is invalid"
+          missing: "%{field} is required"
         submitting: "Submitting..."
         submit: "Submit"
         save_for_url: "Save the workflow to generate a form URL"

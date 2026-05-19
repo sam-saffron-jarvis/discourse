@@ -42,10 +42,23 @@ module DiscourseWorkflows
           render_form_response(body, status)
         end
         on_failed_policy(:authenticated_if_required) { raise Discourse::NotLoggedIn }
+        on_failed_policy(:valid_initial_submission_token) do
+          render_form_response(
+            failed_json.merge(errors: [I18n.t("discourse_workflows.errors.invalid_form_token")]),
+            :unprocessable_entity,
+          )
+        end
         on_failed_step(:ensure_form_valid) do |form_validation:|
           render json: { errors: form_validation.errors.map(&:to_h) }, status: :unprocessable_entity
         end
-        on_failure { render(json: failed_json, status: :unprocessable_entity) }
+        on_failure do
+          render_form_response(
+            failed_json.merge(
+              errors: [I18n.t("discourse_workflows.errors.invalid_form_submission")],
+            ),
+            :unprocessable_entity,
+          )
+        end
         on_model_not_found(:published_trigger) { raise Discourse::NotFound }
       end
     end
@@ -125,7 +138,19 @@ module DiscourseWorkflows
     def render_form_response(body, status)
       return head status if body.nil?
 
-      render json: body, status: status
+      render json: normalize_form_response(body), status: status
+    end
+
+    def normalize_form_response(body)
+      return body unless body.is_a?(Hash)
+
+      normalized = body.deep_dup
+      error = normalized.delete(:error)
+      error = normalized.delete("error") if error.nil?
+      has_errors = normalized.key?(:errors) || normalized.key?("errors")
+      normalized[:errors] = Array(error) if error.present? && !has_errors
+
+      normalized
     end
   end
 end

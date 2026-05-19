@@ -187,8 +187,9 @@ RSpec.describe DiscourseWorkflows::FormsController do
         expect(response.parsed_body).to include(
           "response_mode" => "workflow_finishes",
           "status" => "error",
-          "error" => I18n.t("discourse_workflows.errors.workflow_failed"),
+          "errors" => [I18n.t("discourse_workflows.errors.workflow_failed")],
         )
+        expect(response.parsed_body).not_to have_key("error")
         expect(DiscourseWorkflows::Execution.last).to have_attributes(status: "error")
       end
 
@@ -234,6 +235,10 @@ RSpec.describe DiscourseWorkflows::FormsController do
       post form_path, params: { form_data: { name: "Test User" } }, headers: origin_headers
 
       expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body).to include(
+        "errors" => [I18n.t("discourse_workflows.errors.invalid_form_token")],
+      )
+      expect(response.parsed_body).not_to have_key("error")
     end
 
     it "returns 422 with structured errors when required fields are omitted" do
@@ -248,6 +253,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
       expect(response.parsed_body["errors"]).to eq(
         [{ "field_label" => "Name", "code" => "missing" }],
       )
+      expect(response.parsed_body).not_to have_key("error")
     end
 
     context "when the form requires a logged-in user" do
@@ -469,8 +475,9 @@ RSpec.describe DiscourseWorkflows::FormsController do
         expect(response).to have_http_status(:internal_server_error)
         expect(response.parsed_body).to include(
           "status" => "error",
-          "error" => I18n.t("discourse_workflows.errors.workflow_failed"),
+          "errors" => [I18n.t("discourse_workflows.errors.workflow_failed")],
         )
+        expect(response.parsed_body).not_to have_key("error")
       end
 
       it "returns no response body when a waiting form resumes into a non-form wait" do
@@ -648,6 +655,33 @@ RSpec.describe DiscourseWorkflows::FormsController do
 
         get response.parsed_body["form_status_url"].sub(/signature=[^&]+/, "signature=invalid")
         expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body).to eq("errors" => ["not_found"])
+      end
+
+      it "returns plural errors when a waiting form resume loses the claim race" do
+        post form_path,
+             params: {
+               resume_token: initial_resume_token,
+               form_data: {
+                 name: "Test User",
+               },
+             },
+             headers: origin_headers
+        submit_url = response.parsed_body["form_submit_url"]
+
+        allow(DiscourseWorkflows::WaitingExecution).to receive(:claim).and_return(nil)
+
+        post submit_url,
+             params: {
+               form_data: {
+                 email: "test@example.com",
+               },
+             },
+             headers: origin_headers
+        expect(response).to have_http_status(:conflict)
+        expect(response.parsed_body).to eq(
+          "errors" => [I18n.t("discourse_workflows.errors.already_resumed")],
+        )
       end
 
       it "returns 404 when execution has already been resumed" do
@@ -678,6 +712,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
              },
              headers: origin_headers
         expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body).to eq("errors" => ["not_found"])
       end
     end
   end
