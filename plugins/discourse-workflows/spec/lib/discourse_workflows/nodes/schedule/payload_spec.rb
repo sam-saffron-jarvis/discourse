@@ -7,16 +7,16 @@ RSpec.describe DiscourseWorkflows::Nodes::Schedule::Payload do
 
       expect(payload).to include(
         "timestamp" => "2026-03-18T09:00:00.000Z",
-        "Readable date" => "March 18th 2026, 9:00:00 am",
-        "Readable time" => "9:00:00 am",
-        "Day of week" => "Wednesday",
-        "Year" => "2026",
-        "Month" => "March",
-        "Day of month" => "18",
-        "Hour" => "09",
-        "Minute" => "00",
-        "Second" => "00",
-        "Timezone" => "UTC (UTC+00:00)",
+        "readable_date" => "March 18th 2026, 9:00:00 am",
+        "readable_time" => "9:00:00 am",
+        "day_of_week" => "Wednesday",
+        "year" => "2026",
+        "month" => "March",
+        "day_of_month" => "18",
+        "hour" => "09",
+        "minute" => "00",
+        "second" => "00",
+        "timezone" => "UTC (UTC+00:00)",
       )
     end
 
@@ -25,8 +25,8 @@ RSpec.describe DiscourseWorkflows::Nodes::Schedule::Payload do
 
       expect(payload).to include(
         "timestamp" => "2026-03-18T09:00:00.000+01:00",
-        "Hour" => "09",
-        "Timezone" => "Europe/Paris (UTC+01:00)",
+        "hour" => "09",
+        "timezone" => "Europe/Paris (UTC+01:00)",
       )
     end
   end

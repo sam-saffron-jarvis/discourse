@@ -54,7 +54,7 @@ RSpec.describe DiscourseWorkflows::Execution::CheckSchedules do
 
       trigger_data =
         Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last["args"].first["trigger_data"]
-      expect(trigger_data).to include("Hour" => "09", "Minute" => "05", "Second" => "00")
+      expect(trigger_data).to include("hour" => "09", "minute" => "05", "second" => "00")
     end
 
     it "does not enqueue when a cron rule does not match" do
@@ -89,9 +89,9 @@ RSpec.describe DiscourseWorkflows::Execution::CheckSchedules do
       trigger_data =
         Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last["args"].first["trigger_data"]
       expect(trigger_data).to include(
-        "Hour" => "09",
-        "Minute" => "00",
-        "Timezone" => "Europe/Paris (UTC+01:00)",
+        "hour" => "09",
+        "minute" => "00",
+        "timezone" => "Europe/Paris (UTC+01:00)",
       )
       expect(trigger_data["timestamp"]).to end_with("+01:00")
     end

@@ -14,17 +14,17 @@ module DiscourseWorkflows
 
           {
             "timestamp" => local_time.iso8601(3),
-            "Readable date" =>
+            "readable_date" =>
               "#{local_time.strftime("%B")} #{local_time.day.ordinalize} #{local_time.year}, #{readable_time}",
-            "Readable time" => readable_time,
-            "Day of week" => local_time.strftime("%A"),
-            "Year" => local_time.strftime("%Y"),
-            "Month" => local_time.strftime("%B"),
-            "Day of month" => local_time.strftime("%d"),
-            "Hour" => local_time.strftime("%H"),
-            "Minute" => local_time.strftime("%M"),
-            "Second" => local_time.strftime("%S"),
-            "Timezone" => "#{timezone} (UTC#{local_time.formatted_offset})",
+            "readable_time" => readable_time,
+            "day_of_week" => local_time.strftime("%A"),
+            "year" => local_time.strftime("%Y"),
+            "month" => local_time.strftime("%B"),
+            "day_of_month" => local_time.strftime("%d"),
+            "hour" => local_time.strftime("%H"),
+            "minute" => local_time.strftime("%M"),
+            "second" => local_time.strftime("%S"),
+            "timezone" => "#{timezone} (UTC#{local_time.formatted_offset})",
           }
         end
       end

@@ -98,8 +98,8 @@ RSpec.describe DiscourseWorkflows::Workflow::ManualExecute do
 
           expect(result[:execution].trigger_data).to include(
             "timestamp" => "2026-03-18T09:00:00.000Z",
-            "Hour" => "09",
-            "Minute" => "00",
+            "hour" => "09",
+            "minute" => "00",
           )
         end
       end
