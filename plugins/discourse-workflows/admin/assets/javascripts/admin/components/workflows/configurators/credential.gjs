@@ -3,10 +3,10 @@ import { tracked } from "@glimmer/tracking";
 import { hash } from "@ember/helper";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
-import DButton from "discourse/components/d-button";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import ComboBox from "discourse/select-kit/components/combo-box";
+import DButton from "discourse/ui-kit/d-button";
 import CredentialModal from "../credential/modal";
 import ExpressionWrapper from "./expression-wrapper";
 
@@ -56,7 +56,7 @@ export default class Credential extends Component {
           this.credentialTypes.includes(c.credential_type)
       )
       .map((c) => ({
-        id: c.id,
+        id: c.id?.toString(),
         name: c.name,
         credential_type: c.credential_type,
       }));
