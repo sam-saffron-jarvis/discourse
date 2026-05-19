@@ -6,7 +6,7 @@ module DiscourseWorkflows
 
     params do
       attribute :workflow_id, :integer
-      attribute :workflow_version_id, :integer
+      attribute :workflow_version_id, :string
       attribute :trigger_node_id, :string
       attribute :trigger_data, default: -> { {} }
       attribute :execution_mode, :string, default: "normal"
@@ -27,26 +27,26 @@ module DiscourseWorkflows
     def fetch_workflow(params:)
       if params.workflow_id.present?
         return(
-          DiscourseWorkflows::Workflow.includes(:published_version).find_by(id: params.workflow_id)
+          DiscourseWorkflows::Workflow.includes(:active_version).find_by(id: params.workflow_id)
         )
       end
 
       DiscourseWorkflows::Workflow
         .published
-        .includes(:published_version)
+        .includes(:active_version)
         .joins(:workflow_dependencies)
         .where(discourse_workflows_workflow_dependencies: { node_id: params.trigger_node_id })
         .where(
-          "discourse_workflows_workflows.published_version_id = " \
+          "discourse_workflows_workflows.active_version_id = " \
             "discourse_workflows_workflow_dependencies.workflow_version_id",
         )
         .first
     end
 
     def fetch_workflow_version(workflow:, params:)
-      return workflow.published_version if params.workflow_version_id.blank?
+      return workflow.active_version if params.workflow_version_id.blank?
 
-      workflow.workflow_versions.find_by(id: params.workflow_version_id)
+      workflow.workflow_versions.find_by(version_id: params.workflow_version_id)
     end
 
     def fetch_trigger_node(workflow:, workflow_version:, params:)

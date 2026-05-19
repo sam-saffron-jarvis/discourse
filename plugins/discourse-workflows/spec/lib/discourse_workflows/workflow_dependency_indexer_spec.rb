@@ -4,7 +4,8 @@ RSpec.describe DiscourseWorkflows::WorkflowDependencyIndexer do
   fab!(:admin)
 
   def index(workflow)
-    described_class.call(workflow)
+    version = workflow.workflow_versions.find_by(version_id: workflow.version_id)
+    described_class.call(workflow, version: version)
   end
 
   def dependency_rows(workflow)
@@ -131,7 +132,7 @@ RSpec.describe DiscourseWorkflows::WorkflowDependencyIndexer do
       expect(error_deps).to contain_exactly([error_wf.id.to_s, nil])
     end
 
-    it "replaces existing dependencies on re-index" do
+    it "replaces dependencies for the same version on re-index" do
       graph =
         build_workflow_graph do |g|
           g.node "t1", "trigger:webhook", configuration: { "path" => "old-path" }
@@ -143,17 +144,45 @@ RSpec.describe DiscourseWorkflows::WorkflowDependencyIndexer do
         ["old-path"],
       )
 
-      updated =
-        build_workflow_graph do |g|
-          g.node "t1", "trigger:webhook", configuration: { "path" => "new-path" }
-        end
-      workflow.draft_version.update!(nodes: updated[:nodes])
+      # Reindexing the same version_id should clear and rewrite that version's
+      # dependency rows; mutate the snapshot in place to test this.
+      snapshot = workflow.workflow_versions.find_by(version_id: workflow.version_id)
+      updated_nodes = snapshot.nodes.deep_dup
+      updated_nodes.first["parameters"]["path"] = "new-path"
+      snapshot.update!(nodes: updated_nodes)
       index(workflow)
 
       expect(dependency_rows(workflow).of_type("webhook_path").pluck(:dependency_key)).to eq(
         ["new-path"],
       )
       expect(dependency_rows(workflow).of_type("node_type").count).to eq(1)
+    end
+
+    it "scopes dependency rows per version" do
+      graph =
+        build_workflow_graph do |g|
+          g.node "t1", "trigger:webhook", configuration: { "path" => "old-path" }
+        end
+      workflow = Fabricate(:discourse_workflows_workflow, created_by: admin, **graph)
+      index(workflow)
+      old_version_id = workflow.version_id
+
+      updated =
+        build_workflow_graph do |g|
+          g.node "t1", "trigger:webhook", configuration: { "path" => "new-path" }
+        end
+      workflow.update!(nodes: updated[:nodes])
+      workflow.snapshot!(user: workflow.created_by)
+      index(workflow)
+
+      expect(
+        dependency_rows(workflow).where(workflow_version_id: old_version_id).pluck(:dependency_key),
+      ).to include("old-path")
+      expect(
+        dependency_rows(workflow).where(workflow_version_id: workflow.version_id).pluck(
+          :dependency_key,
+        ),
+      ).to include("new-path")
     end
 
     it "handles workflows with no nodes" do

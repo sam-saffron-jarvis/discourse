@@ -3,14 +3,15 @@
 class CreateWorkflowTables < ActiveRecord::Migration[8.0]
   def change
     create_table :discourse_workflows_workflows do |t|
-      t.string :name, null: false
-      t.jsonb :nodes, default: []
-      t.jsonb :connections, default: []
-      t.jsonb :static_data, default: {}
-      t.jsonb :settings
+      t.string :name, null: false, limit: 100
+      t.jsonb :nodes, null: false, default: []
+      t.jsonb :connections, null: false, default: []
+      t.jsonb :static_data, null: false, default: {}
+      t.jsonb :settings, null: false, default: {}
+      t.string :version_id, null: false, limit: 36
+      t.string :active_version_id, limit: 36
+      t.integer :version_counter, null: false, default: 1
       t.bigint :error_workflow_id
-      t.bigint :draft_version_id
-      t.bigint :published_version_id
       t.integer :created_by_id, null: false
       t.integer :updated_by_id
       t.timestamps null: false
@@ -19,11 +20,12 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
     add_index :discourse_workflows_workflows, :created_by_id
     add_index :discourse_workflows_workflows, :updated_by_id
     add_index :discourse_workflows_workflows, :error_workflow_id
-    add_index :discourse_workflows_workflows, :draft_version_id
-    add_index :discourse_workflows_workflows, :published_version_id
+    add_index :discourse_workflows_workflows, :version_id, unique: true
+    add_index :discourse_workflows_workflows, :active_version_id
     add_index :discourse_workflows_workflows, :nodes, using: :gin, name: "idx_workflows_nodes_gin"
 
-    create_table :discourse_workflows_workflow_versions do |t|
+    create_table :discourse_workflows_workflow_versions, id: false do |t|
+      t.string :version_id, null: false, limit: 36, primary_key: true
       t.bigint :workflow_id, null: false
       t.integer :version_number, null: false
       t.string :name, null: false, limit: 100
@@ -31,6 +33,8 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
       t.jsonb :connections, null: false, default: []
       t.jsonb :settings, null: false, default: {}
       t.jsonb :static_data, null: false, default: {}
+      t.boolean :autosaved, null: false, default: false
+      t.text :authors
       t.integer :created_by_id, null: false
       t.integer :updated_by_id
       t.timestamps null: false
@@ -41,6 +45,28 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
               %i[workflow_id version_number],
               unique: true,
               name: "idx_dwf_versions_workflow_version_number"
+    add_index :discourse_workflows_workflow_versions,
+              %i[workflow_id created_at],
+              order: {
+                created_at: :desc,
+              },
+              name: "idx_dwf_versions_workflow_created_at"
+
+    create_table :discourse_workflows_workflow_publish_history do |t|
+      t.bigint :workflow_id, null: false
+      t.string :version_id, limit: 36
+      t.string :event, null: false, limit: 32
+      t.integer :user_id
+      t.datetime :created_at, null: false, default: -> { "CURRENT_TIMESTAMP" }
+    end
+
+    add_index :discourse_workflows_workflow_publish_history,
+              %i[workflow_id created_at id],
+              order: {
+                created_at: :desc,
+                id: :desc,
+              },
+              name: "idx_dwf_publish_history_workflow_created_at_id_desc"
 
     create_table :discourse_workflows_executions do |t|
       t.bigint :workflow_id, null: false
@@ -114,7 +140,7 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
       t.string :dependency_type, null: false, limit: 50
       t.string :dependency_key, null: false, limit: 500
       t.string :node_id, limit: 100
-      t.bigint :workflow_version_id
+      t.string :workflow_version_id, limit: 36
       t.datetime :created_at, null: false, default: -> { "CURRENT_TIMESTAMP" }
     end
 

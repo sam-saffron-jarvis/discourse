@@ -55,7 +55,7 @@ RSpec.describe DiscourseWorkflows::Executor::ErrorWorkflowTrigger do
       job = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last
       expect(job).to be_present
       expect(job["args"].first["workflow_id"]).to eq(error_wf.id)
-      expect(job["args"].first["workflow_version_id"]).to eq(error_wf.published_version_id)
+      expect(job["args"].first["workflow_version_id"]).to eq(error_wf.active_version_id)
       expect(job["args"].first["execution_mode"]).to eq("error_mode")
     end
 

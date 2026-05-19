@@ -34,7 +34,7 @@ module DiscourseWorkflows
           .joins(:workflow)
           .where(dependency_type: dependency_type, dependency_key: dependency_key.to_s)
           .where(
-            "discourse_workflows_workflows.published_version_id = " \
+            "discourse_workflows_workflows.active_version_id = " \
               "discourse_workflows_workflow_dependencies.workflow_version_id",
           )
           .pluck(:workflow_id, :workflow_version_id, :node_id)
@@ -43,14 +43,16 @@ module DiscourseWorkflows
     def workflows_by_id
       @workflows_by_id ||=
         Workflow
-          .includes(:published_version)
+          .includes(:active_version)
           .where(id: workflow_node_pairs.map(&:first).uniq)
           .index_by(&:id)
     end
 
     def versions_by_id
       @versions_by_id ||=
-        WorkflowVersion.where(id: workflow_node_pairs.map(&:second).uniq).index_by(&:id)
+        WorkflowVersion.where(version_id: workflow_node_pairs.map(&:second).uniq).index_by(
+          &:version_id
+        )
     end
   end
 end

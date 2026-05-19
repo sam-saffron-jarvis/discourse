@@ -69,7 +69,7 @@ RSpec.describe DiscourseWorkflows::Workflow::TriggerTopicAdminButton do
         expect(job["args"].first).to include(
           "trigger_node_id" => "trigger-1",
           "workflow_id" => workflow.id,
-          "workflow_version_id" => workflow.published_version_id,
+          "workflow_version_id" => workflow.active_version_id,
           "user_id" => admin.id,
         )
         expect(job["args"].first["trigger_data"]["topic"]).to include(

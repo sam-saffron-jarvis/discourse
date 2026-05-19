@@ -101,33 +101,28 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
       context "when the workflow is already published" do
         before { publish_workflow!(workflow) }
 
-        it "creates a new draft version for metadata changes" do
-          published_version_id = workflow.published_version_id
+        it "updates row-level metadata without creating a new snapshot" do
+          active_version_id = workflow.active_version_id
+          version_id = workflow.version_id
 
           result
           workflow.reload
 
-          expect(workflow.draft_version_id).not_to eq(published_version_id)
-          expect(workflow.published_version_id).to eq(published_version_id)
-          expect(workflow.draft_version.name).to eq("Updated Workflow")
+          expect(workflow.version_id).to eq(version_id)
+          expect(workflow.active_version_id).to eq(active_version_id)
+          expect(workflow.name).to eq("Updated Workflow")
         end
 
-        it "does not mutate the published version metadata" do
-          published_version_id = workflow.published_version_id
-          published_version_name = workflow.published_version.name
+        it "does not mutate the active version metadata" do
+          active_version_id = workflow.active_version_id
+          active_version_name = workflow.active_version.name
 
           result
 
-          expect(DiscourseWorkflows::WorkflowVersion.find(published_version_id).name).to eq(
-            published_version_name,
-          )
+          expect(
+            DiscourseWorkflows::WorkflowVersion.find_by(version_id: active_version_id).name,
+          ).to eq(active_version_name)
         end
-      end
-
-      context "when the workflow has no draft version" do
-        before { workflow.update_columns(draft_version_id: nil) }
-
-        it { is_expected.to fail_to_find_a_model(:draft_version) }
       end
     end
 
@@ -170,11 +165,13 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
       context "with a workflow timezone" do
         let(:timezone) { "Europe/Paris" }
 
-        it "stores the timezone in workflow settings" do
+        it "stores the timezone in workflow settings and the new snapshot" do
           result
 
-          expect(workflow.reload.settings).to include("timezone" => "Europe/Paris")
-          expect(workflow.draft_version.settings).to include("timezone" => "Europe/Paris")
+          workflow.reload
+          expect(workflow.settings).to include("timezone" => "Europe/Paris")
+          snapshot = workflow.workflow_versions.find_by(version_id: workflow.version_id)
+          expect(snapshot.settings).to include("timezone" => "Europe/Paris")
         end
       end
 
@@ -185,16 +182,18 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
         expect(workflow.connections.size).to eq(1)
       end
 
-      it "creates an unpublished draft version" do
-        published_version_id = workflow.published_version_id
+      it "stamps a new version_id and snapshot, leaving active_version_id pinned" do
+        active_version_id = workflow.active_version_id
+        previous_version_id = workflow.version_id
         result
         workflow.reload
-        expect(workflow.draft_version_id).not_to eq(published_version_id)
-        expect(workflow.published_version_id).to eq(published_version_id)
+        expect(workflow.version_id).not_to eq(previous_version_id)
+        expect(workflow.active_version_id).to eq(active_version_id)
         expect(workflow).to have_unpublished_changes
+        expect(workflow.workflow_versions.where(version_id: workflow.version_id)).to exist
       end
 
-      it "locks draft version creation for the workflow" do
+      it "locks version creation for the workflow" do
         DistributedMutex
           .expects(:synchronize)
           .with("discourse_workflows/workflow/update:workflow_id:#{workflow.id}")

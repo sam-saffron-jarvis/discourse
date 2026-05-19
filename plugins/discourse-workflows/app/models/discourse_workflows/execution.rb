@@ -126,7 +126,7 @@ module DiscourseWorkflows
     def workflow_snapshot_name
       return WorkflowSnapshot.new(workflow_data).workflow_name if workflow_data.present?
 
-      workflow.published_version&.name || workflow.name
+      workflow.active_version&.name || workflow.name
     end
 
     private

@@ -31,9 +31,9 @@ RSpec.describe DiscourseWorkflows::Workflow::Unpublish do
     context "when everything's ok" do
       it { is_expected.to run_successfully }
 
-      it "clears the published version" do
+      it "clears the active version" do
         result
-        expect(workflow.reload.published_version_id).to be_nil
+        expect(workflow.reload.active_version_id).to be_nil
       end
 
       it_behaves_like "expires workflow caches"

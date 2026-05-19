@@ -11,7 +11,7 @@ module DiscourseWorkflows
         end
       end
 
-      def activate_workflow!(workflow, workflow_version: workflow.published_version)
+      def activate_workflow!(workflow, workflow_version: workflow.active_version)
         return if workflow_version.nil?
 
         trigger_nodes(workflow_version).each do |node|
@@ -30,7 +30,7 @@ module DiscourseWorkflows
       end
 
       def manual_trigger_data(workflow:, trigger_node:, user:)
-        workflow_version = workflow.draft_version
+        workflow_version = workflow.workflow_versions.find_by(version_id: workflow.version_id)
         node_type_class = node_type_for(trigger_node)
         return {} unless trigger_node?(node_type_class)
 

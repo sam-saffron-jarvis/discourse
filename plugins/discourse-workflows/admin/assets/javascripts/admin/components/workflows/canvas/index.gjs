@@ -7,13 +7,13 @@ import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import didUpdate from "@ember/render-modifiers/modifiers/did-update";
 import { service } from "@ember/service";
 import { trustHTML } from "@ember/template";
-import DButton from "discourse/components/d-button";
-import DComboButton from "discourse/components/d-combo-button";
-import DropdownMenu from "discourse/components/dropdown-menu";
 import DMenu from "discourse/float-kit/components/d-menu";
-import icon from "discourse/helpers/d-icon";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
+import DButton from "discourse/ui-kit/d-button";
+import DComboButton from "discourse/ui-kit/d-combo-button";
+import DDropdownMenu from "discourse/ui-kit/d-dropdown-menu";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import CanvasContextMenu from "./canvas-context-menu";
 import { exportWorkflowToFile, parseWorkflowImport } from "./canvas-file-io";
@@ -102,8 +102,7 @@ export default class WorkflowCanvas extends Component {
         }
       );
       if (this.args.workflow) {
-        this.args.workflow.published_version_id =
-          this.args.workflow.draft_version_id;
+        this.args.workflow.active_version_id = this.args.workflow.version_id;
         this.args.workflow.has_unpublished_changes = false;
       }
       this.workflowPublishedOverride = null;
@@ -132,7 +131,7 @@ export default class WorkflowCanvas extends Component {
         }
       );
       if (this.args.workflow) {
-        this.args.workflow.published_version_id = null;
+        this.args.workflow.active_version_id = null;
         this.args.workflow.has_unpublished_changes = true;
       }
       this.workflowPublishedOverride = null;
@@ -584,8 +583,6 @@ export default class WorkflowCanvas extends Component {
   }
 
   <template>
-    {{! template-lint-disable no-invalid-interactive }}
-
     <div
       class="workflows-canvas"
       tabindex="0"
@@ -613,7 +610,7 @@ export default class WorkflowCanvas extends Component {
               {{on "click" this.openNodePanelAtCenter}}
             >
               <span class="workflows-canvas__empty-state-tile">
-                {{icon "plus"}}
+                {{dIcon "plus"}}
               </span>
               <span class="workflows-canvas__empty-state-label">
                 {{i18n "discourse_workflows.add_node.first_step"}}
@@ -654,7 +651,7 @@ export default class WorkflowCanvas extends Component {
 
         {{#each this.handleEntries as |entry|}}
           {{#in-element entry.areaElement insertBefore=null}}
-            {{! template-lint-disable no-forbidden-elements }}
+
             <svg class="workflow-handle" style={{entry.svgStyle}}>
               <path
                 fill="none"
@@ -682,7 +679,7 @@ export default class WorkflowCanvas extends Component {
                     )
                   }}
                 >
-                  {{icon "plus"}}
+                  {{dIcon "plus"}}
                 </button>
               </foreignObject>
             </svg>
@@ -747,7 +744,7 @@ export default class WorkflowCanvas extends Component {
                   @identifier="workflows-canvas-publish-menu"
                   class="btn-primary"
                 >
-                  <DropdownMenu as |dropdown|>
+                  <DDropdownMenu as |dropdown|>
                     <dropdown.item>
                       <DButton
                         @action={{this.unpublishWorkflow}}
@@ -757,7 +754,7 @@ export default class WorkflowCanvas extends Component {
                         class="btn-transparent"
                       />
                     </dropdown.item>
-                  </DropdownMenu>
+                  </DDropdownMenu>
                 </combo.Menu>
               {{/if}}
             </DComboButton>
@@ -774,7 +771,7 @@ export default class WorkflowCanvas extends Component {
               class="btn-default workflows-canvas__menu-btn"
             >
               <:content as |args|>
-                <DropdownMenu as |dropdown|>
+                <DDropdownMenu as |dropdown|>
                   <dropdown.item>
                     <DButton
                       @action={{fn this.addStickyNoteAtCenter args.close}}
@@ -806,7 +803,7 @@ export default class WorkflowCanvas extends Component {
                       class="btn-transparent"
                     />
                   </dropdown.item>
-                </DropdownMenu>
+                </DDropdownMenu>
               </:content>
             </DMenu>
           </div>

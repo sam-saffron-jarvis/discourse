@@ -54,7 +54,7 @@ RSpec.describe DiscourseWorkflows::PluginEnableHandler do
 
       DiscourseWorkflows::TriggerRuntime.expects(:activate_workflow!).with(
         workflow,
-        workflow_version: workflow.published_version,
+        workflow_version: workflow.active_version,
       )
 
       described_class.handle!

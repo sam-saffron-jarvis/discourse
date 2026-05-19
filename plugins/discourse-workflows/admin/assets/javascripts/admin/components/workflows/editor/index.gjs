@@ -1158,7 +1158,7 @@ export default class WorkflowsEditor extends Component {
           @onRemoveSelected={{this.removeSelected}}
           @onPasteEntities={{this.pasteEntities}}
           @workflow={{@workflow}}
-          @workflowPublished={{@workflow.published_version_id}}
+          @workflowPublished={{@workflow.active_version_id}}
           @hasUnpublishedChanges={{@workflow.has_unpublished_changes}}
         />
 

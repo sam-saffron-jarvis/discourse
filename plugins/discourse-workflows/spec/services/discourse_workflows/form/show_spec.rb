@@ -176,7 +176,7 @@ RSpec.describe DiscourseWorkflows::Form::Show do
         end
 
         it "uses the published workflow name in execution expressions" do
-          expect(result[:form_data][:form_title]).to eq(workflow.published_version.name)
+          expect(result[:form_data][:form_title]).to eq(workflow.active_version.name)
         end
       end
     end

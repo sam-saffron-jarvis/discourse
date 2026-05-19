@@ -7,7 +7,11 @@ module DiscourseWorkflows
     TOPIC_ADMIN_BUTTON_CACHE_KEY = "topic_admin_buttons"
 
     belongs_to :workflow, class_name: "DiscourseWorkflows::Workflow"
-    belongs_to :workflow_version, class_name: "DiscourseWorkflows::WorkflowVersion", optional: true
+    belongs_to :workflow_version,
+               class_name: "DiscourseWorkflows::WorkflowVersion",
+               foreign_key: "workflow_version_id",
+               primary_key: "version_id",
+               optional: true
 
     TYPES = %w[
       credential_id
@@ -50,8 +54,8 @@ module DiscourseWorkflows
         .where(dependency_type: type, dependency_key: key.to_s)
         .where(
           "discourse_workflows_workflow_dependencies.workflow_version_id IN " \
-            "(discourse_workflows_workflows.draft_version_id, " \
-            "discourse_workflows_workflows.published_version_id)",
+            "(discourse_workflows_workflows.version_id, " \
+            "discourse_workflows_workflows.active_version_id)",
         )
         .select(:workflow_id)
     end
@@ -68,7 +72,7 @@ end
 #  created_at          :datetime         not null
 #  node_id             :string(100)
 #  workflow_id         :bigint           not null
-#  workflow_version_id :bigint
+#  workflow_version_id :string(36)
 #
 # Indexes
 #

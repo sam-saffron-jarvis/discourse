@@ -26,8 +26,8 @@ module DiscourseWorkflows
       DiscourseWorkflows::Workflow.find_by(id: params.workflow_id)
     end
 
-    def unpublish_workflow(workflow:)
-      workflow.unpublish!
+    def unpublish_workflow(workflow:, guardian:)
+      workflow.unpublish!(user: guardian.user)
     end
 
     def deactivate_triggers(workflow:)

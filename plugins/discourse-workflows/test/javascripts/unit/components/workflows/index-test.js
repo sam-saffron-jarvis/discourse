@@ -5,7 +5,7 @@ module("Unit | Component | workflows index", function () {
   test("status label calls out published workflows with draft changes", function (assert) {
     const component = Object.create(WorkflowsIndex.prototype);
     const workflow = {
-      published_version_id: 1,
+      active_version_id: 1,
       has_unpublished_changes: true,
     };
 
@@ -23,19 +23,19 @@ module("Unit | Component | workflows index", function () {
     const component = Object.create(WorkflowsIndex.prototype);
 
     assert.strictEqual(
-      component.workflowStatusLabel({ published_version_id: 1 }),
+      component.workflowStatusLabel({ active_version_id: 1 }),
       "discourse_workflows.published"
     );
     assert.strictEqual(
-      component.workflowStatusClass({ published_version_id: 1 }),
+      component.workflowStatusClass({ active_version_id: 1 }),
       "is-published"
     );
     assert.strictEqual(
-      component.workflowStatusLabel({ published_version_id: null }),
+      component.workflowStatusLabel({ active_version_id: null }),
       "discourse_workflows.unpublished"
     );
     assert.strictEqual(
-      component.workflowStatusClass({ published_version_id: null }),
+      component.workflowStatusClass({ active_version_id: null }),
       "is-unpublished"
     );
   });

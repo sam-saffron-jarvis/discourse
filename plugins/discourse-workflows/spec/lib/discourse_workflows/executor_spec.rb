@@ -102,7 +102,7 @@ RSpec.describe DiscourseWorkflows::Executor do
         Fabricate(:discourse_workflows_workflow, created_by: user, published: true, **graph)
 
       executor = described_class.new(workflow, "trigger-1", {})
-      workflow.published_version.update!(nodes: [])
+      workflow.active_version.update!(nodes: [])
 
       execution = executor.run
 

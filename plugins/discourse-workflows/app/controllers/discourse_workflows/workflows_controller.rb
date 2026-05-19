@@ -139,7 +139,7 @@ module DiscourseWorkflows
           )
         end
         on_model_not_found(:workflow) { raise Discourse::NotFound }
-        on_model_not_found(:draft_version) do
+        on_model_not_found(:workflow_version) do
           render(json: failed_json, status: :unprocessable_entity)
         end
         on_failed_policy(:can_manage_workflows) { raise Discourse::InvalidAccess }

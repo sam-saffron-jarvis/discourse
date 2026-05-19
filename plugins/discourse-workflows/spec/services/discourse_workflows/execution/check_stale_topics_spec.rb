@@ -37,7 +37,7 @@ RSpec.describe DiscourseWorkflows::Execution::CheckStaleTopics do
         expect(job_args).to include(
           "trigger_node_id" => "trigger-1",
           "workflow_id" => workflow.id,
-          "workflow_version_id" => workflow.published_version_id,
+          "workflow_version_id" => workflow.active_version_id,
           "trigger_data" => include("topic" => include("id" => topic.id)),
         )
       end

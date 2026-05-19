@@ -22,11 +22,11 @@ RSpec.describe DiscourseWorkflows::Executor::TriggerExecutionContext do
     )
   end
 
-  let(:trigger_node) { workflow.published_version.nodes.first }
+  let(:trigger_node) { workflow.active_version.nodes.first }
   let(:published_trigger) do
     DiscourseWorkflows::PublishedTrigger.new(
       workflow:,
-      workflow_version: workflow.published_version,
+      workflow_version: workflow.active_version,
       trigger_node:,
     )
   end

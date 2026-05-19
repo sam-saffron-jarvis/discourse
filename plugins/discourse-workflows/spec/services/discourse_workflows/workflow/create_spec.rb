@@ -85,15 +85,16 @@ RSpec.describe DiscourseWorkflows::Workflow::Create do
         expect(workflow.connections.size).to eq(1)
       end
 
-      it "creates a draft version" do
+      it "creates the initial snapshot tagged with the workflow's version_id" do
         result
         workflow = result[:workflow].reload
-        expect(workflow.draft_version).to have_attributes(
+        snapshot = workflow.workflow_versions.find_by(version_id: workflow.version_id)
+        expect(snapshot).to have_attributes(
           name: "My Workflow",
           nodes: workflow.nodes,
           connections: workflow.connections,
         )
-        expect(workflow.published_version_id).to be_nil
+        expect(workflow.active_version_id).to be_nil
       end
 
       it "logs a staff action" do

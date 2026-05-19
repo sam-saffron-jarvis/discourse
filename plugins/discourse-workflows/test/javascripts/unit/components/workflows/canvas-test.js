@@ -34,8 +34,8 @@ module("Unit | Component | workflows canvas", function (hooks) {
     );
 
     const workflow = {
-      draft_version_id: 2,
-      published_version_id: 1,
+      version_id: "draft-uuid",
+      active_version_id: "published-uuid",
       has_unpublished_changes: true,
     };
 
@@ -46,7 +46,7 @@ module("Unit | Component | workflows canvas", function (hooks) {
         workflowId: 1,
         workflowName: "Workflow",
         get workflowPublished() {
-          return workflow.published_version_id;
+          return workflow.active_version_id;
         },
         get hasUnpublishedChanges() {
           return workflow.has_unpublished_changes;

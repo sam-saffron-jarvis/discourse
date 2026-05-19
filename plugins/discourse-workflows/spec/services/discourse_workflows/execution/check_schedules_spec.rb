@@ -41,7 +41,7 @@ RSpec.describe DiscourseWorkflows::Execution::CheckSchedules do
 
       job = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last
       expect(job["args"].first["workflow_id"]).to eq(workflow.id)
-      expect(job["args"].first["workflow_version_id"]).to eq(workflow.published_version_id)
+      expect(job["args"].first["workflow_version_id"]).to eq(workflow.active_version_id)
     end
 
     it "normalizes scheduler ticks to the current minute" do

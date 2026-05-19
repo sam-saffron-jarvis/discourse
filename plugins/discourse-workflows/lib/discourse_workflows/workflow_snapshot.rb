@@ -163,7 +163,7 @@ module DiscourseWorkflows
     def self.from_workflow(workflow, published: false)
       nodes = published ? workflow.published_nodes : workflow.nodes
       connections = published ? workflow.published_connections : workflow.connections
-      workflow_name = published ? workflow.published_version&.name : workflow.draft_version&.name
+      workflow_name = published ? workflow.active_version&.name : workflow.name
       new(
         "nodes" => nodes,
         "connections" => connections,

@@ -63,7 +63,7 @@ RSpec.describe DiscourseWorkflows::TopicAdminButtonController do
         job = Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last
         expect(job["args"].first).to include(
           "trigger_node_id" => "trigger-1",
-          "workflow_version_id" => workflow.published_version_id,
+          "workflow_version_id" => workflow.active_version_id,
         )
       end
 

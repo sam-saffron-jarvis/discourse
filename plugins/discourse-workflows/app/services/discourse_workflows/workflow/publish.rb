@@ -16,8 +16,8 @@ module DiscourseWorkflows
       model :workflow
 
       transaction do
-        model :draft_version
-        step :publish_draft_version
+        model :workflow_version
+        step :publish_workflow
       end
     end
 
@@ -30,20 +30,20 @@ module DiscourseWorkflows
       DiscourseWorkflows::Workflow.find_by(id: params.workflow_id)
     end
 
-    def fetch_draft_version(workflow:)
-      workflow.draft_version
+    def fetch_workflow_version(workflow:)
+      workflow.workflow_versions.find_by(version_id: workflow.version_id)
     end
 
-    def publish_draft_version(workflow:)
-      workflow.publish_draft_version!
+    def publish_workflow(workflow:, guardian:)
+      workflow.publish!(user: guardian.user)
     end
 
     def expire_workflow_caches
       Workflow::Action::ExpireCaches.call
     end
 
-    def activate_triggers(workflow:, draft_version:)
-      TriggerRuntime.activate_workflow!(workflow, workflow_version: draft_version)
+    def activate_triggers(workflow:, workflow_version:)
+      TriggerRuntime.activate_workflow!(workflow, workflow_version: workflow_version)
     end
   end
 end

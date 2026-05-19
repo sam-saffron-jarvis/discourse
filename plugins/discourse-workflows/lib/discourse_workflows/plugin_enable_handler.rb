@@ -26,9 +26,9 @@ module DiscourseWorkflows
     def activate_published_triggers!
       Workflow
         .published
-        .includes(:published_version)
+        .includes(:active_version)
         .find_each do |workflow|
-          TriggerRuntime.activate_workflow!(workflow, workflow_version: workflow.published_version)
+          TriggerRuntime.activate_workflow!(workflow, workflow_version: workflow.active_version)
         end
     end
   end

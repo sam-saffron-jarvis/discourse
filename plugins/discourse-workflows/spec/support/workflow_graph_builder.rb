@@ -102,23 +102,12 @@ def update_workflow_node(workflow, node_id, &block)
 end
 
 def publish_workflow!(workflow)
-  version =
-    workflow.workflow_versions.create!(
-      version_number: workflow.next_version_number,
-      name: workflow.name,
-      nodes: workflow.nodes,
-      connections: workflow.connections,
-      settings: workflow.settings || {},
-      static_data: workflow.static_data || {},
-      created_by: workflow.created_by,
-      updated_by: workflow.updated_by,
-    )
-
-  workflow.update!(draft_version: version, published_version: version)
+  version = workflow.snapshot!(user: workflow.created_by)
+  workflow.update!(active_version_id: workflow.version_id)
   DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow, version:)
   workflow.reload
 end
 
 def unpublish_workflow!(workflow)
-  workflow.update!(published_version: nil)
+  workflow.update!(active_version_id: nil)
 end

@@ -31,7 +31,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Action::FindPublishedTriggers do
         expect(result.size).to eq(1)
         published_trigger = result.first
         expect(published_trigger.workflow).to eq(workflow)
-        expect(published_trigger.workflow_version).to eq(workflow.published_version)
+        expect(published_trigger.workflow_version).to eq(workflow.active_version)
         expect(published_trigger.trigger_node).to include(
           "id" => "trigger-1",
           "type" => "trigger:form",

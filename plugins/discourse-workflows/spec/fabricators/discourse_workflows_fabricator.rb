@@ -6,21 +6,8 @@ Fabricator(:discourse_workflows_workflow, class_name: "DiscourseWorkflows::Workf
   name { sequence(:name) { |n| "Workflow #{n}" } }
   created_by { Fabricate(:user) }
   after_create do |workflow, attrs|
-    version =
-      workflow.workflow_versions.create!(
-        version_number: workflow.next_version_number,
-        name: workflow.name,
-        nodes: workflow.nodes || [],
-        connections: workflow.connections || [],
-        settings: workflow.settings || {},
-        static_data: workflow.static_data || {},
-        created_by: workflow.created_by,
-        updated_by: workflow.updated_by,
-      )
-    workflow.update_columns(
-      draft_version_id: version.id,
-      published_version_id: attrs[:published] ? version.id : nil,
-    )
+    version = workflow.initial_snapshot!(user: workflow.created_by)
+    workflow.update_columns(active_version_id: workflow.version_id) if attrs[:published]
     DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow.reload, version:)
   end
 end

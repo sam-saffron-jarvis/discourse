@@ -61,22 +61,22 @@ export default class WorkflowsIndex extends Component {
 
   @action
   workflowStatusLabel(workflow) {
-    if (workflow.published_version_id && workflow.has_unpublished_changes) {
+    if (workflow.active_version_id && workflow.has_unpublished_changes) {
       return "discourse_workflows.unpublished_changes";
     }
 
-    return workflow.published_version_id
+    return workflow.active_version_id
       ? "discourse_workflows.published"
       : "discourse_workflows.unpublished";
   }
 
   @action
   workflowStatusClass(workflow) {
-    if (workflow.published_version_id && workflow.has_unpublished_changes) {
+    if (workflow.active_version_id && workflow.has_unpublished_changes) {
       return "is-unpublished-changes";
     }
 
-    return workflow.published_version_id ? "is-published" : "is-unpublished";
+    return workflow.active_version_id ? "is-published" : "is-unpublished";
   }
 
   <template>

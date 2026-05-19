@@ -164,7 +164,7 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body["workflow"]).to include("name" => "Updated Name")
-      expect(response.parsed_body["workflow"]["published_version_id"]).to be_nil
+      expect(response.parsed_body["workflow"]["active_version_id"]).to be_nil
     end
 
     it "publishes a workflow draft" do
@@ -179,8 +179,8 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
           }
 
       expect(response).to have_http_status(:ok)
-      expect(response.parsed_body["workflow"]["published_version_id"]).to eq(
-        workflow.reload.published_version_id,
+      expect(response.parsed_body["workflow"]["active_version_id"]).to eq(
+        workflow.reload.active_version_id,
       )
     end
 
@@ -196,8 +196,8 @@ RSpec.describe DiscourseWorkflows::WorkflowsController do
           }
 
       expect(response).to have_http_status(:ok)
-      expect(response.parsed_body["workflow"]["published_version_id"]).to be_nil
-      expect(workflow.reload.published_version_id).to be_nil
+      expect(response.parsed_body["workflow"]["active_version_id"]).to be_nil
+      expect(workflow.reload.active_version_id).to be_nil
     end
 
     it "updates error_workflow_id" do

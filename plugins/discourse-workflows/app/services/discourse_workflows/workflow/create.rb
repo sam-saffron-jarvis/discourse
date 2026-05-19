@@ -20,9 +20,8 @@ module DiscourseWorkflows
     transaction do
       model :workflow, :create_workflow
       step :populate_graph
-      model :draft_version, :create_draft_version
-      step :assign_draft_version
-      step :index_draft_dependencies
+      model :workflow_version, :create_initial_snapshot
+      step :index_dependencies
     end
 
     step :log
@@ -48,16 +47,12 @@ module DiscourseWorkflows
       fail!(workflow.errors.full_messages) if result == false
     end
 
-    def create_draft_version(workflow:, guardian:)
-      workflow.create_draft_version!(user: guardian.user)
+    def create_initial_snapshot(workflow:, guardian:)
+      workflow.initial_snapshot!(user: guardian.user)
     end
 
-    def assign_draft_version(workflow:, draft_version:)
-      workflow.update!(draft_version:)
-    end
-
-    def index_draft_dependencies(workflow:, draft_version:)
-      DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow, version: draft_version)
+    def index_dependencies(workflow:, workflow_version:)
+      DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow, version: workflow_version)
     end
 
     def log(workflow:, guardian:)

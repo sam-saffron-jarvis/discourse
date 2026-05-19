@@ -17,7 +17,7 @@ module DiscourseWorkflows
         return unless error_workflow&.published?
         return if @execution_mode == :error_mode && error_workflow.id == @workflow.id
 
-        workflow_version = error_workflow.published_version
+        workflow_version = error_workflow.active_version
         trigger_node = trigger_node_for(workflow_version)
         unless trigger_node
           Rails.logger.warn(
@@ -29,7 +29,7 @@ module DiscourseWorkflows
         Jobs.enqueue(
           Jobs::DiscourseWorkflows::ExecuteWorkflow,
           workflow_id: error_workflow.id,
-          workflow_version_id: workflow_version.id,
+          workflow_version_id: workflow_version.version_id,
           trigger_node_id: trigger_node["id"],
           trigger_data: build_error_data(error),
           execution_mode: "error_mode",
@@ -40,7 +40,7 @@ module DiscourseWorkflows
 
       def error_workflow_for_failure
         return @workflow.error_workflow if @workflow.error_workflow_id.present?
-        @workflow if trigger_node_for(@workflow.published_version)
+        @workflow if trigger_node_for(@workflow.active_version)
       end
 
       def trigger_node_for(workflow_version)

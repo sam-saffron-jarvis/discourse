@@ -28,18 +28,18 @@ RSpec.describe DiscourseWorkflows::Workflow::Publish do
       it { is_expected.to fail_a_policy(:can_manage_workflows) }
     end
 
-    context "when workflow has no draft version" do
-      before { workflow.update_columns(draft_version_id: nil) }
+    context "when workflow has no matching snapshot for its current version_id" do
+      before { workflow.workflow_versions.delete_all }
 
-      it { is_expected.to fail_to_find_a_model(:draft_version) }
+      it { is_expected.to fail_to_find_a_model(:workflow_version) }
     end
 
     context "when everything's ok" do
       it { is_expected.to run_successfully }
 
-      it "publishes the current draft version" do
+      it "publishes the workflow's current version" do
         result
-        expect(workflow.reload.published_version_id).to eq(workflow.draft_version_id)
+        expect(workflow.reload.active_version_id).to eq(workflow.version_id)
       end
 
       it_behaves_like "expires workflow caches"
@@ -59,7 +59,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Publish do
             },
           },
         )
-        workflow.draft_version.update!(nodes: graph[:nodes], connections: graph[:connections])
+        workflow.snapshot!(user: user)
 
         result
 

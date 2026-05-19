@@ -13,6 +13,7 @@ module DiscourseWorkflows
       attribute :timezone, default: -> { TIMEZONE_NOT_PROVIDED }
       attribute :nodes
       attribute :connections
+      attribute :autosaved, :boolean, default: false
 
       before_validation { self.nodes = Array.wrap(nodes).select { it.is_a?(Hash) } if nodes }
 
@@ -54,15 +55,8 @@ module DiscourseWorkflows
         model :workflow, :save_workflow
         only_if(:graph_data_provided) do
           step :populate_graph
-          model :draft_version, :create_draft_version
-          step :assign_draft_version
-          step :index_draft_dependencies
-        end
-        only_if(:metadata_only_update) do
-          model :draft_version, :editable_draft_version
-          step :assign_draft_version
-          step :update_draft_version_metadata
-          step :index_draft_dependencies
+          model :workflow_version, :snapshot_workflow
+          step :index_dependencies
         end
       end
     end
@@ -101,32 +95,12 @@ module DiscourseWorkflows
       fail!(workflow.errors.full_messages) if result == false
     end
 
-    def create_draft_version(workflow:, guardian:)
-      workflow.create_draft_version!(user: guardian.user)
+    def snapshot_workflow(workflow:, params:, guardian:)
+      workflow.snapshot!(user: guardian.user, autosaved: params.autosaved)
     end
 
-    def assign_draft_version(workflow:, draft_version:)
-      workflow.update!(draft_version:)
-    end
-
-    def index_draft_dependencies(workflow:, draft_version:)
-      DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow, version: draft_version)
-    end
-
-    def metadata_only_update(params:)
-      !graph_data_provided(params:)
-    end
-
-    def editable_draft_version(workflow:, guardian:)
-      workflow.editable_draft_version!(user: guardian.user)
-    end
-
-    def update_draft_version_metadata(workflow:, guardian:)
-      workflow.draft_version&.update(
-        name: workflow.name,
-        settings: workflow.settings || {},
-        updated_by: guardian.user,
-      )
+    def index_dependencies(workflow:, workflow_version:)
+      DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow, version: workflow_version)
     end
 
     def settings_with_timezone(workflow, params)

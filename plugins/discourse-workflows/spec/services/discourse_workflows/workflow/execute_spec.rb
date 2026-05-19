@@ -43,7 +43,12 @@ RSpec.describe DiscourseWorkflows::Workflow::Execute do
     context "when workflow_id is not provided" do
       let(:params) { { trigger_node_id: "trigger-1" } }
 
-      before { DiscourseWorkflows::WorkflowDependencyIndexer.call(workflow) }
+      before do
+        DiscourseWorkflows::WorkflowDependencyIndexer.call(
+          workflow,
+          version: workflow.active_version,
+        )
+      end
 
       it { is_expected.to run_successfully }
 
@@ -53,11 +58,11 @@ RSpec.describe DiscourseWorkflows::Workflow::Execute do
     end
 
     context "when a matched workflow version is provided" do
-      let!(:matched_version) { workflow.published_version }
+      let!(:matched_version) { workflow.active_version }
       let(:params) do
         {
           workflow_id: workflow.id,
-          workflow_version_id: matched_version.id,
+          workflow_version_id: matched_version.version_id,
           trigger_node_id: "trigger-1",
         }
       end
@@ -69,7 +74,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Execute do
 
       it { is_expected.to run_successfully }
 
-      it "executes the matched version instead of the current published version" do
+      it "executes the matched version instead of the current active version" do
         expect(result[:workflow_version]).to eq(matched_version)
         workflow_data = result[:execution].execution_data.workflow_data
         expect(workflow_data["nodes"]).to contain_exactly(include("id" => "trigger-1"))
