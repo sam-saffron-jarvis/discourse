@@ -48,7 +48,7 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionStore do
 
       store.finish!(steps: steps)
 
-      parsed = JSON.parse(store.execution.execution_data.data)
+      parsed = store.execution.execution_data.data
       expect(parsed["context"]["node_a"]).to eq([{ "json" => { "x" => 1 } }])
       expect(parsed["entries"]["1"]).to be_present
     end
@@ -67,7 +67,7 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionStore do
 
         store.finish!(steps: steps)
 
-        entry = JSON.parse(store.execution.execution_data.data).dig("entries", "1", 0)
+        entry = store.execution.execution_data.data.dig("entries", "1", 0)
         expect(entry.dig("input", 0, "json", "body")).to include(
           "__truncated" => true,
           "__reason" => "step_string_size_limit",
@@ -99,7 +99,7 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionStore do
 
           store.finish!(steps: steps)
 
-          entry = JSON.parse(store.execution.execution_data.data).dig("entries", "1", 0)
+          entry = store.execution.execution_data.data.dig("entries", "1", 0)
           expect(entry["input"]).to include(
             "__truncated" => true,
             "__reason" => "step_io_size_limit",
@@ -138,8 +138,8 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionStore do
         store.finish!(steps: steps)
 
         data = store.execution.execution_data.data
-        entry = JSON.parse(data).dig("entries", "node-0", 0)
-        expect(data.bytesize).to be <= described_class::MAX_EXECUTION_DATA_SIZE
+        entry = data.dig("entries", "node-0", 0)
+        expect(data.to_json.bytesize).to be <= described_class::MAX_EXECUTION_DATA_SIZE
         expect(entry["input"]).to include(
           "__truncated" => true,
           "__reason" => "execution_data_size_limit",
@@ -165,9 +165,9 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionStore do
         ),
       ]
       store.finish!(steps: steps)
-      existing_data = JSON.parse(store.execution.execution_data.data)
+      existing_data = store.execution.execution_data.data.deep_dup
       existing_data["node_contexts"] = { "node_a" => { "counter" => 1 } }
-      store.execution.execution_data.update!(data: existing_data.to_json)
+      store.execution.execution_data.update!(data: existing_data)
       store.execution.update!(status: :waiting, waiting_node_id: "1")
 
       restored_context =

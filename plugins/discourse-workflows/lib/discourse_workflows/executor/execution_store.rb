@@ -147,30 +147,30 @@ module DiscourseWorkflows
 
         ed = execution.execution_data || execution.build_execution_data
         ed.update!(
-          data: serialized_execution_data(entries),
+          data: bounded_execution_data(entries),
           workflow_data: @workflow_snapshot&.to_h,
         )
       end
 
-      def serialized_execution_data(entries)
+      def bounded_execution_data(entries)
         truncated_context = { "__truncated" => true }
-        json_data =
+        payload =
           execution_data_payload(
             entries,
             @execution_context.context,
             @execution_context.node_contexts,
           )
-        return json_data if json_data.bytesize <= MAX_EXECUTION_DATA_SIZE
+        return payload if within_size_limit?(payload)
 
         log_oversized_execution_data("exceeds #{MAX_EXECUTION_DATA_SIZE} bytes, truncating context")
-        json_data = execution_data_payload(entries, truncated_context)
-        return json_data if json_data.bytesize <= MAX_EXECUTION_DATA_SIZE
+        payload = execution_data_payload(entries, truncated_context)
+        return payload if within_size_limit?(payload)
 
         log_oversized_execution_data(
           "still exceeds #{MAX_EXECUTION_DATA_SIZE} bytes, truncating entries",
         )
-        json_data = execution_data_payload(compact_entries(entries), truncated_context)
-        return json_data if json_data.bytesize <= MAX_EXECUTION_DATA_SIZE
+        payload = execution_data_payload(compact_entries(entries), truncated_context)
+        return payload if within_size_limit?(payload)
 
         log_oversized_execution_data(
           "still exceeds #{MAX_EXECUTION_DATA_SIZE} bytes after all truncation attempts, storing minimal record",
@@ -179,7 +179,11 @@ module DiscourseWorkflows
       end
 
       def execution_data_payload(entries, context, node_contexts = {})
-        { "entries" => entries, "context" => context, "node_contexts" => node_contexts }.to_json
+        { "entries" => entries, "context" => context, "node_contexts" => node_contexts }
+      end
+
+      def within_size_limit?(payload)
+        payload.to_json.bytesize <= MAX_EXECUTION_DATA_SIZE
       end
 
       def log_oversized_execution_data(message)

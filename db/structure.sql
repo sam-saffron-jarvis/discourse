@@ -4215,7 +4215,7 @@ ALTER SEQUENCE public.discourse_workflows_data_tables_id_seq OWNED BY public.dis
 
 CREATE TABLE public.discourse_workflows_execution_data (
     execution_id bigint NOT NULL,
-    data text,
+    data jsonb DEFAULT '{}'::jsonb NOT NULL,
     workflow_data jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 

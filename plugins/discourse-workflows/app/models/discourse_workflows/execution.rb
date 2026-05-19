@@ -161,9 +161,8 @@ module DiscourseWorkflows
     def update_step_status_in_data!(node_id, from_status, to_status, error_msg = nil)
       return unless execution_data
 
-      full_data = execution_data.parsed_data
-      rd = execution_data.entries
-      rd.each_value do |steps|
+      full_data = execution_data.data.deep_dup
+      (full_data["entries"] || {}).each_value do |steps|
         Array(steps).each do |step|
           if step["node_id"] == node_id.to_s && step["status"] == from_status.to_s
             step["status"] = to_status.to_s
@@ -172,7 +171,7 @@ module DiscourseWorkflows
           end
         end
       end
-      execution_data.update!(data: full_data.to_json)
+      execution_data.update!(data: full_data)
     end
   end
 end

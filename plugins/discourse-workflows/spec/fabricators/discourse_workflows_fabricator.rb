@@ -50,7 +50,7 @@ end
 
 Fabricator(:discourse_workflows_execution_data, class_name: "DiscourseWorkflows::ExecutionData") do
   execution { Fabricate(:discourse_workflows_execution) }
-  data { { "entries" => {}, "context" => {}, "node_contexts" => {} }.to_json }
+  data { { "entries" => {}, "context" => {}, "node_contexts" => {} } }
   workflow_data { {} }
 end
 
@@ -85,7 +85,7 @@ Fabricator(
       },
       "node_contexts" => {
       },
-    }.to_json
+    }
   end
 end
 

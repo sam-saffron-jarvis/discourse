@@ -7,26 +7,16 @@ module DiscourseWorkflows
 
     belongs_to :execution, class_name: "DiscourseWorkflows::Execution", foreign_key: "execution_id"
 
-    def parsed_data
-      @parsed_data ||= data.present? ? JSON.parse(data) : {}
-    end
-
-    def data=(value)
-      @parsed_data = nil
-      @all_steps = nil
-      super
-    end
-
     def entries
-      parsed_data["entries"] || {}
+      data["entries"] || {}
     end
 
     def context_data
-      parsed_data["context"] || {}
+      data["context"] || {}
     end
 
     def node_contexts
-      parsed_data["node_contexts"] || {}
+      data["node_contexts"] || {}
     end
 
     def steps_array
@@ -52,7 +42,7 @@ module DiscourseWorkflows
     private
 
     def all_steps
-      @all_steps ||= entries.values.flatten
+      entries.values.flatten
     end
   end
 end
@@ -61,7 +51,7 @@ end
 #
 # Table name: discourse_workflows_execution_data
 #
-#  data          :text
+#  data          :jsonb            not null
 #  workflow_data :jsonb            not null
 #  execution_id  :bigint           not null, primary key
 #

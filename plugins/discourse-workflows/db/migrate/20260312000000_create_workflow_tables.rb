@@ -103,7 +103,7 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
 
     create_table :discourse_workflows_execution_data, id: false do |t|
       t.bigint :execution_id, null: false, primary_key: true
-      t.text :data
+      t.jsonb :data, default: {}, null: false
       t.jsonb :workflow_data, default: {}, null: false
     end
 
