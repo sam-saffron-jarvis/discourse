@@ -53,6 +53,8 @@ DiscoursePluginRegistry.define_filtered_register(:discourse_workflows_nodes)
 DiscoursePluginRegistry.define_filtered_register(:discourse_workflows_credential_types)
 
 after_initialize do
+  Rails.application.config.filter_parameters += %i[signature]
+
   add_to_class(:guardian, :can_manage_workflows?) { is_admin? }
 
   nodes_dir = File.join(File.dirname(__FILE__), "lib/discourse_workflows/nodes")

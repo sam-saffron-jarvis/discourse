@@ -43,13 +43,19 @@ module DiscourseWorkflows
         reset!
       end
 
-      def reset!(resume_token: SecureRandom.uuid)
+      RESUME_TOKEN_BYTES = 32
+
+      def self.generate_resume_token
+        SecureRandom.urlsafe_base64(RESUME_TOKEN_BYTES)
+      end
+
+      def reset!(resume_token: self.class.generate_resume_token)
         @context = { "$trigger" => trigger_data }
         @node_contexts_by_id = {}
         @context["__resume_token"] = resume_token
       end
 
-      def restore!(context:, node_contexts:, resume_token: SecureRandom.uuid)
+      def restore!(context:, node_contexts:, resume_token: self.class.generate_resume_token)
         @context = context.deep_stringify_keys
         @context["$trigger"] ||= trigger_data
         @node_contexts_by_id = normalize_node_contexts(node_contexts)

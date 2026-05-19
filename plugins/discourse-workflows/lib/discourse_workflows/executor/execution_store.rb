@@ -50,6 +50,10 @@ module DiscourseWorkflows
           status: :success,
           finished_at: Time.current,
           run_time_ms: Execution.compute_run_time_ms(steps),
+          resume_token: nil,
+          waiting_node_id: nil,
+          waiting_until: nil,
+          timeout_action: nil,
         )
         publish_execution_node_outputs(steps)
         execution
@@ -62,6 +66,10 @@ module DiscourseWorkflows
           error: error.message.to_s.truncate(1000),
           finished_at: Time.current,
           run_time_ms: Execution.compute_run_time_ms(steps),
+          resume_token: nil,
+          waiting_node_id: nil,
+          waiting_until: nil,
+          timeout_action: nil,
         )
         trigger_error_workflow(error, steps)
         execution

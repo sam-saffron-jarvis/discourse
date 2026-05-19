@@ -152,6 +152,52 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionStore do
     end
   end
 
+  describe "wait-state cleanup" do
+    let(:waiting_step) do
+      DiscourseWorkflows::Executor::Step.build(
+        node: OpenStruct.new(id: "1", name: "Node A", type: "action:code", type_version: "1.0"),
+        position: 0,
+        input: [],
+        status: DiscourseWorkflows::Executor::Step::SUCCESS,
+      )
+    end
+
+    before do
+      store.start!
+      store.execution.update!(
+        status: :waiting,
+        waiting_node_id: "1",
+        waiting_until: 1.hour.from_now,
+        resume_token: "stale-token",
+        timeout_action: "fail",
+      )
+    end
+
+    it "#finish! nils all wait-state columns" do
+      store.finish!(steps: [waiting_step])
+
+      expect(store.execution.reload).to have_attributes(
+        status: "success",
+        resume_token: nil,
+        waiting_node_id: nil,
+        waiting_until: nil,
+        timeout_action: nil,
+      )
+    end
+
+    it "#fail! nils all wait-state columns" do
+      store.fail!(error: StandardError.new("boom"), steps: [waiting_step])
+
+      expect(store.execution.reload).to have_attributes(
+        status: "error",
+        resume_token: nil,
+        waiting_node_id: nil,
+        waiting_until: nil,
+        timeout_action: nil,
+      )
+    end
+  end
+
   describe "#resume!" do
     it "restores context and workflow snapshot data" do
       store.start!

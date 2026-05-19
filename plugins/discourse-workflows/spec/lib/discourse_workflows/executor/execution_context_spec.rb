@@ -8,6 +8,24 @@ RSpec.describe DiscourseWorkflows::Executor::ExecutionContext do
     described_class.new(workflow: workflow, trigger_data: trigger_data, user: nil)
   end
 
+  describe ".generate_resume_token" do
+    it "returns a 256-bit url-safe token" do
+      expect(described_class.generate_resume_token).to match(/\A[A-Za-z0-9_-]{43}\z/)
+    end
+
+    it "returns a different value on each call" do
+      expect(described_class.generate_resume_token).not_to eq(described_class.generate_resume_token)
+    end
+  end
+
+  describe "#reset!" do
+    it "assigns a fresh url-safe resume_token by default" do
+      execution_context.reset!
+
+      expect(execution_context.resume_token).to match(/\A[A-Za-z0-9_-]{43}\z/)
+    end
+  end
+
   describe "#store_context" do
     it "stores values by key" do
       execution_context.store_context("my_node", [{ "json" => { "x" => 1 } }])
