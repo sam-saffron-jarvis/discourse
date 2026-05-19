@@ -8,6 +8,9 @@ module DiscourseWorkflows
     MAX_COLUMN_NAME_LENGTH = 63
     COLUMN_NAME_FORMAT = /\A[a-zA-Z_][a-zA-Z0-9_]*\z/
 
+    # `name` is display metadata. The format intentionally allows spaces and
+    # MUST NOT be used as a SQL identifier. The physical Postgres table is
+    # always derived from `id` via DataTables::Storage.table_name(id).
     validates :name,
               presence: true,
               uniqueness: true,

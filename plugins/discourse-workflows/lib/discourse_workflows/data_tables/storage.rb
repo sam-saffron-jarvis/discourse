@@ -12,6 +12,9 @@ module DiscourseWorkflows
 
       RESERVED_COLUMN_NAMES = Types::SYSTEM_COLUMN_NAMES
 
+      TABLE_NAME_PREFIX = "discourse_workflows_data_table_"
+      TABLE_NAME_SUFFIX = "_rows"
+
       REVERSE_TYPE_MAP = {
         "int8" => "number",
         "int4" => "number",
@@ -24,8 +27,17 @@ module DiscourseWorkflows
       }.freeze
 
       class << self
+        # IMPORTANT: data_table_id MUST be a numeric DataTable#id. The result
+        # is interpolated into DDL (create_table / drop_table / add_column /
+        # rename_column / remove_column) and into Arel::Table.new. Do NOT pass
+        # DataTable#name here -- the `name` column allows spaces and is purely
+        # display metadata. Always derive identifiers from the integer id.
         def table_name(data_table_id)
-          "discourse_workflows_data_table_#{data_table_id}_rows"
+          "#{TABLE_NAME_PREFIX}#{Integer(data_table_id)}#{TABLE_NAME_SUFFIX}"
+        end
+
+        def table_name_like_pattern
+          "#{TABLE_NAME_PREFIX}%#{TABLE_NAME_SUFFIX}"
         end
 
         def columns(data_table_id)
@@ -71,7 +83,7 @@ module DiscourseWorkflows
         end
 
         def total_size_bytes
-          pattern = table_name("%")
+          pattern = table_name_like_pattern
           DB.query_single(<<~SQL, pattern: pattern).first.to_i
             SELECT COALESCE(SUM(pg_total_relation_size(c.oid)), 0)
             FROM pg_class c
