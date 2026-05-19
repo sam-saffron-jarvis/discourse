@@ -22,7 +22,6 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
     add_index :discourse_workflows_workflows, :error_workflow_id
     add_index :discourse_workflows_workflows, :version_id, unique: true
     add_index :discourse_workflows_workflows, :active_version_id
-    add_index :discourse_workflows_workflows, :nodes, using: :gin, name: "idx_workflows_nodes_gin"
 
     create_table :discourse_workflows_workflow_versions, id: false do |t|
       t.string :version_id, null: false, limit: 36, primary_key: true
