@@ -96,6 +96,33 @@ RSpec.describe DiscourseWorkflows::Workflow do
     end
   end
 
+  describe "error_workflow_id back-references on destroy" do
+    fab!(:target, :discourse_workflows_workflow)
+    fab!(:referrer) do
+      Fabricate(:discourse_workflows_workflow, created_by: user, error_workflow_id: target.id)
+    end
+
+    it "nullifies error_workflow_id on workflows that point at the destroyed one" do
+      expect { target.destroy! }.to change { referrer.reload.error_workflow_id }.from(target.id).to(
+        nil,
+      )
+    end
+
+    it "leaves unrelated workflows untouched" do
+      other = Fabricate(:discourse_workflows_workflow, created_by: user)
+
+      target.destroy!
+
+      expect(other.reload.error_workflow_id).to be_nil
+    end
+
+    it "does not stop the destroy" do
+      target.destroy!
+
+      expect(DiscourseWorkflows::Workflow.exists?(target.id)).to be(false)
+    end
+  end
+
   describe "#upstream_node_of" do
     fab!(:workflow) do
       graph =

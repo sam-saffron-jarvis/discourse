@@ -20,10 +20,23 @@ module DiscourseWorkflows
     validates :workflow_id, :version_number, :name, :created_by_id, presence: true
     validates :name, length: { maximum: 100 }
 
+    before_destroy :prevent_destroy_if_referenced
+
     private
 
     def assign_version_id
       self.version_id ||= SecureRandom.uuid
+    end
+
+    def prevent_destroy_if_referenced
+      return unless workflow
+      return unless workflow.version_id == version_id || workflow.active_version_id == version_id
+
+      errors.add(
+        :base,
+        I18n.t("discourse_workflows.errors.workflow_version.referenced_by_workflow"),
+      )
+      throw :abort
     end
   end
 end

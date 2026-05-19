@@ -49,6 +49,8 @@ module DiscourseWorkflows
     validates :version_id, presence: true, length: { maximum: 36 }
     validate :error_workflow_must_exist
 
+    before_destroy :nullify_error_workflow_back_references
+
     scope :published, -> { where.not(active_version_id: nil) }
     scope :filter_by_name,
           ->(name) do
@@ -235,6 +237,13 @@ module DiscourseWorkflows
     def error_workflow_must_exist
       return if error_workflow_id.nil?
       errors.add(:error_workflow_id, :invalid) unless Workflow.exists?(error_workflow_id)
+    end
+
+    def nullify_error_workflow_back_references
+      Workflow.where(error_workflow_id: id).update_all(
+        error_workflow_id: nil,
+        updated_at: Time.current,
+      )
     end
   end
 end

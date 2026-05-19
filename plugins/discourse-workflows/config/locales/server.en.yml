@@ -59,6 +59,8 @@ en:
         unknown_operation: "Unknown operation: %{operation}."
         invalid_query: "Invalid query: %{errors}"
         invalid_row: "Invalid row: %{errors}"
+      workflow_version:
+        referenced_by_workflow: "Cannot delete a workflow version that is still referenced as the current or active version."
     hints:
       split_out:
         field_not_found: "The field '%{field}' wasn't found in any input item."
