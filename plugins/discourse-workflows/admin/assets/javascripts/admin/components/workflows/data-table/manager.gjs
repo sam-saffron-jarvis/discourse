@@ -3,9 +3,9 @@ import { action } from "@ember/object";
 import { LinkTo } from "@ember/routing";
 import { service } from "@ember/service";
 import humanSize from "discourse/admin/helpers/human-size";
-import DButton from "discourse/components/d-button";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
+import DButton from "discourse/ui-kit/d-button";
 import { i18n } from "discourse-i18n";
 import AdminTable from "../admin-table";
 import CrudManager from "../crud-manager";
@@ -22,14 +22,6 @@ export default class DataTablesManager extends CrudManager {
 
   get basePath() {
     return "/admin/plugins/discourse-workflows/data-tables";
-  }
-
-  @action
-  navigateToDataTable(dataTable) {
-    this.router.transitionTo(
-      "adminPlugins.show.discourse-workflows-data-tables.show",
-      dataTable.id
-    );
   }
 
   @action
@@ -91,7 +83,6 @@ export default class DataTablesManager extends CrudManager {
       @canLoadMore={{this.canLoadMore}}
       @loadMore={{this.loadMore}}
       @loadingMore={{this.loadingMore}}
-      @onRowClick={{this.navigateToDataTable}}
     >
       <:empty>
         <EmptyState
@@ -153,8 +144,8 @@ export default class DataTablesManager extends CrudManager {
           <div class="d-table__cell-actions">
             <DButton
               @action={{fn this.deleteDataTable dataTable}}
-              @icon="trash-can"
-              class="btn-flat btn-small btn-danger"
+              @label="discourse_workflows.delete"
+              class="btn-default btn-small"
             />
           </div>
         </td>

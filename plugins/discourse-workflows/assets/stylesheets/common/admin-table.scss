@@ -13,14 +13,6 @@
     th {
       border-bottom: 1px solid var(--primary-low);
     }
-
-    tbody tr.--clickable {
-      cursor: pointer;
-
-      &:hover td {
-        background: var(--primary-very-low);
-      }
-    }
   }
 
   &__checkbox-cell {

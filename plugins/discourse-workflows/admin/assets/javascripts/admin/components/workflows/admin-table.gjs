@@ -87,17 +87,6 @@ export default class AdminTable extends Component {
     }
   }
 
-  @action
-  handleRowClick(item, event) {
-    if (!this.args.onRowClick) {
-      return;
-    }
-    if (event.target.closest("a, button, input")) {
-      return;
-    }
-    this.args.onRowClick(item);
-  }
-
   <template>
     <div class="workflows-admin-table" ...attributes>
       <DConditionalLoadingSpinner @condition={{@isLoading}}>
@@ -139,15 +128,9 @@ export default class AdminTable extends Component {
               </thead>
               <tbody>
                 {{#each @items as |item|}}
-                  {{! eslint-disable ember/template-no-invalid-interactive }}
                   <tr
-                    class={{dConcatClass
-                      "d-table__row"
-                      @rowClass
-                      (if @onRowClick "--clickable")
-                    }}
+                    class={{dConcatClass "d-table__row" @rowClass}}
                     data-item-id={{this.itemId item}}
-                    {{on "click" (fn this.handleRowClick item)}}
                   >
                     {{#if @selectable}}
                       <td
@@ -163,7 +146,6 @@ export default class AdminTable extends Component {
                     {{/if}}
                     {{yield item to="row"}}
                   </tr>
-                  {{! eslint-enable ember/template-no-invalid-interactive }}
                 {{/each}}
               </tbody>
             </table>

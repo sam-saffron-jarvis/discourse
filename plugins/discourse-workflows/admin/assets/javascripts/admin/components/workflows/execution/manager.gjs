@@ -3,10 +3,10 @@ import { tracked } from "@glimmer/tracking";
 import { concat, fn } from "@ember/helper";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
-import DButton from "discourse/components/d-button";
-import icon from "discourse/helpers/d-icon";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
+import DButton from "discourse/ui-kit/d-button";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import AdminTable from "../admin-table";
 import EmptyState from "../empty-state";
@@ -45,6 +45,7 @@ export default class ExecutionsManager extends Component {
   @tracked executions = null;
   @tracked loadMoreUrl = null;
   @tracked loadingMore = false;
+  @tracked bulkMode = false;
 
   constructor() {
     super(...arguments);
@@ -91,6 +92,26 @@ export default class ExecutionsManager extends Component {
   }
 
   @action
+  enableBulkMode() {
+    this.bulkMode = true;
+  }
+
+  @action
+  cancelBulkMode(clearSelection) {
+    clearSelection();
+    this.bulkMode = false;
+  }
+
+  @action
+  showExecution(execution) {
+    this.router.transitionTo(
+      "adminPlugins.show.discourse-workflows.show.executions.show",
+      execution.workflow_id,
+      execution.id
+    );
+  }
+
+  @action
   async deleteSelected(selectedIds, clearSelection) {
     const count = selectedIds.size;
     this.dialog.yesNoConfirm({
@@ -102,21 +123,13 @@ export default class ExecutionsManager extends Component {
             data: { ids: [...selectedIds] },
           });
           clearSelection();
+          this.bulkMode = false;
           await this.loadExecutions();
         } catch (e) {
           popupAjaxError(e);
         }
       },
     });
-  }
-
-  @action
-  navigateToExecution(execution) {
-    this.router.transitionTo(
-      "adminPlugins.show.discourse-workflows.show.executions.show",
-      execution.workflow_id,
-      execution.id
-    );
   }
 
   <template>
@@ -126,8 +139,7 @@ export default class ExecutionsManager extends Component {
       @canLoadMore={{this.canLoadMore}}
       @loadMore={{this.loadMore}}
       @loadingMore={{this.loadingMore}}
-      @selectable={{true}}
-      @onRowClick={{this.navigateToExecution}}
+      @selectable={{this.bulkMode}}
     >
       <:empty>
         <EmptyState
@@ -142,75 +154,119 @@ export default class ExecutionsManager extends Component {
         />
       </:empty>
       <:toolbar as |toolbar|>
-        {{#if toolbar.hasSelection}}
+        {{#if this.bulkMode}}
+          {{#if toolbar.hasSelection}}
+            <DButton
+              @action={{fn
+                this.deleteSelected
+                toolbar.selectedIds
+                toolbar.clearSelection
+              }}
+              @label="discourse_workflows.executions.delete_selected"
+              @icon="trash-can"
+              class="btn-danger btn-small"
+            />
+          {{/if}}
           <DButton
-            @action={{fn
-              this.deleteSelected
-              toolbar.selectedIds
-              toolbar.clearSelection
-            }}
-            @label="discourse_workflows.executions.delete_selected"
-            @icon="trash-can"
-            class="btn-danger btn-small"
+            @action={{fn this.cancelBulkMode toolbar.clearSelection}}
+            @label="discourse_workflows.executions.cancel_select"
+            class="btn-default btn-small"
           />
+        {{else}}
           <DButton
-            @action={{toolbar.clearSelection}}
-            @icon="xmark"
-            @label="discourse_workflows.executions.clear_selection"
+            @action={{this.enableBulkMode}}
+            @label="discourse_workflows.executions.select"
+            @icon="list-check"
             class="btn-default btn-small"
           />
         {{/if}}
       </:toolbar>
       <:head>
-        {{#unless @workflowId}}
+        {{#if @workflowId}}
+          <th class="d-table__header-cell">{{i18n
+              "discourse_workflows.executions.started_at"
+            }}</th>
+          <th class="d-table__header-cell">{{i18n
+              "discourse_workflows.executions.status"
+            }}</th>
+        {{else}}
           <th class="d-table__header-cell">{{i18n
               "discourse_workflows.executions.workflow"
             }}</th>
-        {{/unless}}
-        <th class="d-table__header-cell">{{i18n
-            "discourse_workflows.executions.status"
-          }}</th>
-        <th class="d-table__header-cell">{{i18n
-            "discourse_workflows.executions.started_at"
-          }}</th>
+          <th class="d-table__header-cell">{{i18n
+              "discourse_workflows.executions.status"
+            }}</th>
+          <th class="d-table__header-cell">{{i18n
+              "discourse_workflows.executions.started_at"
+            }}</th>
+        {{/if}}
         <th class="d-table__header-cell">{{i18n
             "discourse_workflows.executions.run_time"
           }}</th>
+        <th class="d-table__header-cell"></th>
       </:head>
       <:row as |execution|>
-        {{#unless @workflowId}}
+        {{#if @workflowId}}
+          <td class="d-table__cell --overview">
+            {{formatTime execution.started_at}}
+          </td>
+          <td class="d-table__cell --detail">
+            <div class="d-table__mobile-label">
+              {{i18n "discourse_workflows.executions.status"}}
+            </div>
+            <span
+              class="workflows-executions-manager__status --{{execution.status}}"
+            >
+              {{dIcon (statusIcon execution.status)}}
+              {{i18n
+                (concat
+                  "discourse_workflows.executions.statuses." execution.status
+                )
+              }}
+            </span>
+          </td>
+        {{else}}
           <td class="d-table__cell --overview">
             <strong
               class="d-table__overview-name"
             >{{execution.workflow_name}}</strong>
           </td>
-        {{/unless}}
-        <td class="d-table__cell --detail">
-          <div class="d-table__mobile-label">
-            {{i18n "discourse_workflows.executions.status"}}
-          </div>
-          <span
-            class="workflows-executions-manager__status --{{execution.status}}"
-          >
-            {{icon (statusIcon execution.status)}}
-            {{i18n
-              (concat
-                "discourse_workflows.executions.statuses." execution.status
-              )
-            }}
-          </span>
-        </td>
-        <td class="d-table__cell --detail">
-          <div class="d-table__mobile-label">
-            {{i18n "discourse_workflows.executions.started_at"}}
-          </div>
-          {{formatTime execution.started_at}}
-        </td>
+          <td class="d-table__cell --detail">
+            <div class="d-table__mobile-label">
+              {{i18n "discourse_workflows.executions.status"}}
+            </div>
+            <span
+              class="workflows-executions-manager__status --{{execution.status}}"
+            >
+              {{dIcon (statusIcon execution.status)}}
+              {{i18n
+                (concat
+                  "discourse_workflows.executions.statuses." execution.status
+                )
+              }}
+            </span>
+          </td>
+          <td class="d-table__cell --detail">
+            <div class="d-table__mobile-label">
+              {{i18n "discourse_workflows.executions.started_at"}}
+            </div>
+            {{formatTime execution.started_at}}
+          </td>
+        {{/if}}
         <td class="d-table__cell --detail">
           <div class="d-table__mobile-label">
             {{i18n "discourse_workflows.executions.run_time"}}
           </div>
           {{runTime execution}}
+        </td>
+        <td class="d-table__cell --controls">
+          <div class="d-table__cell-actions">
+            <DButton
+              @action={{fn this.showExecution execution}}
+              @label="discourse_workflows.executions.show"
+              class="btn-default btn-small"
+            />
+          </div>
         </td>
       </:row>
     </AdminTable>

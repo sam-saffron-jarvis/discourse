@@ -60,14 +60,6 @@ export default class WorkflowsIndex extends Component {
   }
 
   @action
-  navigateToWorkflow(workflow) {
-    this.router.transitionTo(
-      "adminPlugins.show.discourse-workflows.show",
-      workflow.id
-    );
-  }
-
-  @action
   workflowStatusLabel(workflow) {
     if (workflow.published_version_id && workflow.has_unpublished_changes) {
       return "discourse_workflows.unpublished_changes";
@@ -97,7 +89,6 @@ export default class WorkflowsIndex extends Component {
       @loadMore={{this.loadMore}}
       @loadingMore={{this.loading}}
       @rowClass="workflows-index__row"
-      @onRowClick={{this.navigateToWorkflow}}
     >
       <:empty>
         <EmptyState
@@ -132,7 +123,9 @@ export default class WorkflowsIndex extends Component {
         <th class="d-table__header-cell">{{i18n
             "discourse_workflows.last_run"
           }}</th>
-        <th class="d-table__header-cell"></th>
+        <th class="d-table__header-cell">{{i18n
+            "discourse_workflows.status"
+          }}</th>
       </:head>
       <:row as |workflow|>
         <td class="d-table__cell --overview workflows-index__name">
@@ -184,7 +177,10 @@ export default class WorkflowsIndex extends Component {
             {{i18n "discourse_workflows.last_execution_never"}}
           {{/if}}
         </td>
-        <td class="d-table__cell --detail workflows-index__status">
+        <td class="d-table__cell --detail">
+          <div class="d-table__mobile-label">
+            {{i18n "discourse_workflows.status"}}
+          </div>
           <span
             class={{dConcatClass
               "workflows-index__badge"

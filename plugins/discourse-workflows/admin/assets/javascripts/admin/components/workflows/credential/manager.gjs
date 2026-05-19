@@ -1,8 +1,10 @@
 import { fn } from "@ember/helper";
 import { action } from "@ember/object";
-import DButton from "discourse/components/d-button";
+import DMenu from "discourse/float-kit/components/d-menu";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
+import DButton from "discourse/ui-kit/d-button";
+import DDropdownMenu from "discourse/ui-kit/d-dropdown-menu";
 import { i18n } from "discourse-i18n";
 import AdminTable from "../admin-table";
 import CrudManager from "../crud-manager";
@@ -92,7 +94,6 @@ export default class CredentialsManager extends CrudManager {
       @canLoadMore={{this.canLoadMore}}
       @loadMore={{this.loadMore}}
       @loadingMore={{this.loadingMore}}
-      @onRowClick={{this.editCredential}}
     >
       <:empty>
         <EmptyState
@@ -147,10 +148,30 @@ export default class CredentialsManager extends CrudManager {
         <td class="d-table__cell --controls">
           <div class="d-table__cell-actions">
             <DButton
-              @action={{fn this.deleteCredential credential}}
-              @icon="trash-can"
-              class="btn-flat btn-small btn-danger"
+              @action={{fn this.editCredential credential}}
+              @label="discourse_workflows.edit"
+              @title="discourse_workflows.credentials.edit"
+              class="btn-default btn-small"
             />
+            <DMenu
+              @identifier="workflows-credential-menu"
+              @title={{i18n "discourse_workflows.more_options"}}
+              @icon="ellipsis-vertical"
+              @triggerClass="btn-default"
+            >
+              <:content>
+                <DDropdownMenu as |dropdown|>
+                  <dropdown.item>
+                    <DButton
+                      @action={{fn this.deleteCredential credential}}
+                      @icon="trash-can"
+                      @label="discourse_workflows.delete"
+                      class="btn-danger"
+                    />
+                  </dropdown.item>
+                </DDropdownMenu>
+              </:content>
+            </DMenu>
           </div>
         </td>
       </:row>
