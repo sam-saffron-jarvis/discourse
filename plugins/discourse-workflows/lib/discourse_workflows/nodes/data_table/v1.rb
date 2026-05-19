@@ -6,6 +6,32 @@ module DiscourseWorkflows
       class V1 < NodeType
         OPERATIONS = %w[insert get update delete upsert].freeze
         MAPPING_MODES = %w[manual auto].freeze
+        CONDITION_OVERRIDES =
+          {
+            "equals" => "eq",
+            "notEquals" => "neq",
+            "contains" => "ilike",
+            "notContains" => "not_ilike",
+          }.transform_values { |condition| { "condition" => condition } }
+            .merge(
+              "empty" => {
+                "condition" => "eq",
+                "value" => nil,
+              },
+              "notEmpty" => {
+                "condition" => "neq",
+                "value" => nil,
+              },
+              "true" => {
+                "condition" => "eq",
+                "value" => true,
+              },
+              "false" => {
+                "condition" => "eq",
+                "value" => false,
+              },
+            )
+            .freeze
 
         description(
           name: "action:data_table",
@@ -193,29 +219,21 @@ module DiscourseWorkflows
 
           if operation_name == "insert" && config["mapping_mode"] == "auto"
             json = item["json"] || {}
-            config = config.merge("columns" => json.slice(*node_proxy.column_names))
+            config = config.merge("columns" => json.slice(*column_names(node_proxy)))
           end
 
           result =
             case operation_name
             when "insert"
-              node_proxy.insert(columns: config["columns"])
+              node_proxy.insert_rows([config["columns"] || {}], "all")
             when "get"
-              node_proxy.get(
-                **filter_options(config),
-                limit: config["limit"]&.to_i,
-                sort_column: config["sort_column"],
-                sort_direction: config["sort_direction"],
-              )
+              node_proxy.get_many_rows_and_count(row_query_options(config))[:data]
             when "update"
-              {
-                "updated_count" =>
-                  node_proxy.update(**filter_options(config), columns: config["columns"]),
-              }
+              node_proxy.update_rows(row_mutation_options(config))
             when "delete"
-              { "deleted_count" => node_proxy.delete(**filter_options(config)) }
+              node_proxy.delete_rows(row_delete_options(config))
             when "upsert"
-              upsert_output(node_proxy, config)
+              node_proxy.upsert_row(row_mutation_options(config))
             else
               raise ArgumentError,
                     I18n.t(
@@ -227,18 +245,43 @@ module DiscourseWorkflows
           wrap(result)
         end
 
-        def upsert_output(node_proxy, config)
-          result = node_proxy.upsert(**filter_options(config), columns: config["columns"])
-
-          if result[:operation] == "update"
-            { "operation" => "update", "count" => result[:updated_count] }
-          else
-            { "operation" => "insert" }.merge(result[:row])
-          end
+        def column_names(node_proxy)
+          node_proxy.get_columns.map { |column| column[:name] }
         end
 
-        def filter_options(config)
-          { filter: config["filter"], filter_combinator: config["filter_combinator"] }
+        def row_query_options(config)
+          options = {}
+          filter = normalized_filter(config)
+          options[:filter] = filter if filter.present?
+          options[:take] = config["limit"].to_i if config["limit"].present?
+          options[:sort_by] = normalized_sort_by(config) if config["sort_column"].present?
+          options
+        end
+
+        def row_mutation_options(config)
+          { filter: normalized_filter(config), data: config["columns"] || {} }
+        end
+
+        def row_delete_options(config)
+          { filter: normalized_filter(config) }
+        end
+
+        def normalized_filter(config)
+          filter = config["filter"]
+          return if filter.blank?
+
+          {
+            "type" => config["filter_combinator"] || "and",
+            "filters" => filter.map { |condition| normalized_condition(condition) },
+          }
+        end
+
+        def normalized_condition(condition)
+          condition.merge(CONDITION_OVERRIDES.fetch(condition["condition"]) { {} })
+        end
+
+        def normalized_sort_by(config)
+          [config["sort_column"], config["sort_direction"].to_s.casecmp?("desc") ? "DESC" : "ASC"]
         end
       end
     end

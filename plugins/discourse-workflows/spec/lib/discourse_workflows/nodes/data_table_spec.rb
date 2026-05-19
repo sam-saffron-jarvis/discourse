@@ -244,10 +244,10 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
   describe "update operation" do
     fab!(:row) { insert_data_table_row(data_table, "email" => "up@test.com", "score" => 1) }
 
-    it "updates all rows without filter" do
+    it "requires a filter" do
       insert_data_table_row(data_table, "email" => "second@test.com", "score" => 2)
 
-      items =
+      expect {
         execute_data_table(
           "operation" => "update",
           "data_table_id" => data_table.id.to_s,
@@ -255,8 +255,28 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
             "score" => "77",
           },
         )
+      }.to raise_error(ArgumentError, /Filter must not be empty/)
+    end
 
-      expect(items[0]["json"]["updated_count"]).to eq(2)
+    it "updates matching rows and returns the updated rows" do
+      insert_data_table_row(data_table, "email" => "second@test.com", "score" => 2)
+
+      items =
+        execute_data_table(
+          "operation" => "update",
+          "data_table_id" => data_table.id.to_s,
+          "filter" => [
+            { "columnName" => "email", "condition" => "equals", "value" => "up@test.com" },
+          ],
+          "columns" => {
+            "score" => "77",
+          },
+        )
+
+      expect(items.map { |item| item["json"].slice("email", "score") }).to eq(
+        [{ "email" => "up@test.com", "score" => 77 }],
+      )
+      expect(count_data_table_rows(data_table)).to eq(2)
     end
 
     it "raises when the storage limit is exceeded" do
@@ -282,21 +302,38 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
   describe "delete operation" do
     before { insert_data_table_row(data_table, "email" => "del@test.com", "score" => 5) }
 
-    it "deletes all rows without filter" do
+    it "requires a filter" do
       insert_data_table_row(data_table, "email" => "del2@test.com", "score" => 10)
 
-      items = execute_data_table("operation" => "delete", "data_table_id" => data_table.id.to_s)
+      expect {
+        execute_data_table("operation" => "delete", "data_table_id" => data_table.id.to_s)
+      }.to raise_error(ArgumentError, /Filter must not be empty/)
+    end
 
-      expect(items[0]["json"]["deleted_count"]).to eq(2)
-      expect(count_data_table_rows(data_table)).to eq(0)
+    it "deletes matching rows and returns the deleted rows" do
+      insert_data_table_row(data_table, "email" => "del2@test.com", "score" => 10)
+
+      items =
+        execute_data_table(
+          "operation" => "delete",
+          "data_table_id" => data_table.id.to_s,
+          "filter" => [
+            { "columnName" => "email", "condition" => "equals", "value" => "del@test.com" },
+          ],
+        )
+
+      expect(items.map { |item| item["json"].slice("email", "score") }).to eq(
+        [{ "email" => "del@test.com", "score" => 5 }],
+      )
+      expect(count_data_table_rows(data_table)).to eq(1)
     end
   end
 
   describe "upsert operation" do
-    it "inserts when no filter even if rows exist" do
+    it "requires a filter" do
       insert_data_table_row(data_table, "email" => "existing@test.com", "score" => 1)
 
-      items =
+      expect {
         execute_data_table(
           "operation" => "upsert",
           "data_table_id" => data_table.id.to_s,
@@ -305,8 +342,28 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
             "score" => "10",
           },
         )
+      }.to raise_error(ArgumentError, /Filter must not be empty/)
+    end
 
-      expect(items[0]["json"]["operation"]).to eq("insert")
+    it "inserts when the filter does not match a row" do
+      insert_data_table_row(data_table, "email" => "existing@test.com", "score" => 1)
+
+      items =
+        execute_data_table(
+          "operation" => "upsert",
+          "data_table_id" => data_table.id.to_s,
+          "filter" => [
+            { "columnName" => "email", "condition" => "equals", "value" => "nf@test.com" },
+          ],
+          "columns" => {
+            "email" => "nf@test.com",
+            "score" => "10",
+          },
+        )
+
+      expect(items.map { |item| item["json"].slice("email", "score") }).to eq(
+        [{ "email" => "nf@test.com", "score" => 10 }],
+      )
       expect(count_data_table_rows(data_table)).to eq(2)
     end
 
@@ -325,7 +382,9 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
           },
         )
 
-      expect(items[0]["json"]).to eq("operation" => "update", "count" => 1)
+      expect(items.map { |item| item["json"].slice("email", "score") }).to eq(
+        [{ "email" => "existing@test.com", "score" => 10 }],
+      )
       expect(count_data_table_rows(data_table)).to eq(1)
     end
 

@@ -5,6 +5,10 @@ module DiscourseWorkflows
     class AggregateNodeProxy
       DEFAULT_TAKE = 100
 
+      def get_project_id
+        nil
+      end
+
       def get_many_and_count(options = {})
         options = normalize_options(options)
         scope = DiscourseWorkflows::DataTable.all
