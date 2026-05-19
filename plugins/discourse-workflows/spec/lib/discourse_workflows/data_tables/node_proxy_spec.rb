@@ -30,7 +30,7 @@ RSpec.describe DiscourseWorkflows::DataTables::NodeProxy do
     )
   end
 
-  it "inserts rows with n8n return modes" do
+  it "inserts rows with return mode 'all'" do
     rows = [
       { "email" => "a@example.com", "score" => "1" },
       { "email" => "b@example.com", "score" => "2" },

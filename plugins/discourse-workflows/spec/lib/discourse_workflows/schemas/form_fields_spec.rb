@@ -166,7 +166,7 @@ RSpec.describe DiscourseWorkflows::Schemas::FormFields do
       expect(result.data).to eq("first_name" => "Joffrey", "user_email" => "j@example.com")
     end
 
-    it "supports n8n-style scalar form field types" do
+    it "supports scalar form field types" do
       fields = [
         { "field_label" => "Email", "field_type" => "email", "required" => true },
         { "field_label" => "Password", "field_type" => "password" },

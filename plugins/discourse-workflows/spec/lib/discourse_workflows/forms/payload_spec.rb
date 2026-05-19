@@ -2,7 +2,7 @@
 
 RSpec.describe DiscourseWorkflows::Forms::Payload do
   describe ".build" do
-    it "builds n8n-compatible form submission data" do
+    it "builds form submission data with metadata" do
       freeze_time Time.utc(2026, 1, 1)
 
       payload = described_class.build({ name: "Joffrey" }, query_parameters: { source: "email" })
