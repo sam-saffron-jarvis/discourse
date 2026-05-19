@@ -2,6 +2,7 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { fn, get } from "@ember/helper";
 import { action } from "@ember/object";
+import { service } from "@ember/service";
 import { i18n } from "discourse-i18n";
 import {
   implicitValueFor,
@@ -33,11 +34,37 @@ function conditionSchema(type) {
 }
 
 export default class DataTableConditionBuilder extends Component {
+  @service workflowsNodeTypes;
+
   @tracked schemas = this.#initSchemas();
+  @tracked _loadedDataTables = null;
+
+  constructor(owner, args) {
+    super(owner, args);
+    const identifier =
+      args.nodeDefinition?.name || args.nodeDefinition?.identifier;
+    if (identifier) {
+      this.workflowsNodeTypes
+        .loadNodeParameterOptions(
+          identifier,
+          "data_tables",
+          args.nodeDefinition?.version,
+          {
+            path: "data_table_id",
+            currentNodeParameters: args.configuration || {},
+          }
+        )
+        .then((dataTables) => {
+          this._loadedDataTables = dataTables;
+        });
+    }
+  }
 
   get dataTable() {
     const id = parseInt(this.args.configuration?.data_table_id, 10);
-    return this.args.metadata?.data_tables?.find((dt) => dt.id === id) || null;
+    const dataTables =
+      this.args.metadata?.data_tables || this._loadedDataTables || [];
+    return dataTables.find((dt) => dt.id === id) || null;
   }
 
   get fieldOptions() {
