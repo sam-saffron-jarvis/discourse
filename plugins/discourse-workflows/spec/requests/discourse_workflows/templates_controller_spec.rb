@@ -21,23 +21,14 @@ RSpec.describe DiscourseWorkflows::TemplatesController do
   end
 
   describe "GET /admin/plugins/discourse-workflows/templates" do
-    it "returns a list of templates" do
+    it "returns a list of templates with the expected attributes" do
       get "/admin/plugins/discourse-workflows/templates.json"
 
       expect(response).to have_http_status(:ok)
-      json = response.parsed_body
-      expect(json["templates"]).to be_an(Array)
-      expect(json["templates"].size).to be >= 1
-    end
-
-    it "returns templates with expected attributes" do
-      get "/admin/plugins/discourse-workflows/templates.json"
-
-      template = response.parsed_body["templates"].first
-      expect(template["id"]).to be_present
-      expect(template["name"]).to be_present
-      expect(template["description"]).to be_present
-      expect(template["node_types"]).to be_an(Array)
+      templates = response.parsed_body["templates"]
+      expect(templates).to be_an(Array).and(be_present)
+      expect(templates).to all(include("id", "name", "description", "node_types"))
+      expect(templates.first["node_types"]).to be_an(Array)
     end
   end
 

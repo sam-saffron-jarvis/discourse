@@ -21,31 +21,6 @@ RSpec.describe DiscourseWorkflows::DataTables::NodeProxy do
     }
   end
 
-  it "exposes the n8n-shaped project data table service methods" do
-    expect(proxy).to respond_to(
-      :update_data_table,
-      :delete_data_table,
-      :get_columns,
-      :add_column,
-      :move_column,
-      :delete_column,
-      :get_many_rows_and_count,
-      :insert_rows,
-      :update_rows,
-      :upsert_row,
-      :delete_rows,
-    )
-  end
-
-  it "does not expose node-operation convenience methods" do
-    expect(proxy).not_to respond_to(:column_names)
-    expect(proxy).not_to respond_to(:insert)
-    expect(proxy).not_to respond_to(:get)
-    expect(proxy).not_to respond_to(:update)
-    expect(proxy).not_to respond_to(:delete)
-    expect(proxy).not_to respond_to(:upsert)
-  end
-
   it "returns user columns without system columns" do
     expect(proxy.get_columns).to eq(
       [

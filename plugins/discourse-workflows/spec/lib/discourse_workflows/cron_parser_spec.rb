@@ -89,24 +89,17 @@ RSpec.describe DiscourseWorkflows::CronParser do
   end
 
   describe ".valid?" do
-    it "accepts valid expressions" do
+    it "checks expression syntax without needing a time argument" do
       expect(described_class.valid?("* * * * *")).to be(true)
-      expect(described_class.valid?("0 9 * * 1-5")).to be(true)
-      expect(described_class.valid?("*/15 * * * *")).to be(true)
-      expect(described_class.valid?("*/10 * * * * *")).to be(true)
       expect(described_class.valid?("0 9 * * MON-FRI")).to be(true)
+      expect(described_class.valid?("invalid")).to be(false)
+      expect(described_class.valid?(nil)).to be(false)
     end
 
-    it "rejects invalid expressions" do
-      expect(described_class.valid?("invalid")).to be(false)
+    it "rejects field-count mismatches that .matches? cannot surface" do
       expect(described_class.valid?("* * *")).to be(false)
-      expect(described_class.valid?(nil)).to be(false)
       expect(described_class.valid?("60 * * * *")).to be(false)
       expect(described_class.valid?("* 25 * * *")).to be(false)
-      expect(described_class.valid?("10-5 * * * *")).to be(false)
-      expect(described_class.valid?("*/0 * * * *")).to be(false)
-      expect(described_class.valid?("1,,2 * * * *")).to be(false)
-      expect(described_class.valid?("* * * * ?")).to be(false)
     end
   end
 

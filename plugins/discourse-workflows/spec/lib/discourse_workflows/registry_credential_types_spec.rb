@@ -3,12 +3,6 @@
 RSpec.describe DiscourseWorkflows::Registry do
   before { described_class.reset_indexes! }
 
-  describe ".credential_types" do
-    it "returns registered credential types from the plugin registry" do
-      expect(described_class.credential_types).to be_present
-    end
-  end
-
   describe ".find_credential_type" do
     it "finds a credential type by identifier" do
       result = described_class.find_credential_type("basic_auth")

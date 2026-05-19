@@ -7,23 +7,7 @@ RSpec.describe DiscourseWorkflows::NodeType do
     described_class.registered_nodes.replace(nodes_before)
   end
 
-  describe ".inputs" do
-    it "defaults to [:main]" do
-      expect(described_class.inputs).to eq([:main])
-    end
-  end
-
-  describe ".outputs" do
-    it "defaults to [:main]" do
-      expect(described_class.outputs).to eq([:main])
-    end
-  end
-
   describe ".webhooks" do
-    it "defaults to an empty array" do
-      expect(described_class.webhooks).to eq([])
-    end
-
     it "normalizes webhook descriptors to symbol keys" do
       klass =
         Class.new(described_class) do
@@ -90,20 +74,10 @@ RSpec.describe DiscourseWorkflows::NodeType do
   end
 
   describe ".available?" do
-    it "defaults to true" do
-      expect(described_class.available?).to eq(true)
-    end
-
     it "can be overridden by subclass" do
       klass =
         Class.new(described_class) { description(name: "action:unavailable", available: false) }
       expect(klass.available?).to eq(false)
-    end
-  end
-
-  describe ".unavailable_reason_key" do
-    it "defaults to nil" do
-      expect(described_class.unavailable_reason_key).to be_nil
     end
   end
 
@@ -203,18 +177,6 @@ RSpec.describe DiscourseWorkflows::NodeType do
           "email" => "",
         },
       )
-    end
-  end
-
-  describe "Wait.output_exemplar" do
-    it "does not leak schema metadata into the exemplar" do
-      exemplar = DiscourseWorkflows::Nodes::Wait::V1.output_exemplar
-      expect(exemplar.keys).to match_array(
-        %w[body headers method params query raw_body webhook_url],
-      )
-      expect(exemplar).not_to have_key("visible_if")
-      expect(exemplar["method"]).to eq("")
-      expect(exemplar["body"]).to eq({})
     end
   end
 

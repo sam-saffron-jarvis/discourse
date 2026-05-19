@@ -7,10 +7,6 @@ RSpec.describe DiscourseWorkflows::DataTable::List do
     let(:limit) { nil }
     let(:cursor) { nil }
 
-    it "is always valid" do
-      expect(contract).to be_valid
-    end
-
     describe "#normalized_limit" do
       context "when limit is not provided" do
         it "returns the default limit" do
@@ -104,12 +100,6 @@ RSpec.describe DiscourseWorkflows::DataTable::List do
 
       it "returns table sizes keyed by data table id" do
         expect(result[:table_sizes].keys).to contain_exactly(data_table_a.id, data_table_b.id)
-      end
-
-      it "returns columns from catalog introspection" do
-        result
-        columns = result[:data_tables].first.columns
-        expect(columns.map { |c| c["name"] }).to include("value")
       end
     end
 

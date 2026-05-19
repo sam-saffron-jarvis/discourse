@@ -154,6 +154,11 @@ RSpec.describe DiscourseWorkflows::DataTableRow::Destroy do
         end
 
         it { is_expected.to run_successfully }
+
+        it "leaves existing rows intact" do
+          row_id = row["id"]
+          expect { result }.not_to change { find_data_table_row(data_table, row_id) }
+        end
       end
     end
   end

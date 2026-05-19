@@ -46,10 +46,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Destroy do
         }.by(1)
       end
 
-      it "expires workflow caches" do
-        DiscourseWorkflows::Workflow::Action::ExpireCaches.expects(:call).once
-        result
-      end
+      it_behaves_like "expires workflow caches"
     end
   end
 end

@@ -51,9 +51,7 @@ RSpec.describe DiscourseWorkflows::Template::List do
     end
 
     context "when no template files exist" do
-      before do
-        Dir.stubs(:glob).with(File.join(DiscourseWorkflows::TEMPLATES_PATH, "*.json")).returns([])
-      end
+      before { DiscourseWorkflows::TemplateStore.stubs(:summaries).returns([]) }
 
       it { is_expected.to run_successfully }
 

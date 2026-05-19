@@ -42,7 +42,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
       expect(response).to have_http_status(:not_found)
     end
 
-    it "passes current user to execution" do
+    it "forwards the current user id in service params" do
       DiscourseWorkflows::Workflow::ManualExecute
         .expects(:call)
         .with { |kwargs| kwargs.dig(:params, :user_id) == admin.id }
@@ -53,6 +53,8 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
              workflow_id: published_workflow.id,
              trigger_node_id: "trigger-1",
            }
+
+      expect(response).to have_http_status(:no_content)
     end
   end
 
@@ -101,14 +103,7 @@ RSpec.describe DiscourseWorkflows::ExecutionsController do
   describe "GET /admin/plugins/discourse-workflows/executions/:id" do
     fab!(:execution) { Fabricate(:discourse_workflows_completed_execution, workflow: workflow) }
 
-    before do
-      Fabricate(
-        :discourse_workflows_execution_data_with_steps,
-        execution: execution,
-        workflow_data: {
-        },
-      )
-    end
+    before { Fabricate(:discourse_workflows_execution_data_with_steps, execution: execution) }
 
     it "returns the execution with steps" do
       get "/admin/plugins/discourse-workflows/executions/#{execution.id}.json"

@@ -103,10 +103,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Create do
         expect(log.subject).to eq("My Workflow")
       end
 
-      it "expires workflow caches" do
-        DiscourseWorkflows::Workflow::Action::ExpireCaches.expects(:call).once
-        result
-      end
+      it_behaves_like "expires workflow caches"
     end
   end
 end

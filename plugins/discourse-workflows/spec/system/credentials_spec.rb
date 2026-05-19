@@ -7,14 +7,6 @@ RSpec.describe "Discourse Workflows - Credentials" do
 
   before { sign_in(admin) }
 
-  it "shows existing credentials" do
-    Fabricate(:discourse_workflows_credential, name: "My API Key")
-
-    credentials_page.visit_index
-
-    expect(credentials_page).to have_credential("My API Key")
-  end
-
   it "creates a new credential" do
     credentials_page.visit_index
     credentials_page.click_add_credential

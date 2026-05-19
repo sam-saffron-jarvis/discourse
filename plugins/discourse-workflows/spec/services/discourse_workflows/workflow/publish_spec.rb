@@ -42,10 +42,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Publish do
         expect(workflow.reload.published_version_id).to eq(workflow.draft_version_id)
       end
 
-      it "expires workflow caches" do
-        DiscourseWorkflows::Workflow::Action::ExpireCaches.expects(:call).once
-        result
-      end
+      it_behaves_like "expires workflow caches"
 
       it "prunes static_data for nodes removed from the published draft" do
         last_triggered_at = 1.minute.ago.iso8601

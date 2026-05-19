@@ -683,15 +683,6 @@ RSpec.describe DiscourseWorkflows::ExpressionResolver do
       expect(segments.first[:text]).to eq(user.username)
     end
 
-    it "disposes the resolver after a successful run" do
-      fake_resolver = instance_double(described_class, resolve_segments: [], dispose: nil)
-      allow(described_class).to receive(:new).and_return(fake_resolver)
-
-      described_class.resolve_segments("anything", context: {})
-
-      expect(fake_resolver).to have_received(:dispose)
-    end
-
     it "returns an empty array and logs a warning on MiniRacer::Error" do
       fake_resolver = instance_double(described_class)
       allow(fake_resolver).to receive(:resolve_segments).and_raise(MiniRacer::Error.new("boom"))

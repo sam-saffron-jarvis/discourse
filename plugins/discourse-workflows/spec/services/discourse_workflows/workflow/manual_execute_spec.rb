@@ -46,7 +46,7 @@ RSpec.describe DiscourseWorkflows::Workflow::ManualExecute do
     context "when everything is valid" do
       it { is_expected.to run_successfully }
 
-      it "delegates execution to Workflow::Execute" do
+      it "creates a new execution record" do
         expect { result }.to change { DiscourseWorkflows::Execution.count }.by(1)
       end
 

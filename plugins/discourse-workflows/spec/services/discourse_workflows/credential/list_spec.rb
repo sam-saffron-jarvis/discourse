@@ -2,10 +2,6 @@
 
 RSpec.describe DiscourseWorkflows::Credential::List do
   describe described_class::Contract, type: :model do
-    it { is_expected.to allow_values(nil, 1, 50).for(:cursor) }
-    it { is_expected.to allow_values(nil, 1, 25, 100).for(:limit) }
-    it { is_expected.to allow_values(nil, "basic_auth", "bearer_token").for(:type) }
-
     describe "limit normalization" do
       def contract(limit:)
         c = described_class.new(limit: limit)

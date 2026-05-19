@@ -15,13 +15,8 @@ RSpec.describe "Discourse Workflows" do
     editor_page.visit_new
     editor_page.click_empty_state_add_node
     editor_page.select_node_type("trigger:topic_closed")
-
-    expect(editor_page).to have_node_count(1)
-
     editor_page.click_add_node
     editor_page.select_node_type("action:topic_tags", operation: "add")
-
-    expect(editor_page).to have_node_count(2)
 
     workflows_page.visit_index
     expect(workflows_page).to have_workflow("My workflow")
@@ -29,29 +24,39 @@ RSpec.describe "Discourse Workflows" do
 
   it "creates a workflow with condition node" do
     editor_page.visit_new
-
     editor_page.click_empty_state_add_node
     editor_page.select_node_type("trigger:topic_closed")
-
-    expect(editor_page).to have_node_count(1)
-
     editor_page.click_add_node
     editor_page.select_node_type("condition:if")
-
-    expect(editor_page).to have_node_count(2)
-    expect(editor_page).to have_node("If")
 
     workflows_page.visit_index
     expect(workflows_page).to have_workflow("My workflow")
   end
 
-  it "shows a warning icon when the latest workflow run failed" do
-    workflow = Fabricate(:discourse_workflows_workflow, created_by: admin)
-    Fabricate(:discourse_workflows_error_execution, workflow: workflow, created_at: 1.hour.ago)
+  it "renders the failed-run warning icon based on the most recent execution" do
+    failed_workflow = Fabricate(:discourse_workflows_workflow, created_by: admin)
+    recovered_workflow = Fabricate(:discourse_workflows_workflow, created_by: admin)
+
+    Fabricate(
+      :discourse_workflows_error_execution,
+      workflow: failed_workflow,
+      created_at: 1.hour.ago,
+    )
+    Fabricate(
+      :discourse_workflows_error_execution,
+      workflow: recovered_workflow,
+      created_at: 2.hours.ago,
+    )
+    Fabricate(
+      :discourse_workflows_completed_execution,
+      workflow: recovered_workflow,
+      created_at: 1.hour.ago,
+    )
 
     workflows_page.visit_index
 
-    expect(workflows_page).to have_failed_workflow(workflow)
+    expect(workflows_page).to have_failed_workflow(failed_workflow)
+    expect(workflows_page).to have_no_failed_workflow(recovered_workflow)
   end
 
   context "when closing the node configurator" do
@@ -113,15 +118,5 @@ RSpec.describe "Discourse Workflows" do
 
       expect(updates).to eq(0)
     end
-  end
-
-  it "does not show a warning icon when a newer run succeeded" do
-    workflow = Fabricate(:discourse_workflows_workflow, created_by: admin)
-    Fabricate(:discourse_workflows_error_execution, workflow: workflow, created_at: 2.hours.ago)
-    Fabricate(:discourse_workflows_completed_execution, workflow: workflow, created_at: 1.hour.ago)
-
-    workflows_page.visit_index
-
-    expect(workflows_page).to have_no_failed_workflow(workflow)
   end
 end

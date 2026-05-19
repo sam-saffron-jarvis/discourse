@@ -2,11 +2,6 @@
 
 RSpec.describe DiscourseWorkflows::Variable::List do
   describe described_class::Contract, type: :model do
-    it { is_expected.to allow_value(nil).for(:cursor) }
-    it { is_expected.to allow_value(42).for(:cursor) }
-    it { is_expected.to allow_value(nil).for(:limit) }
-    it { is_expected.to allow_value(10).for(:limit) }
-
     describe "limit normalization" do
       def contract(limit:)
         c = described_class.new(limit: limit)

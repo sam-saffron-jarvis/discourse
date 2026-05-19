@@ -36,9 +36,8 @@ RSpec.describe DiscourseWorkflows::Execution::Show do
     end
 
     context "when everything's ok" do
-      it { is_expected.to run_successfully }
-
       it "returns the execution" do
+        expect(result).to run_successfully
         expect(result[:execution]).to eq(execution)
       end
     end

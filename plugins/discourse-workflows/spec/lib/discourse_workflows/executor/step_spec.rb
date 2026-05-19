@@ -181,10 +181,6 @@ RSpec.describe DiscourseWorkflows::Executor::Step do
   end
 
   describe "SKIPPED status" do
-    it "has a SKIPPED constant" do
-      expect(described_class::SKIPPED).to eq("skipped")
-    end
-
     it "supports skip! transition" do
       step =
         described_class.new(

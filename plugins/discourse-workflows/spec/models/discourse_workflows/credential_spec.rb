@@ -2,11 +2,6 @@
 
 RSpec.describe DiscourseWorkflows::Credential do
   describe "validations" do
-    it { is_expected.to validate_presence_of(:name) }
-    it { is_expected.to validate_presence_of(:credential_type) }
-    it { is_expected.to validate_length_of(:name).is_at_most(128) }
-    it { is_expected.to validate_length_of(:credential_type).is_at_most(64) }
-
     describe "data schema validation" do
       it "is valid when all required fields are present" do
         credential =

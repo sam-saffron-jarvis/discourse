@@ -36,10 +36,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Unpublish do
         expect(workflow.reload.published_version_id).to be_nil
       end
 
-      it "expires workflow caches" do
-        DiscourseWorkflows::Workflow::Action::ExpireCaches.expects(:call).once
-        result
-      end
+      it_behaves_like "expires workflow caches"
     end
   end
 end

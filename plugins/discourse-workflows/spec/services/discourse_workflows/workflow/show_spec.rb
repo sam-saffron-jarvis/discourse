@@ -35,9 +35,8 @@ RSpec.describe DiscourseWorkflows::Workflow::Show do
     end
 
     context "when everything is valid" do
-      it { is_expected.to run_successfully }
-
       it "returns the workflow" do
+        expect(result).to run_successfully
         expect(result[:workflow]).to eq(workflow)
       end
     end

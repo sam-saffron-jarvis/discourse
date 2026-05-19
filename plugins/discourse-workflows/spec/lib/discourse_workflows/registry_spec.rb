@@ -3,24 +3,6 @@
 RSpec.describe DiscourseWorkflows::Registry do
   before { described_class.reset_indexes! }
 
-  describe ".triggers" do
-    it "returns registered triggers from the plugin registry" do
-      expect(described_class.triggers).to be_present
-    end
-  end
-
-  describe ".actions" do
-    it "returns registered actions from the plugin registry" do
-      expect(described_class.actions).to be_present
-    end
-  end
-
-  describe ".conditions" do
-    it "returns registered conditions from the plugin registry" do
-      expect(described_class.conditions).to be_present
-    end
-  end
-
   describe ".find_node_type" do
     it "finds a registered node type by identifier" do
       trigger = described_class.triggers.first

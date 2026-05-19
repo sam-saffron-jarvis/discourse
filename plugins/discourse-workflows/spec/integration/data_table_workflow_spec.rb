@@ -65,7 +65,7 @@ RSpec.describe "Data Table workflow integration" do
     expect(row).to include("topic_id" => topic.id, "author" => admin.username, "logged" => true)
   end
 
-  it "keeps workflow mappings working after a column rename and config update" do
+  it "writes to the renamed column once the workflow config is updated to match" do
     DiscourseWorkflows::DataTableColumn::Rename.call(
       params: {
         data_table_id: data_table.id,

@@ -35,9 +35,8 @@ RSpec.describe DiscourseWorkflows::DataTable::Show do
     end
 
     context "when data table exists" do
-      it { is_expected.to run_successfully }
-
       it "returns the data table" do
+        expect(result).to run_successfully
         expect(result[:data_table]).to eq(data_table)
       end
     end

@@ -136,15 +136,13 @@ RSpec.describe DiscourseWorkflows::Credential::Update do
     end
 
     context "when data is not a hash" do
-      let(:params) { super().merge(data: "not-a-hash") }
+      ["not-a-hash", %w[foo bar]].each do |non_hash|
+        context "with #{non_hash.class}" do
+          let(:params) { super().merge(data: non_hash) }
 
-      it { is_expected.to fail_a_contract }
-    end
-
-    context "when data is an array" do
-      let(:params) { super().merge(data: %w[foo bar]) }
-
-      it { is_expected.to fail_a_contract }
+          it { is_expected.to fail_a_contract }
+        end
+      end
     end
 
     context "when an explicit empty value would clear a required field" do

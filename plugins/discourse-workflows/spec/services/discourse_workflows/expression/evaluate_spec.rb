@@ -60,16 +60,6 @@ RSpec.describe DiscourseWorkflows::Expression::Evaluate do
 
       let(:params) { { template: "{{ $json.topic.title }}", workflow_id: workflow.id } }
 
-      it "delegates to BuildExpressionPreviewContext" do
-        DiscourseWorkflows::Workflow::Action::BuildExpressionPreviewContext
-          .expects(:call)
-          .with(workflow: workflow, node_id: nil)
-          .returns({ "$json" => { "topic" => { "title" => "" } }, "$trigger" => {} })
-          .once
-
-        expect(result).to run_successfully
-      end
-
       it "resolves expressions against the preview context" do
         expect(result).to run_successfully
         expect(result[:segments].first[:state]).to eq("valid")

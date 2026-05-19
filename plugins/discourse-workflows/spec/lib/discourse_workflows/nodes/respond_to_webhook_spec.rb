@@ -36,7 +36,7 @@ RSpec.describe DiscourseWorkflows::Nodes::RespondToWebhook::V1 do
   describe "#execute" do
     let(:item) { { "json" => { "user_id" => 42 } } }
 
-    it "returns redirect response data" do
+    it "rejects redirects to domains not in the allow list" do
       config = { "response_type" => "redirect", "redirect_url" => "https://example.com/thanks" }
       response = execute_response_node(configuration: config, item: item)
 

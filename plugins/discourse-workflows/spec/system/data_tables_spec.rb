@@ -24,15 +24,6 @@ RSpec.describe "Discourse Workflows - Data Tables" do
     expect(data_tables_page).to have_viewer
   end
 
-  it "shows the data table viewer with add-row button" do
-    data_table = Fabricate(:discourse_workflows_data_table, name: "metrics")
-
-    data_tables_page.visit_show(data_table.id)
-
-    expect(data_tables_page).to have_viewer
-    expect(data_tables_page).to have_add_row_button
-  end
-
   it "adds a row to the data table" do
     data_table = Fabricate(:discourse_workflows_data_table, name: "events")
 

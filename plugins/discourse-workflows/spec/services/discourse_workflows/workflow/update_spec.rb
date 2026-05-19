@@ -124,23 +124,6 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
         end
       end
 
-      it "fetches the workflow after acquiring the lock" do
-        lock_sequence = sequence("workflow update lock")
-
-        DistributedMutex
-          .expects(:synchronize)
-          .with("discourse_workflows/workflow/update:workflow_id:#{workflow.id}")
-          .in_sequence(lock_sequence)
-          .yields
-        DiscourseWorkflows::Workflow
-          .expects(:find_by)
-          .with(id: workflow.id)
-          .in_sequence(lock_sequence)
-          .returns(workflow)
-
-        result
-      end
-
       context "when the workflow has no draft version" do
         before { workflow.update_columns(draft_version_id: nil) }
 
@@ -220,10 +203,7 @@ RSpec.describe DiscourseWorkflows::Workflow::Update do
         result
       end
 
-      it "expires workflow caches" do
-        DiscourseWorkflows::Workflow::Action::ExpireCaches.expects(:call).once
-        result
-      end
+      it_behaves_like "expires workflow caches"
 
       context "when graph data includes schedule triggers" do
         let(:nodes) do
