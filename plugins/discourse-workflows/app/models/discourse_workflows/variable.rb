@@ -25,15 +25,15 @@ end
 # Table name: discourse_workflows_variables
 #
 #  id            :bigint           not null, primary key
-#  created_by_id :integer          not null
 #  description   :text
 #  key           :string(100)      not null
 #  value         :string(1000)     default(""), not null
 #  created_at    :datetime         not null
 #  updated_at    :datetime         not null
+#  created_by_id :integer          not null
 #
 # Indexes
 #
 #  index_discourse_workflows_variables_on_created_by_id  (created_by_id)
-#  index_discourse_workflows_variables_on_key  (key) UNIQUE
+#  index_discourse_workflows_variables_on_key            (key) UNIQUE
 #

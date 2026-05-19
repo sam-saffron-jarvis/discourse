@@ -62,13 +62,13 @@ end
 #
 # Table name: discourse_workflows_workflow_dependencies
 #
-#  id                   :bigint           not null, primary key
-#  dependency_key       :string(500)      not null
-#  dependency_type      :string(50)       not null
-#  created_at           :datetime         not null
-#  node_id              :string(100)
-#  workflow_id          :bigint           not null
-#  workflow_version_id  :bigint
+#  id                  :bigint           not null, primary key
+#  dependency_key      :string(500)      not null
+#  dependency_type     :string(50)       not null
+#  created_at          :datetime         not null
+#  node_id             :string(100)
+#  workflow_id         :bigint           not null
+#  workflow_version_id :bigint
 #
 # Indexes
 #
