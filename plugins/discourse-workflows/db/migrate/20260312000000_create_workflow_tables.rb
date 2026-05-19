@@ -73,20 +73,17 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
       t.integer :execution_mode, default: 0, null: false
       t.jsonb :trigger_data, default: {}
       t.text :error
-      t.string :waiting_node_id
+      t.string :waiting_node_id, limit: 100
       t.datetime :waiting_until
-      t.string :resume_token
-      t.string :timeout_action
-      t.string :trigger_node_id
+      t.string :resume_token, limit: 64
+      t.string :timeout_action, limit: 32
+      t.string :trigger_node_id, limit: 100
       t.integer :run_time_ms
       t.datetime :started_at
       t.datetime :finished_at
       t.timestamps null: false
     end
 
-    add_index :discourse_workflows_executions, :workflow_id
-    add_index :discourse_workflows_executions, :status
-    add_index :discourse_workflows_executions, :waiting_node_id
     add_index :discourse_workflows_executions, :resume_token, where: "resume_token IS NOT NULL"
     add_index :discourse_workflows_executions,
               :waiting_until,
@@ -100,12 +97,18 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
                 created_at: :desc,
                 id: :desc,
               }
+    add_index :discourse_workflows_executions,
+              :created_at,
+              where: "status IN (2, 3, 5, 6)",
+              name: "idx_dwf_executions_retention"
 
     create_table :discourse_workflows_execution_data, id: false do |t|
-      t.bigint :execution_id, null: false, primary_key: true
+      t.bigint :execution_id, null: false
       t.jsonb :data, default: {}, null: false
       t.jsonb :workflow_data, default: {}, null: false
     end
+
+    add_index :discourse_workflows_execution_data, :execution_id, unique: true
 
     create_table :discourse_workflows_variables do |t|
       t.string :key, null: false, limit: 100
@@ -141,6 +144,7 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
     add_index :discourse_workflows_credentials, :credential_type
     add_index :discourse_workflows_credentials, :created_by_id
     add_index :discourse_workflows_credentials, :updated_by_id
+    add_index :discourse_workflows_credentials, %i[name credential_type], unique: true
 
     create_table :discourse_workflows_workflow_dependencies do |t|
       t.bigint :workflow_id, null: false
