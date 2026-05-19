@@ -39,10 +39,7 @@ function formFieldEmitsOutput(field) {
   return field.field_type !== "html";
 }
 
-function fieldsFromFormFields(
-  formFields,
-  { includeQueryParameters = false } = {}
-) {
+function fieldsFromFormFields(formFields) {
   const rows = fixedCollectionRows(formFields);
   if (!rows.length) {
     return null;
@@ -58,12 +55,9 @@ function fieldsFromFormFields(
 
   fields.push(
     toFieldEntry("submitted_at", "string"),
-    toFieldEntry("form_mode", "string")
+    toFieldEntry("form_mode", "string"),
+    toFieldEntry("form_query_parameters", "object")
   );
-
-  if (includeQueryParameters) {
-    fields.push(toFieldEntry("form_query_parameters", "object"));
-  }
 
   return fields;
 }
@@ -122,9 +116,7 @@ export default function resolveNodeFields(
     return result;
   }
 
-  const formFields = fieldsFromFormFields(config.form_fields, {
-    includeQueryParameters: node.type === "trigger:form",
-  });
+  const formFields = fieldsFromFormFields(config.form_fields);
   if (formFields) {
     return formFields;
   }

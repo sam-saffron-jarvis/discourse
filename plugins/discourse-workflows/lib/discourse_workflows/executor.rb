@@ -116,7 +116,12 @@ module DiscourseWorkflows
 
         update_waiting_step(waiting_node, response_items)
         @context.store_node_output(waiting_node, response_items)
-        @context.store_node_run(waiting_node, inputs: [], outputs: [response_items])
+        @context.store_node_run(
+          waiting_node,
+          inputs: [],
+          outputs: [response_items],
+          input_sources: @context.consume_waiting_input_sources,
+        )
         clear_waiting!
 
         ItemContract.validate_items!(response_items, source: "resume:#{waiting_node.type}")
@@ -208,6 +213,9 @@ module DiscourseWorkflows
           step.mark_waiting!
           @waiting_node = node
           @waiting_step = step
+          @context.store_waiting_input_sources(
+            input_sources_for_storage(input_sources, input_groups),
+          )
           raise WaitRequested, wait_request.waiting_until
         end
 

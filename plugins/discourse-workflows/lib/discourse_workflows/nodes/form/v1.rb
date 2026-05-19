@@ -175,6 +175,9 @@ module DiscourseWorkflows
                       form_mode: form_mode(webhook_ctx),
                       query_parameters: form_query_parameters(webhook_ctx),
                     ),
+                  "pairedItem" => {
+                    "item" => 0,
+                  },
                 },
               ],
             ],

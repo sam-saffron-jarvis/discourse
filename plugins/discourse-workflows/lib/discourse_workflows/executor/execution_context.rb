@@ -18,6 +18,7 @@ module DiscourseWorkflows
         __current_node_id
         __node_ids_by_name
         __node_parameters_by_name
+        __waiting_input_sources
         $json
         $itemIndex
       ].freeze
@@ -87,6 +88,14 @@ module DiscourseWorkflows
           "outputs" => outputs,
           "input_sources" => input_sources,
         }
+      end
+
+      def store_waiting_input_sources(input_sources)
+        @context["__waiting_input_sources"] = input_sources
+      end
+
+      def consume_waiting_input_sources
+        @context.delete("__waiting_input_sources") || []
       end
 
       def resolver_context(extra_context = {})

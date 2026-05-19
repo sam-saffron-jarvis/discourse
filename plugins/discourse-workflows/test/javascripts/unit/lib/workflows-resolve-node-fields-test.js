@@ -104,7 +104,7 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
     ]);
   });
 
-  test("resolveNodeFields omits query metadata for form action pages", function (assert) {
+  test("resolveNodeFields exposes query metadata for form action pages", function (assert) {
     const node = {
       type: "action:form",
       configuration: {
@@ -120,6 +120,11 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
       { key: "feedback", type: "string", id: "feedback" },
       { key: "submitted_at", type: "string", id: "submitted_at" },
       { key: "form_mode", type: "string", id: "form_mode" },
+      {
+        key: "form_query_parameters",
+        type: "object",
+        id: "form_query_parameters",
+      },
     ]);
   });
 

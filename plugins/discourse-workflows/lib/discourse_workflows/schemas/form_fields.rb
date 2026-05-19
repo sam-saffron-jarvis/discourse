@@ -119,8 +119,12 @@ module DiscourseWorkflows
         options: [{ name: "values", values: ITEM_SCHEMA.merge(EXTRA_ITEM_SCHEMA) }],
       }.freeze
 
-      FORM_OUTPUT_SCHEMA = { submitted_at: :string, form_mode: :string }.freeze
-      FORM_TRIGGER_OUTPUT_SCHEMA = FORM_OUTPUT_SCHEMA.merge(form_query_parameters: :object).freeze
+      FORM_OUTPUT_SCHEMA = {
+        submitted_at: :string,
+        form_mode: :string,
+        form_query_parameters: :object,
+      }.freeze
+      FORM_TRIGGER_OUTPUT_SCHEMA = FORM_OUTPUT_SCHEMA
       OUTPUT_SCHEMA = FORM_OUTPUT_SCHEMA
 
       module_function
