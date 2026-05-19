@@ -446,6 +446,10 @@
 
 // Handle styles (unlinked input/output -> [+] button)
 .workflow-handle {
+  .is-connection-dragging & {
+    visibility: hidden;
+  }
+
   &__button-fo {
     pointer-events: all;
   }

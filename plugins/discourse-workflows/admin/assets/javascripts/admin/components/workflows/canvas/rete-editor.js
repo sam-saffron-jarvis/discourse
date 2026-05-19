@@ -309,6 +309,15 @@ export class ReteEditorBridge {
       return context;
     });
 
+    this.connectionPlugin.addPipe((context) => {
+      if (context.type === "connectionpick") {
+        this.container.classList.add("is-connection-dragging");
+      } else if (context.type === "connectiondrop") {
+        this.container.classList.remove("is-connection-dragging");
+      }
+      return context;
+    });
+
     this.editor.addPipe((context) => {
       if (this.isSyncing) {
         return context;
