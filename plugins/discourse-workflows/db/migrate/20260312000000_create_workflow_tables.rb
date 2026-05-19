@@ -120,19 +120,27 @@ class CreateWorkflowTables < ActiveRecord::Migration[8.0]
 
     create_table :discourse_workflows_data_tables do |t|
       t.string :name, null: false, limit: 100
+      t.integer :created_by_id
+      t.integer :updated_by_id
       t.timestamps null: false
     end
 
     add_index :discourse_workflows_data_tables, :name, unique: true
+    add_index :discourse_workflows_data_tables, :created_by_id
+    add_index :discourse_workflows_data_tables, :updated_by_id
 
     create_table :discourse_workflows_credentials do |t|
       t.string :name, limit: 128, null: false
       t.string :credential_type, limit: 64, null: false
       t.text :data, null: false
+      t.integer :created_by_id
+      t.integer :updated_by_id
       t.timestamps
     end
 
     add_index :discourse_workflows_credentials, :credential_type
+    add_index :discourse_workflows_credentials, :created_by_id
+    add_index :discourse_workflows_credentials, :updated_by_id
 
     create_table :discourse_workflows_workflow_dependencies do |t|
       t.bigint :workflow_id, null: false
