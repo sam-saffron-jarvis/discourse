@@ -12,12 +12,7 @@ const PORT_PILL_CHAR_WIDTH = 6;
 const PORT_PILL_HORIZONTAL_PADDING = 12;
 const PORT_PILL_OFFSET = 18;
 
-export {
-  NODE_HEIGHT_BASE,
-  NODE_HEIGHT_LONG_LABEL,
-  NODE_HEIGHT_WITH_DESC,
-  NODE_WIDTH,
-};
+export { NODE_WIDTH };
 
 export function nodeLabel(node) {
   if (
