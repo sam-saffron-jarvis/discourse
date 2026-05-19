@@ -1,7 +1,13 @@
 import Component from "@glimmer/component";
+import { fn } from "@ember/helper";
+import { action } from "@ember/object";
 import { eq } from "discourse/truth-helpers";
+import { i18n } from "discourse-i18n";
 import { resolveNodeTypeVersion } from "../../../lib/workflows/node-types";
 import {
+  credentialSlotAnchorField,
+  credentialSlotVisible,
+  credentialTypesForSlot,
   fieldControl,
   fieldVisible,
   findNodeType,
@@ -9,8 +15,13 @@ import {
 } from "../../../lib/workflows/property-engine";
 import AssignmentCollection from "./assignment-collection";
 import Collection from "./collection";
+import CredentialControl from "./credential";
 import Field from "./field";
 import FixedCollection from "./fixed-collection";
+
+function credentialSlotLabel(slot) {
+  return i18n(slot.label_key || "discourse_workflows.credentials.type");
+}
 
 export default class PropertyEngineConfigurator extends Component {
   get allFields() {
@@ -35,6 +46,26 @@ export default class PropertyEngineConfigurator extends Component {
 
   get nodeParameters() {
     return this.args.nodeParameters || this.args.configuration || {};
+  }
+
+  get credentialSlotsByAnchor() {
+    const map = new Map();
+    for (const slot of this.args.credentialSlots || []) {
+      const anchor = credentialSlotAnchorField(slot);
+      if (!anchor) {
+        continue;
+      }
+      if (!map.has(anchor)) {
+        map.set(anchor, []);
+      }
+      map.get(anchor).push(slot);
+    }
+    return map;
+  }
+
+  @action
+  slotsForField(fieldName) {
+    return this.credentialSlotsByAnchor.get(fieldName) || [];
   }
 
   <template>
@@ -106,6 +137,16 @@ export default class PropertyEngineConfigurator extends Component {
             @schema={{field}}
           />
         {{/if}}
+        {{#each (this.slotsForField field.name) as |slot|}}
+          {{#if (credentialSlotVisible slot @configuration)}}
+            <CredentialControl
+              @credentialTypes={{credentialTypesForSlot slot}}
+              @label={{credentialSlotLabel slot}}
+              @onChange={{fn @onCredentialSet slot.name}}
+              @value={{@credentialValue slot.name}}
+            />
+          {{/if}}
+        {{/each}}
       {{/if}}
     {{/each}}
   </template>

@@ -297,6 +297,32 @@ export function isExpression(value) {
   return typeof value === "string" && value.startsWith("=");
 }
 
+export function credentialTypesForSlot(slot = {}) {
+  return slot.credential_types || [slot.credential_type].filter(Boolean);
+}
+
+export function credentialSlotVisible(slot = {}, configuration = {}) {
+  return fieldVisible(
+    {
+      display_options: slot.displayOptions || slot.display_options,
+      visible_if: slot.visible_if,
+      visible_unless: slot.visible_unless,
+    },
+    configuration
+  );
+}
+
+export function credentialSlotAnchorField(slot = {}) {
+  const displayOptions = slot.displayOptions || slot.display_options;
+  const fields = new Set([
+    ...Object.keys(displayOptions?.show || {}),
+    ...Object.keys(displayOptions?.hide || {}),
+    ...Object.keys(slot.visible_if || {}),
+    ...Object.keys(slot.visible_unless || {}),
+  ]);
+  return fields.size === 1 ? [...fields][0] : null;
+}
+
 export function fieldVisible(schema = {}, configuration = {}) {
   if (fieldUi(schema).hidden) {
     return false;

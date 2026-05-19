@@ -21,6 +21,9 @@ import {
   resolveNodeTypeVersion,
 } from "../../../lib/workflows/node-types";
 import {
+  credentialSlotAnchorField,
+  credentialSlotVisible,
+  credentialTypesForSlot,
   fieldType,
   findNodeType,
   getPropertySchema,
@@ -44,34 +47,6 @@ function inferFieldType(value) {
     return JS_TYPE_MAP[typeof value] || "string";
   }
   return "string";
-}
-
-function credentialTypesForSlot(slot) {
-  return slot.credential_types || [slot.credential_type].filter(Boolean);
-}
-
-function conditionsMatch(conditions, configuration) {
-  if (!conditions) {
-    return true;
-  }
-
-  return Object.entries(conditions).every(([key, expected]) =>
-    [expected].flat().map(String).includes(configuration?.[key]?.toString())
-  );
-}
-
-function credentialSlotVisible(slot, configuration) {
-  const displayOptions = slot.displayOptions || slot.display_options;
-  if (!displayOptions) {
-    return conditionsMatch(slot.visible_if, configuration);
-  }
-
-  return (
-    conditionsMatch(displayOptions.show, configuration) &&
-    !(
-      displayOptions.hide && conditionsMatch(displayOptions.hide, configuration)
-    )
-  );
 }
 
 function credentialSlotLabel(slot) {
@@ -222,6 +197,12 @@ export default class NodeConfigurator extends Component {
     return this.resolvedNodeType?.credentials || [];
   }
 
+  get unanchoredCredentialSlots() {
+    return this.credentialSlots.filter(
+      (slot) => !credentialSlotAnchorField(slot)
+    );
+  }
+
   get isUnavailable() {
     const nodeType = this.resolvedNodeType;
     return nodeType?.available === false;
@@ -263,6 +244,7 @@ export default class NodeConfigurator extends Component {
     this.credentialConfig = credentials;
   }
 
+  @action
   credentialValue(slotName) {
     return this.credentialConfig[slotName];
   }
@@ -440,6 +422,9 @@ export default class NodeConfigurator extends Component {
                     @nodeType={{@model.node.type}}
                     @schema={{this.propertySchema}}
                     @credentials={{this.credentialConfig}}
+                    @credentialSlots={{this.credentialSlots}}
+                    @credentialValue={{this.credentialValue}}
+                    @onCredentialSet={{this.handleCredentialSet}}
                     @triggerType={{@model.triggerType}}
                     @node={{@model.node}}
                     @nodeParameters={{transientData}}
@@ -447,7 +432,7 @@ export default class NodeConfigurator extends Component {
                     @connections={{@model.connections}}
                     @nodeTypes={{this.nodeTypes}}
                   />
-                  {{#each this.credentialSlots as |slot|}}
+                  {{#each this.unanchoredCredentialSlots as |slot|}}
                     {{#if (credentialSlotVisible slot transientData)}}
                       <CredentialControl
                         @credentialTypes={{credentialTypesForSlot slot}}
