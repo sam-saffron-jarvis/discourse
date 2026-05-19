@@ -57,12 +57,12 @@ function fieldsFromFormFields(
     );
 
   fields.push(
-    toFieldEntry("submittedAt", "string"),
-    toFieldEntry("formMode", "string")
+    toFieldEntry("submitted_at", "string"),
+    toFieldEntry("form_mode", "string")
   );
 
   if (includeQueryParameters) {
-    fields.push(toFieldEntry("formQueryParameters", "object"));
+    fields.push(toFieldEntry("form_query_parameters", "object"));
   }
 
   return fields;

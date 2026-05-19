@@ -100,7 +100,7 @@ RSpec.describe DiscourseWorkflows::WaitingWebhookRunner do
     end
 
     it "uses trigger query parameters as waiting form defaults" do
-      execution.update!(trigger_data: { "formQueryParameters" => { "feedback" => "Prefill" } })
+      execution.update!(trigger_data: { "form_query_parameters" => { "feedback" => "Prefill" } })
 
       result = dispatch(http_method: "GET")
 
@@ -125,8 +125,8 @@ RSpec.describe DiscourseWorkflows::WaitingWebhookRunner do
       output = execution.execution_data.entries.dig("form-action-1", 0, "output", 0, "json")
       expect(output).to include(
         "feedback" => "Approved",
-        "submittedAt" => "2026-01-01T00:00:00.000Z",
-        "formMode" => "production",
+        "submitted_at" => "2026-01-01T00:00:00.000Z",
+        "form_mode" => "production",
       )
     end
 

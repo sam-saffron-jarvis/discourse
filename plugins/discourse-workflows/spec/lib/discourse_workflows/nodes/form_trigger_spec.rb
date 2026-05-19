@@ -16,9 +16,9 @@ RSpec.describe DiscourseWorkflows::Nodes::FormTrigger::V1 do
 
       expect(trigger.output).to eq(
         "name" => "Test",
-        "submittedAt" => "2026-01-01T00:00:00.000Z",
-        "formMode" => "production",
-        "formQueryParameters" => {
+        "submitted_at" => "2026-01-01T00:00:00.000Z",
+        "form_mode" => "production",
+        "form_query_parameters" => {
           "source" => "email",
         },
       )

@@ -121,8 +121,8 @@ RSpec.describe DiscourseWorkflows::FormsController do
       execution = DiscourseWorkflows::Execution.last
       expect(execution.trigger_data).to include(
         "name" => "Test User",
-        "formMode" => "production",
-        "formQueryParameters" => {
+        "form_mode" => "production",
+        "form_query_parameters" => {
           "source" => "email",
           "ref" => "spring",
         },
@@ -572,7 +572,7 @@ RSpec.describe DiscourseWorkflows::FormsController do
         expect(form_step.dig("output", 0, "json")).to include(
           "email" => "test@example.com",
           "tracking_id" => "campaign-42",
-          "formQueryParameters" => {
+          "form_query_parameters" => {
             "tracking_id" => "campaign-42",
           },
         )

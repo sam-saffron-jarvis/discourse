@@ -162,11 +162,10 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
 
         expect(result[:execution].trigger_data).to include(
           "name" => "Test User",
-          "submittedAt" => "2026-01-01T00:00:00.000Z",
-          "formMode" => "production",
+          "submitted_at" => "2026-01-01T00:00:00.000Z",
+          "form_mode" => "production",
         )
         expect(result[:execution].trigger_data).not_to have_key("form_data")
-        expect(result[:execution].trigger_data).not_to have_key("submitted_at")
       end
 
       it "computes response metadata" do
@@ -268,10 +267,10 @@ RSpec.describe DiscourseWorkflows::Form::Submit do
           )
         end
 
-        it "stores formQueryParameters on the trigger payload" do
+        it "stores form_query_parameters on the trigger payload" do
           result
 
-          expect(result[:execution].trigger_data["formQueryParameters"]).to eq(
+          expect(result[:execution].trigger_data["form_query_parameters"]).to eq(
             "source" => "email",
             "ref" => "spring",
           )

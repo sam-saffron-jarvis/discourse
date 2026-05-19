@@ -39,8 +39,8 @@ module("Unit | lib | discourse-workflows | field-processors", function () {
     };
     const fields = [
       { key: "feedback", type: "string", id: "feedback" },
-      { key: "submittedAt", type: "string", id: "submittedAt" },
-      { key: "formMode", type: "string", id: "formMode" },
+      { key: "submitted_at", type: "string", id: "submitted_at" },
+      { key: "form_mode", type: "string", id: "form_mode" },
     ];
 
     assert.deepEqual(processFields(fields, action, graph), fields);

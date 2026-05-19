@@ -94,12 +94,12 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
       { key: "age", type: "number", id: "age" },
       { key: "contact_method", type: "string", id: "contact_method" },
       { key: "tracking_id", type: "string", id: "tracking_id" },
-      { key: "submittedAt", type: "string", id: "submittedAt" },
-      { key: "formMode", type: "string", id: "formMode" },
+      { key: "submitted_at", type: "string", id: "submitted_at" },
+      { key: "form_mode", type: "string", id: "form_mode" },
       {
-        key: "formQueryParameters",
+        key: "form_query_parameters",
         type: "object",
-        id: "formQueryParameters",
+        id: "form_query_parameters",
       },
     ]);
   });
@@ -118,8 +118,8 @@ module("Unit | lib | discourse-workflows | resolve-node-fields", function () {
 
     assert.deepEqual(fields, [
       { key: "feedback", type: "string", id: "feedback" },
-      { key: "submittedAt", type: "string", id: "submittedAt" },
-      { key: "formMode", type: "string", id: "formMode" },
+      { key: "submitted_at", type: "string", id: "submitted_at" },
+      { key: "form_mode", type: "string", id: "form_mode" },
     ]);
   });
 

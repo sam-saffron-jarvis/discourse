@@ -14,11 +14,11 @@ module DiscourseWorkflows
         query_parameters: nil
       )
         payload = (form_data || {}).deep_stringify_keys
-        payload["submittedAt"] = submitted_at
-        payload["formMode"] = form_mode.presence || DEFAULT_MODE
+        payload["submitted_at"] = submitted_at
+        payload["form_mode"] = form_mode.presence || DEFAULT_MODE
 
         if (query_parameters = normalize_query_parameters(query_parameters)).present?
-          payload["formQueryParameters"] = query_parameters
+          payload["form_query_parameters"] = query_parameters
         end
 
         payload
@@ -29,11 +29,11 @@ module DiscourseWorkflows
       end
 
       def form_mode_from(trigger_data)
-        trigger_data.to_h["formMode"].presence || DEFAULT_MODE
+        trigger_data.to_h["form_mode"].presence || DEFAULT_MODE
       end
 
       def query_parameters_from(trigger_data)
-        trigger_data.to_h["formQueryParameters"] || {}
+        trigger_data.to_h["form_query_parameters"] || {}
       end
     end
   end
