@@ -1,7 +1,7 @@
 import { concat, hash } from "@ember/helper";
 import DTooltip from "discourse/float-kit/components/d-tooltip";
-import concatClass from "discourse/helpers/concat-class";
 import { number } from "discourse/lib/formatter";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 
 const DStatTile = <template>
   <div class="d-stat-tile" role="group">
@@ -29,7 +29,7 @@ const DStatTile = <template>
 
 const DStatTiles = <template>
   <div
-    class={{concatClass "d-stat-tiles" (if @format (concat "--" @format))}}
+    class={{dConcatClass "d-stat-tiles" (if @format (concat "--" @format))}}
     ...attributes
   >
     {{yield (hash Tile=DStatTile)}}
