@@ -2,10 +2,10 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
 import { getAbsoluteURL } from "discourse/lib/get-url";
 import { clipboardCopy } from "discourse/lib/utilities";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import ExpressionWrapper from "./expression-wrapper";
 
@@ -61,9 +61,9 @@ export default class UrlPreview extends Component {
       @placeholder={{@placeholder}}
     >
       {{#if this.hasUrl}}
-        {{! template-lint-disable no-invalid-interactive }}
+        {{! eslint-disable ember/template-no-invalid-interactive }}
         <div
-          class={{concatClass
+          class={{dConcatClass
             "workflows-url-preview"
             (if this.copied "is-copied")
           }}
@@ -71,7 +71,7 @@ export default class UrlPreview extends Component {
           {{on "click" this.copy}}
         >
           <code>{{this.previewUrl}}</code>
-          {{icon (if this.copied "check" "copy")}}
+          {{dIcon (if this.copied "check" "copy")}}
         </div>
       {{else if this.hint}}
         <p class="workflows-url-preview__hint">{{this.hint}}</p>

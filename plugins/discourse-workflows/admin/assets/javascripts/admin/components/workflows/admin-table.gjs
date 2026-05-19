@@ -4,10 +4,10 @@ import { fn, hash } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { modifier } from "ember-modifier";
-import ConditionalLoadingSpinner from "discourse/components/conditional-loading-spinner";
-import LoadMore from "discourse/components/load-more";
-import concatClass from "discourse/helpers/concat-class";
 import { eq } from "discourse/truth-helpers";
+import DConditionalLoadingSpinner from "discourse/ui-kit/d-conditional-loading-spinner";
+import DLoadMore from "discourse/ui-kit/d-load-more";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 
 const indeterminate = modifier((element, [value]) => {
   element.indeterminate = value;
@@ -100,7 +100,7 @@ export default class AdminTable extends Component {
 
   <template>
     <div class="workflows-admin-table" ...attributes>
-      <ConditionalLoadingSpinner @condition={{@isLoading}}>
+      <DConditionalLoadingSpinner @condition={{@isLoading}}>
         {{#if @items.length}}
           {{#if (has-block "toolbar")}}
             <div class="workflows-admin-table__toolbar">
@@ -115,7 +115,7 @@ export default class AdminTable extends Component {
             </div>
           {{/if}}
 
-          <LoadMore @action={{@loadMore}} @enabled={{@canLoadMore}}>
+          <DLoadMore @action={{@loadMore}} @enabled={{@canLoadMore}}>
             <table class="d-table workflows-admin-table__table">
               <thead class="d-table__header">
                 <tr class="d-table__row">
@@ -139,9 +139,9 @@ export default class AdminTable extends Component {
               </thead>
               <tbody>
                 {{#each @items as |item|}}
-                  {{! template-lint-disable no-invalid-interactive }}
+                  {{! eslint-disable ember/template-no-invalid-interactive }}
                   <tr
-                    class={{concatClass
+                    class={{dConcatClass
                       "d-table__row"
                       @rowClass
                       (if @onRowClick "--clickable")
@@ -163,16 +163,16 @@ export default class AdminTable extends Component {
                     {{/if}}
                     {{yield item to="row"}}
                   </tr>
-                  {{! template-lint-enable no-invalid-interactive }}
+                  {{! eslint-enable ember/template-no-invalid-interactive }}
                 {{/each}}
               </tbody>
             </table>
-            <ConditionalLoadingSpinner @condition={{@loadingMore}} />
-          </LoadMore>
+            <DConditionalLoadingSpinner @condition={{@loadingMore}} />
+          </DLoadMore>
         {{else}}
           {{yield to="empty"}}
         {{/if}}
-      </ConditionalLoadingSpinner>
+      </DConditionalLoadingSpinner>
     </div>
   </template>
 }

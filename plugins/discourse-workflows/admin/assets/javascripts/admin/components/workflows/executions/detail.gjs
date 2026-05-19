@@ -1,9 +1,9 @@
 import Component from "@glimmer/component";
 import { concat } from "@ember/helper";
 import { action } from "@ember/object";
-import DButton from "discourse/components/d-button";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
+import DButton from "discourse/ui-kit/d-button";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import { localeKeyPart } from "../../../lib/workflows/property-engine";
 
@@ -270,7 +270,7 @@ export default class ExecutionDetail extends Component {
           >
             <div class="workflows-execution-detail__step-header">
               <span class="workflows-execution-detail__step-icon">
-                {{icon (kindIcon step.node_type)}}
+                {{dIcon (kindIcon step.node_type)}}
               </span>
               <span class="workflows-execution-detail__step-name">
                 {{step.node_name}}
@@ -331,7 +331,7 @@ export default class ExecutionDetail extends Component {
                 <div class="workflows-execution-detail__conditions">
                   {{#each step.metadata.conditions as |condition|}}
                     <div
-                      class={{concatClass
+                      class={{dConcatClass
                         "workflows-execution-detail__condition"
                         (if condition.passed "--passed" "--failed")
                       }}

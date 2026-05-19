@@ -3,14 +3,14 @@ import { tracked } from "@glimmer/tracking";
 import { action } from "@ember/object";
 import { LinkTo } from "@ember/routing";
 import { service } from "@ember/service";
-import DButton from "discourse/components/d-button";
-import avatar from "discourse/helpers/avatar";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
-import formatDate from "discourse/helpers/format-date";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { eq } from "discourse/truth-helpers";
+import DButton from "discourse/ui-kit/d-button";
+import dAvatar from "discourse/ui-kit/helpers/d-avatar";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import dFormatDate from "discourse/ui-kit/helpers/d-format-date";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import AdminTable from "./admin-table";
 import EmptyState from "./empty-state";
@@ -149,7 +149,7 @@ export default class WorkflowsIndex extends Component {
                 aria-label={{i18n "discourse_workflows.last_execution_failed"}}
                 title={{i18n "discourse_workflows.last_execution_failed"}}
               >
-                {{icon "triangle-exclamation"}}
+                {{dIcon "triangle-exclamation"}}
               </span>
             {{/if}}
           </LinkTo>
@@ -163,7 +163,7 @@ export default class WorkflowsIndex extends Component {
               href={{workflow.updated_by.path}}
               class="workflows-index__last-editor-link"
             >
-              {{avatar workflow.updated_by imageSize="tiny"}}
+              {{dAvatar workflow.updated_by imageSize="tiny"}}
               <span>{{workflow.updated_by.username}}</span>
             </a>
           {{/if}}
@@ -172,21 +172,21 @@ export default class WorkflowsIndex extends Component {
           <div class="d-table__mobile-label">
             {{i18n "discourse_workflows.last_update"}}
           </div>
-          {{formatDate workflow.updated_at format="medium"}}
+          {{dFormatDate workflow.updated_at format="medium"}}
         </td>
         <td class="d-table__cell --detail workflows-index__last-run">
           <div class="d-table__mobile-label">
             {{i18n "discourse_workflows.last_run"}}
           </div>
           {{#if workflow.last_execution_at}}
-            {{formatDate workflow.last_execution_at format="medium"}}
+            {{dFormatDate workflow.last_execution_at format="medium"}}
           {{else}}
             {{i18n "discourse_workflows.last_execution_never"}}
           {{/if}}
         </td>
         <td class="d-table__cell --detail workflows-index__status">
           <span
-            class={{concatClass
+            class={{dConcatClass
               "workflows-index__badge"
               (this.workflowStatusClass workflow)
             }}

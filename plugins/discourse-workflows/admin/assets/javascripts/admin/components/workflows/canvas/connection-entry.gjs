@@ -1,6 +1,6 @@
 import { fn } from "@ember/helper";
 import { trustHTML } from "@ember/template";
-import concatClass from "discourse/helpers/concat-class";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 import ConnectionToolbar from "./connection-toolbar";
 
 const SVG_STYLE = trustHTML(
@@ -8,9 +8,8 @@ const SVG_STYLE = trustHTML(
 );
 
 <template>
-  {{! template-lint-disable no-forbidden-elements }}
   <svg
-    class={{concatClass "workflow-connection" (if @entry.isPseudo "--pseudo")}}
+    class={{dConcatClass "workflow-connection" (if @entry.isPseudo "--pseudo")}}
     style={{SVG_STYLE}}
   >
     <path

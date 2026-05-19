@@ -4,13 +4,13 @@ import { fn } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { trustHTML } from "@ember/template";
-import CookText from "discourse/components/cook-text";
 import DMenu from "discourse/float-kit/components/d-menu";
 import DTooltip from "discourse/float-kit/components/d-tooltip";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
-import autoFocus from "discourse/modifiers/auto-focus";
 import { eq } from "discourse/truth-helpers";
+import DCookText from "discourse/ui-kit/d-cook-text";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
+import dAutoFocus from "discourse/ui-kit/modifiers/d-auto-focus";
 import { i18n } from "discourse-i18n";
 import CanvasHoverToolbar from "./hover-toolbar";
 
@@ -182,9 +182,9 @@ export default class StickyNote extends Component {
   }
 
   <template>
-    {{! template-lint-disable no-pointer-down-event-binding no-invalid-interactive }}
+    {{! eslint-disable ember/template-no-pointer-down-event-binding, ember/template-no-invalid-interactive }}
     <div
-      class={{concatClass
+      class={{dConcatClass
         "workflow-sticky-note"
         (if @isSelected "is-selected")
       }}
@@ -204,14 +204,14 @@ export default class StickyNote extends Component {
               class="workflow-canvas-toolbar__btn"
             >
               <:trigger>
-                {{icon "palette"}}
+                {{dIcon "palette"}}
               </:trigger>
               <:content as |args|>
                 <div class="workflow-sticky-note__color-picker">
                   {{#each this.colorOptions as |colorOpt|}}
                     <button
                       type="button"
-                      class={{concatClass
+                      class={{dConcatClass
                         "workflow-sticky-note__color-swatch"
                         (if (eq @note.color colorOpt.name) "is-active")
                       }}
@@ -239,7 +239,7 @@ export default class StickyNote extends Component {
               {{on "pointerdown" stopPropagation}}
               {{on "click" this.handleDelete}}
             >
-              {{icon "trash-can"}}
+              {{dIcon "trash-can"}}
             </button>
           </:trigger>
         </DTooltip>
@@ -251,7 +251,7 @@ export default class StickyNote extends Component {
             class="workflow-sticky-note__textarea"
             value={{@note.text}}
             placeholder={{i18n "discourse_workflows.sticky_note.placeholder"}}
-            {{autoFocus}}
+            {{dAutoFocus}}
             {{on "input" this.handleTextInput}}
             {{on "blur" this.stopEditing}}
             {{on "keydown" stopPropagation}}
@@ -260,7 +260,7 @@ export default class StickyNote extends Component {
         {{else}}
           <div class="workflow-sticky-note__text">
             {{#if @note.text}}
-              <CookText @rawText={{@note.text}} />
+              <DCookText @rawText={{@note.text}} />
             {{else}}
               <span class="workflow-sticky-note__placeholder">
                 {{i18n "discourse_workflows.sticky_note.placeholder"}}
@@ -270,7 +270,6 @@ export default class StickyNote extends Component {
         {{/if}}
       </div>
 
-      {{! template-lint-disable no-invalid-interactive }}
       <div
         class="workflow-sticky-note__edges"
         {{on "pointerdown" this.handleResizePointerDown}}

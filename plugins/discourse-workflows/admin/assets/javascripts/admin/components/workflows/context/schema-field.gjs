@@ -2,9 +2,9 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
 import { and, not } from "discourse/truth-helpers";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { WORKFLOW_VARIABLE_MIME } from "../../../lib/workflows/expression-context";
 
 export default class SchemaField extends Component {
@@ -55,7 +55,7 @@ export default class SchemaField extends Component {
 
   <template>
     <li
-      class={{concatClass
+      class={{dConcatClass
         "workflows-schema-field"
         (if this.hasChildren "has-children")
         (if this.collapsed "is-collapsed")
@@ -67,7 +67,7 @@ export default class SchemaField extends Component {
       >
         {{#if this.hasChildren}}
           <span class="workflows-schema-field__toggle">
-            {{icon (if this.collapsed "angle-right" "angle-down")}}
+            {{dIcon (if this.collapsed "angle-right" "angle-down")}}
           </span>
         {{/if}}
 
@@ -78,7 +78,7 @@ export default class SchemaField extends Component {
           {{on "dragend" this.handleDragEnd}}
         >
           <span class="workflows-schema-field__key-icon">
-            {{icon (this.typeIcon @field.type)}}
+            {{dIcon (this.typeIcon @field.type)}}
           </span>
           <span class="workflows-schema-field__key-title">
             {{@field.key}}

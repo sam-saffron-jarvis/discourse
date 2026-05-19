@@ -1,6 +1,6 @@
 import { cancel, later } from "@ember/runloop";
 import { modifier } from "ember-modifier";
-import concatClass from "discourse/helpers/concat-class";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 
 const DEFAULT_HIDE_DELAY = 500;
 
@@ -45,7 +45,7 @@ const hoverVisibility = modifier(function (element, _, named) {
 
 <template>
   <div
-    class={{concatClass "workflow-canvas-toolbar" (if @inline "--inline")}}
+    class={{dConcatClass "workflow-canvas-toolbar" (if @inline "--inline")}}
     {{hoverVisibility
       hoverTarget=@hoverTarget
       hoverSelector=@hoverSelector

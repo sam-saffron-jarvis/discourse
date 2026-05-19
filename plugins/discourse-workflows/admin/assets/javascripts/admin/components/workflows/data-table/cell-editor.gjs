@@ -3,8 +3,8 @@ import { tracked } from "@glimmer/tracking";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { modifier } from "ember-modifier";
-import concatClass from "discourse/helpers/concat-class";
 import { eq } from "discourse/truth-helpers";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 
 const autofocus = modifier((element) => element.focus());
 
@@ -98,7 +98,7 @@ export default class CellEditor extends Component {
 
   <template>
     <td
-      class={{concatClass
+      class={{dConcatClass
         "workflows-data-table-viewer__cell"
         (if (eq this.columnType "boolean") "--boolean")
       }}
@@ -121,10 +121,10 @@ export default class CellEditor extends Component {
           {{on "input" this.onInput}}
         />
       {{else}}
-        {{! template-lint-disable no-nested-interactive }}
+
         <button
           type="button"
-          class={{concatClass
+          class={{dConcatClass
             "workflows-data-table-viewer__cell-value"
             (if this.isPlaceholder "is-null")
           }}

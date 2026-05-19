@@ -5,13 +5,13 @@ import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
 import { modifier } from "ember-modifier";
-import ConditionalLoadingSpinner from "discourse/components/conditional-loading-spinner";
-import DButton from "discourse/components/d-button";
-import DModal from "discourse/components/d-modal";
 import Form from "discourse/components/form";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
 import { eq, or } from "discourse/truth-helpers";
+import DButton from "discourse/ui-kit/d-button";
+import DConditionalLoadingSpinner from "discourse/ui-kit/d-conditional-loading-spinner";
+import DModal from "discourse/ui-kit/d-modal";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import {
   nodeTypeDescription,
@@ -345,7 +345,7 @@ export default class NodeConfigurator extends Component {
               class="workflows-configurator-modal__node-icon"
               style={{nodeTypeStyle this.resolvedNodeType}}
             >
-              {{icon (nodeTypeIcon this.resolvedNodeType)}}
+              {{dIcon (nodeTypeIcon this.resolvedNodeType)}}
             </span>
           {{/if}}
           {{#if this.isEditingName}}
@@ -359,7 +359,7 @@ export default class NodeConfigurator extends Component {
               {{on "keydown" this.handleNameKeydown}}
             />
           {{else}}
-            {{! template-lint-disable no-invalid-interactive }}
+            {{! eslint-disable ember/template-no-invalid-interactive }}
             <div
               class="workflows-configurator-modal__name"
               {{on "click" this.startEditingName}}
@@ -371,10 +371,10 @@ export default class NodeConfigurator extends Component {
             class="btn-flat workflows-configurator-modal__close"
           />
         </div>
-        <ConditionalLoadingSpinner @condition={{this.isLoading}}>
+        <DConditionalLoadingSpinner @condition={{this.isLoading}}>
           {{#if this.isUnavailable}}
             <div class="workflows-configurator-modal__unavailable-banner">
-              {{icon "triangle-exclamation"}}
+              {{dIcon "triangle-exclamation"}}
               <span>{{i18n
                   (or
                     this.unavailableReasonKey
@@ -384,7 +384,7 @@ export default class NodeConfigurator extends Component {
             </div>
           {{/if}}
           <div
-            class={{concatClass
+            class={{dConcatClass
               "workflows-configurator-modal__columns"
               (if this.isUnavailable "is-unavailable")
             }}
@@ -404,7 +404,7 @@ export default class NodeConfigurator extends Component {
               <div class="workflows-configurator__tabs">
                 <button
                   type="button"
-                  class={{concatClass
+                  class={{dConcatClass
                     "workflows-configurator__tab"
                     (if (eq this.activeTab "parameters") "is-active")
                   }}
@@ -414,7 +414,7 @@ export default class NodeConfigurator extends Component {
                   }}</button>
                 <button
                   type="button"
-                  class={{concatClass
+                  class={{dConcatClass
                     "workflows-configurator__tab"
                     (if (eq this.activeTab "settings") "is-active")
                   }}
@@ -495,7 +495,7 @@ export default class NodeConfigurator extends Component {
                           class="workflows-configurator-modal__node-icon"
                           style={{nodeTypeStyle this.resolvedNodeType}}
                         >
-                          {{icon (nodeTypeIcon this.resolvedNodeType)}}
+                          {{dIcon (nodeTypeIcon this.resolvedNodeType)}}
                         </span>
                       {{/if}}{{this.nodeTypeDefaultName}}
                     </span>
@@ -521,7 +521,7 @@ export default class NodeConfigurator extends Component {
               />
             </div>
           </div>
-        </ConditionalLoadingSpinner>
+        </DConditionalLoadingSpinner>
       </:body>
     </DModal>
   </template>

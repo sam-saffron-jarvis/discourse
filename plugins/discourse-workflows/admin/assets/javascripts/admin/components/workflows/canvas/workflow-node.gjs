@@ -6,9 +6,9 @@ import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { service } from "@ember/service";
 import { trustHTML } from "@ember/template";
 import DTooltip from "discourse/float-kit/components/d-tooltip";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
 import { eq } from "discourse/truth-helpers";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 import formatNodeIssue from "../../../lib/workflows/format-node-issue";
 import getNodeIssues from "../../../lib/workflows/node-issues";
@@ -147,9 +147,9 @@ export default class WorkflowNode extends Component {
   }
 
   <template>
-    {{! template-lint-disable no-pointer-down-event-binding }}
+    {{! eslint-disable ember/template-no-pointer-down-event-binding }}
     <div
-      class={{concatClass
+      class={{dConcatClass
         "workflow-rete-node"
         (if this.isTrigger "is-trigger")
         (if this.isBranching "is-branching")
@@ -161,7 +161,7 @@ export default class WorkflowNode extends Component {
     >
       <div class="workflow-rete-node__icon-row">
         <div
-          class={{concatClass
+          class={{dConcatClass
             "workflow-rete-node__inputs"
             (if this.hasMultipleInputs "has-multiple-inputs")
           }}
@@ -204,7 +204,7 @@ export default class WorkflowNode extends Component {
                 {{on "pointerdown" this.stopPropagation}}
                 {{on "click" this.handleManualTrigger}}
               >
-                {{icon "play"}}
+                {{dIcon "play"}}
               </button>
             {{/if}}
             {{#if this.dataTableId}}
@@ -214,7 +214,7 @@ export default class WorkflowNode extends Component {
                 {{on "pointerdown" this.stopPropagation}}
                 {{on "click" this.handleEditDataTable}}
               >
-                {{icon "eye"}}
+                {{dIcon "eye"}}
               </button>
             {{/if}}
             <button
@@ -223,13 +223,13 @@ export default class WorkflowNode extends Component {
               {{on "pointerdown" this.stopPropagation}}
               {{on "click" this.handleDelete}}
             >
-              {{icon "trash-can"}}
+              {{dIcon "trash-can"}}
             </button>
           </CanvasHoverToolbar>
 
           {{#if (nodeTypeIcon this.resolvedNodeType)}}
             <span class="workflow-rete-node__icon">
-              {{icon (nodeTypeIcon this.resolvedNodeType)}}
+              {{dIcon (nodeTypeIcon this.resolvedNodeType)}}
             </span>
           {{/if}}
 
@@ -241,7 +241,7 @@ export default class WorkflowNode extends Component {
               {{on "click" this.handleOpenIssues}}
             >
               <:trigger>
-                {{icon "triangle-exclamation"}}
+                {{dIcon "triangle-exclamation"}}
               </:trigger>
               <:content>
                 <div class="workflow-rete-node__issues">
@@ -263,7 +263,7 @@ export default class WorkflowNode extends Component {
           {{#each this.outputKeys as |key|}}
             <div class="workflow-rete-node__output-row">
               <div
-                class={{concatClass
+                class={{dConcatClass
                   "workflow-rete-node__socket --output"
                   (if (eq key "loop") "--loop")
                 }}
