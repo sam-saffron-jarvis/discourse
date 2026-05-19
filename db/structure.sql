@@ -4250,11 +4250,11 @@ CREATE TABLE public.discourse_workflows_executions (
     execution_mode integer DEFAULT 0 NOT NULL,
     trigger_data jsonb DEFAULT '{}'::jsonb,
     error text,
-    waiting_node_id character varying,
+    waiting_node_id character varying(100),
     waiting_until timestamp(6) without time zone,
-    resume_token character varying,
-    timeout_action character varying,
-    trigger_node_id character varying,
+    resume_token character varying(64),
+    timeout_action character varying(32),
+    trigger_node_id character varying(100),
     run_time_ms integer,
     started_at timestamp(6) without time zone,
     finished_at timestamp(6) without time zone,
@@ -21419,6 +21419,7 @@ ALTER TABLE ONLY public.ad_plugin_house_ads_groups
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260519000000'),
 ('20260518104900'),
 ('20260518054805'),
 ('20260514055648'),
