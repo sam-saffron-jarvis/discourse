@@ -193,11 +193,10 @@ export default class ComboBoxField extends Component {
       return null;
     }
 
-    const requestKey = this.remoteOptionsRequestKey(filter);
-    if (this._remoteOptionsRequestKey === requestKey) {
+    // Mutating _remoteOptions here loops via the ComboBox didReceiveAttrs hook.
+    if (!filter) {
       return this.formatOptions(this._remoteOptions);
     }
-    this._remoteOptionsRequestKey = requestKey;
 
     const options = await this.workflowsNodeTypes.loadNodeParameterOptions(
       this.identifier,
@@ -205,7 +204,6 @@ export default class ComboBoxField extends Component {
       this.typeVersion,
       this.remoteOptionsContext(filter)
     );
-    this._remoteOptions = options;
 
     return this.formatOptions(options);
   }
