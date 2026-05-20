@@ -31,7 +31,7 @@ if defined?(DiscourseWorkflows)
                   filterable: true,
                   value_property: :id,
                   name_property: :name,
-                  patch_from_option: {
+                  set_from_option: {
                     agent_name: "name",
                   },
                 },

@@ -75,7 +75,7 @@ module DiscourseWorkflows
       name_property
       none
       option_format
-      patch_from_option
+      set_from_option
       resets
       value_property
     ].freeze

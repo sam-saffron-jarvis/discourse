@@ -392,7 +392,7 @@ module("Integration | Component | workflows property engine", function (hooks) {
             filterable: true,
             name_property: "name",
             none: "discourse_ai.discourse_workflows.ai_agent.select_agent",
-            patch_from_option: {
+            set_from_option: {
               agent_name: "name",
             },
             value_property: "id",

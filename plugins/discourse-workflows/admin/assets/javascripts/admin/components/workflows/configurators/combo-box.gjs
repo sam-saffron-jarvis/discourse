@@ -101,8 +101,8 @@ export default class ComboBoxField extends Component {
     return this.controlOptions.name_property || "name";
   }
 
-  get patchFromOption() {
-    return this.controlOptions.patch_from_option || {};
+  get setFromOption() {
+    return this.controlOptions.set_from_option || {};
   }
 
   get resets() {
@@ -217,7 +217,7 @@ export default class ComboBoxField extends Component {
     );
 
     for (const [fieldName, propertyName] of Object.entries(
-      this.patchFromOption
+      this.setFromOption
     )) {
       this.args.formApi?.set(
         fieldName,
