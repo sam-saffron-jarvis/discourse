@@ -76,7 +76,7 @@ export default class WorkflowNode extends Component {
   }
 
   get label() {
-    return nodeLabel(this.data);
+    return nodeLabel(this.data, this.resolvedNodeType);
   }
 
   get description() {

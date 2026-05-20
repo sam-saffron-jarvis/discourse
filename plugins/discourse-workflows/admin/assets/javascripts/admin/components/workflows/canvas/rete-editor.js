@@ -50,7 +50,10 @@ export class ReteEditorBridge {
       nodeWidth(data, {
         nodeType: nodeTypesByIdentifier.get(data.type),
       });
-    const getNodeHeight = (data) => nodeHeight(data);
+    const getNodeHeight = (data) =>
+      nodeHeight(data, nodeTypesByIdentifier.get(data.type));
+    const getNodeLabel = (data) =>
+      nodeLabel(data, nodeTypesByIdentifier.get(data.type));
     const inputKeysFor = (data) =>
       data.type?.startsWith("trigger:")
         ? []
@@ -61,7 +64,7 @@ export class ReteEditorBridge {
 
     class WorkflowNode extends ClassicPreset.Node {
       constructor(data) {
-        super(nodeLabel(data) || data.name || "Node");
+        super(getNodeLabel(data) || data.name || "Node");
         this.id = data.clientId;
         this.workflowData = data;
         this.width = getNodeWidth(data);
@@ -192,6 +195,7 @@ export class ReteEditorBridge {
       shiftAbort,
       getNodeWidth,
       getNodeHeight,
+      getNodeLabel,
       inputKeysFor,
     });
 
@@ -222,6 +226,7 @@ export class ReteEditorBridge {
     shiftAbort,
     getNodeWidth,
     getNodeHeight,
+    getNodeLabel,
     inputKeysFor,
   }) {
     this.editor = editor;
@@ -240,6 +245,7 @@ export class ReteEditorBridge {
     this.AreaExtensions = AreaExtensions;
     this.getNodeWidth = getNodeWidth;
     this.getNodeHeight = getNodeHeight;
+    this.getNodeLabel = getNodeLabel;
     this.inputKeysFor = inputKeysFor;
     this.isSyncing = false;
     this.isAutoArranging = false;
@@ -552,7 +558,8 @@ export class ReteEditorBridge {
           }
         }
 
-        const newLabel = nodeLabel(nodeData) || nodeData.name || reteNode.label;
+        const newLabel =
+          this.getNodeLabel(nodeData) || nodeData.name || reteNode.label;
         const newWidth = this.getNodeWidth(nodeData);
         const newHeight = this.getNodeHeight(nodeData);
         const needsUpdate =

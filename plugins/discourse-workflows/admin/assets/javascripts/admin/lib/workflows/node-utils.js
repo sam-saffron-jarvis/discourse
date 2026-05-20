@@ -3,6 +3,7 @@ import {
   nodeTypeOutputKeys,
   nodeTypePortLabel,
 } from "./node-types";
+import { propertyOptionLabel } from "./property-engine";
 
 const NODE_WIDTH = 130;
 const NODE_HEIGHT_BASE = 90;
@@ -14,7 +15,18 @@ const PORT_PILL_OFFSET = 18;
 
 export { NODE_WIDTH };
 
-export function nodeLabel(node) {
+export function nodeOperationLabel(node, nodeType) {
+  const value = node.configuration?.operation;
+  if (!value) {
+    return null;
+  }
+  if (!nodeType || typeof nodeType === "string") {
+    return null;
+  }
+  return propertyOptionLabel(nodeType, "operation", { value });
+}
+
+export function nodeLabel(node, nodeType = null) {
   if (
     node.type === "action:ai_agent" &&
     typeof node.configuration?.agent_name === "string" &&
@@ -22,7 +34,9 @@ export function nodeLabel(node) {
   ) {
     return node.configuration.agent_name.trim();
   }
-  return node.name || nodeTypeLabel(node.type);
+  const baseLabel = node.name || nodeTypeLabel(node.type);
+  const operationLabel = nodeOperationLabel(node, nodeType);
+  return operationLabel ? `${baseLabel} - ${operationLabel}` : baseLabel;
 }
 
 export function nodeDescription(node) {
@@ -70,11 +84,11 @@ export function nodeWidth(node, { nodeType = null, outputKeys } = {}) {
 
 const LABEL_WRAP_THRESHOLD = 15;
 
-export function nodeHeight(node) {
+export function nodeHeight(node, nodeType = null) {
   if (nodeDescription(node)) {
     return NODE_HEIGHT_WITH_DESC;
   }
-  const label = nodeLabel(node);
+  const label = nodeLabel(node, nodeType);
   return label && label.length > LABEL_WRAP_THRESHOLD
     ? NODE_HEIGHT_LONG_LABEL
     : NODE_HEIGHT_BASE;
