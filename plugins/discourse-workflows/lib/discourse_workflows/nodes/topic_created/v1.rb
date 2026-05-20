@@ -25,7 +25,7 @@ module DiscourseWorkflows
         end
 
         def valid?
-          @topic.present? && !skip_workflows?(@opts)
+          @topic.present? && !@opts&.dig(:skip_workflows)
         end
 
         def output
