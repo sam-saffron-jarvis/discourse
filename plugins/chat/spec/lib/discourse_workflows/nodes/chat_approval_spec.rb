@@ -12,6 +12,36 @@ RSpec.describe DiscourseWorkflows::Nodes::ChatApproval::V1 do
     end
   end
 
+  describe ".load_options_context" do
+    fab!(:other_channel) { Fabricate(:chat_channel, name: "Approvals") }
+    fab!(:closed_channel) { Fabricate(:chat_channel, name: "Archived", status: :closed) }
+    fab!(:dm_channel, :direct_message_channel)
+
+    def load_options(filter: nil)
+      context =
+        DiscourseWorkflows::LoadOptionsContext.new(
+          method_name: "chat_channels",
+          filter: filter,
+          node_class: described_class,
+        )
+
+      described_class.load_options_context(context)
+    end
+
+    it "returns open public channels with id and name" do
+      ids = load_options.map { |option| option[:id] }
+
+      expect(ids).to include(channel.id, other_channel.id)
+      expect(ids).not_to include(closed_channel.id, dm_channel.id)
+    end
+
+    it "filters channels by the filter term" do
+      expect(load_options(filter: "approv")).to contain_exactly(
+        { id: other_channel.id, name: other_channel.name },
+      )
+    end
+  end
+
   describe "#execute" do
     let(:resume_token) { SecureRandom.uuid }
     let(:sandbox) { DiscourseWorkflows::JsSandbox.new({}) }

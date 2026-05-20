@@ -19,6 +19,27 @@ if defined?(DiscourseWorkflows)
               channel_id: {
                 type: :integer,
                 required: true,
+                type_options: {
+                  load_options_method: "chat_channels",
+                },
+                no_data_expression: true,
+                ui: {
+                  control: :combo_box,
+                },
+                control_options: {
+                  filterable: true,
+                  value_property: :id,
+                  name_property: :name,
+                  set_from_option: {
+                    channel_name: "name",
+                  },
+                },
+              },
+              channel_name: {
+                type: :string,
+                ui: {
+                  hidden: true,
+                },
               },
               message: {
                 type: :string,
@@ -33,6 +54,21 @@ if defined?(DiscourseWorkflows)
               message: :string,
             },
           )
+
+          def self.load_options_context(context)
+            case context.method_name
+            when "chat_channels"
+              ::Chat::Channel
+                .public_channels
+                .where(status: ::Chat::Channel.statuses[:open])
+                .pluck(:id, :name, "categories.name")
+                .map do |id, channel_name, category_name|
+                  { id:, name: channel_name.presence || category_name }
+                end
+                .select { |channel| context.matches_filter?(channel[:name]) }
+                .sort_by { |channel| channel[:name].downcase }
+            end
+          end
 
           def execute(exec_ctx)
             items =
