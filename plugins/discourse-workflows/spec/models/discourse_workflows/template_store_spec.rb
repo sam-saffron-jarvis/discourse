@@ -12,7 +12,7 @@ RSpec.describe DiscourseWorkflows::TemplateStore do
     {
       name: "Cached template",
       description: "A cached template",
-      nodes: [{ type: "trigger:topic_created" }, { type: "action:create_topic" }],
+      nodes: [{ type: "trigger:topic_created" }, { type: "action:topic" }],
     }.to_json
   end
 
@@ -28,7 +28,7 @@ RSpec.describe DiscourseWorkflows::TemplateStore do
         id: "cached-template",
         name: "Cached template",
         description: "A cached template",
-        node_types: %w[trigger:topic_created action:create_topic],
+        node_types: %w[trigger:topic_created action:topic],
       },
     )
   end
@@ -59,7 +59,7 @@ RSpec.describe DiscourseWorkflows::TemplateStore do
 
     expect(described_class.summaries.first).to include(
       name: "Cached template",
-      node_types: %w[trigger:topic_created action:create_topic],
+      node_types: %w[trigger:topic_created action:topic],
     )
   end
 

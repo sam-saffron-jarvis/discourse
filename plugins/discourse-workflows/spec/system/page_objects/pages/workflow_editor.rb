@@ -72,9 +72,8 @@ module PageObjects
           "condition:filter" => "Filter",
           "action:topic_tags" => "Topic tags",
           "action:code" => "Code",
-          "action:fetch_topic" => "Fetch topic",
+          "action:topic" => "Topic",
           "action:create_post" => "Create post",
-          "action:create_topic" => "Create topic",
           "action:set_fields" => "Set fields",
           "action:split_out" => "Split Out",
           "action:http_request" => "HTTP Request",
@@ -102,6 +101,11 @@ module PageObjects
             "update" => "Update",
             "delete" => "Delete",
             "upsert" => "Upsert",
+          },
+          "action:topic" => {
+            "create" => "Create topic",
+            "get" => "Get topic",
+            "list" => "List topics",
           },
         }.freeze
 

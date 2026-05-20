@@ -24,7 +24,7 @@ module("Integration | Component | workflows property engine", function (hooks) {
   test("preserves focus for scalar fields while typing", async function (assert) {
     this.setProperties({
       configuration: { title: "" },
-      nodeType: "action:create_topic",
+      nodeType: "action:topic",
       schema: {
         title: {
           type: "string",

@@ -63,7 +63,7 @@ module DiscourseWorkflows
         private
 
         def process(exec_ctx, config)
-          topic = Topic.find(config["topic_id"])
+          topic = ::Topic.find(config["topic_id"])
           if topic.closed? || topic.archived?
             raise ActiveRecord::RecordNotSaved,
                   I18n.t("discourse_workflows.errors.create_post.topic_closed_or_archived")

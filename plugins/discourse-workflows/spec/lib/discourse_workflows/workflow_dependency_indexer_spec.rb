@@ -17,14 +17,14 @@ RSpec.describe DiscourseWorkflows::WorkflowDependencyIndexer do
       graph =
         build_workflow_graph do |g|
           g.node "t1", "trigger:webhook", configuration: { "path" => "test" }
-          g.node "a1", "action:create_topic"
+          g.node "a1", "action:topic"
         end
       workflow = Fabricate(:discourse_workflows_workflow, created_by: admin, **graph)
 
       index(workflow)
 
       node_types = dependency_rows(workflow).of_type("node_type").pluck(:dependency_key, :node_id)
-      expect(node_types).to contain_exactly(%w[trigger:webhook t1], %w[action:create_topic a1])
+      expect(node_types).to contain_exactly(%w[trigger:webhook t1], %w[action:topic a1])
     end
 
     it "extracts credential_id dependencies" do

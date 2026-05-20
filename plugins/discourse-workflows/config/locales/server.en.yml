@@ -22,8 +22,9 @@ en:
         inconsistent_format: "Every returned item must use the same format."
       create_post:
         topic_closed_or_archived: "Cannot create a post in a closed or archived topic."
-      create_topic:
-        failed: "Failed to create topic."
+      topic:
+        create_failed: "Failed to create topic."
+        unknown_operation: "Unknown operation: %{operation}."
       credential:
         missing_required_field: "is missing required field '%{field}'"
       wait:

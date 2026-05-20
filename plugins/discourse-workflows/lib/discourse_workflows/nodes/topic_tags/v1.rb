@@ -66,7 +66,7 @@ module DiscourseWorkflows
         private
 
         def process(exec_ctx, config)
-          topic = Topic.find(config["topic_id"])
+          topic = ::Topic.find(config["topic_id"])
           actor = exec_ctx.find_user(username: config["actor_username"].presence || "system")
           guardian = actor.guardian
 

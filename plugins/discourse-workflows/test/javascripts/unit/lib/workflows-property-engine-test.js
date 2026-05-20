@@ -30,19 +30,19 @@ module("Unit | Utility | workflows property engine", function () {
   };
 
   test("derives the translation scope from the node identifier", function (assert) {
-    assert.strictEqual(i18nScope("action:create_topic"), "create_topic");
+    assert.strictEqual(i18nScope("action:topic"), "topic");
     assert.strictEqual(i18nScope(dataTableNodeType), "data_table_node");
   });
 
   test("resolves translated labels, descriptions, and placeholders", function (assert) {
-    assert.strictEqual(propertyLabel("action:create_topic", "title"), "Title");
+    assert.strictEqual(propertyLabel("action:topic", "title"), "Title");
     assert.strictEqual(propertyLabel(ifNodeType, "combinator"), "Match mode");
     assert.strictEqual(
       propertyLabel("trigger:schedule", "minutesInterval"),
       "Minutes between triggers"
     );
     assert.strictEqual(
-      propertyDescription("action:create_topic", "raw"),
+      propertyDescription("action:topic", "raw"),
       "Raw content for the first post"
     );
     assert.strictEqual(
@@ -296,7 +296,7 @@ module("Unit | Utility | workflows property engine", function () {
       "Add parameter"
     );
     assert.strictEqual(
-      collectionAddLabel("action:create_topic", "attachments"),
+      collectionAddLabel("action:topic", "attachments"),
       "Add item"
     );
   });

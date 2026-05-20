@@ -12,14 +12,15 @@ RSpec.describe DiscourseWorkflows::Executor do
         build_workflow_graph do |g|
           g.node "trigger-1", "trigger:manual"
           g.node "action-1",
-                 "action:create_topic",
+                 "action:topic",
                  name: "Create Topic",
                  configuration: {
+                   "operation" => "create",
                    "title" => "={{ $trigger.title }}",
                    "raw" => "={{ $trigger.raw }}",
                    "category_id" => "={{ $trigger.category_id }}",
                    "tag_names" => "={{ $trigger.tags }}",
-                   "username" => "={{ $trigger.username }}",
+                   "actor_username" => "={{ $trigger.username }}",
                  }
           g.chain "trigger-1", "action-1"
         end

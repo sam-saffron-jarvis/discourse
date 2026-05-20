@@ -27,7 +27,7 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
           "trigger:topic_closed",
           "action:topic_tags",
           "action:create_post",
-          "action:create_topic",
+          "action:topic",
           "condition:if",
         )
       end
