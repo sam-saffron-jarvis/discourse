@@ -6,35 +6,20 @@ module DiscourseDataExplorer
       class V1 < DiscourseWorkflows::NodeType
         OPERATIONS = %w[queries raw].freeze
 
-        def self.identifier
-          "action:sql"
-        end
-
-        def self.icon
-          "database"
-        end
-
-        def self.color
-          "purple"
-        end
-
-        def self.available?
-          SiteSetting.data_explorer_enabled
-        end
-
-        def self.unavailable_reason_key
-          "discourse_workflows.node_unavailable.requires_data_explorer"
-        end
-
-        def self.outputs
-          [
+        description(
+          name: "action:sql",
+          version: "1.0",
+          defaults: {
+            icon: "database",
+            color: "purple",
+          },
+          available: -> { SiteSetting.data_explorer_enabled },
+          unavailable_reason_key: "discourse_workflows.node_unavailable.requires_data_explorer",
+          outputs: [
             { key: "main", label_key: "discourse_workflows.sql.output.results" },
             { key: "empty", label_key: "discourse_workflows.sql.output.no_results" },
-          ]
-        end
-
-        def self.property_schema
-          {
+          ],
+          properties: {
             operation: {
               type: :options,
               required: true,
@@ -117,17 +102,17 @@ module DiscourseDataExplorer
                 hidden: true,
               },
             },
-          }
-        end
+          },
+        )
 
         def self.load_options_context(context)
           case context.method_name
           when "queries"
-            metadata[:queries].select { |query| context.matches_filter?(query[:name]) }
+            queries.select { |query| context.matches_filter?(query[:name]) }
           end
         end
 
-        def self.metadata
+        def self.queries
           persisted = DiscourseDataExplorer::Query.where(hidden: false).order(:name).to_a
 
           persisted_ids = persisted.map(&:id).to_set
@@ -142,14 +127,11 @@ module DiscourseDataExplorer
               ) { |q| q.user_id = Discourse::SYSTEM_USER_ID }
             end
 
-          all_queries = (persisted + unpersisted_defaults).sort_by(&:name)
-
-          {
-            queries:
-              all_queries.map do |q|
-                { id: q.id, name: q.name, params: q.params.reject(&:internal?).map(&:to_hash) }
-              end,
-          }
+          (persisted + unpersisted_defaults)
+            .sort_by(&:name)
+            .map do |q|
+              { id: q.id, name: q.name, params: q.params.reject(&:internal?).map(&:to_hash) }
+            end
         end
 
         def execute(exec_ctx)

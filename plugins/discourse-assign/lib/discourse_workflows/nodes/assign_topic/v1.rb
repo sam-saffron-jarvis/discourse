@@ -16,28 +16,16 @@ if defined?(DiscourseWorkflows)
                           { assigned_to: assignment&.assigned_to&.display_name }
                         end
 
-          def self.identifier
-            "action:assign_topic"
-          end
-
-          def self.icon
-            "user-plus"
-          end
-
-          def self.color
-            "cyan"
-          end
-
-          def self.available?
-            SiteSetting.assign_enabled
-          end
-
-          def self.unavailable_reason_key
-            "discourse_workflows.node_unavailable.requires_assign"
-          end
-
-          def self.property_schema
-            {
+          description(
+            name: "action:assign_topic",
+            version: "1.0",
+            defaults: {
+              icon: "user-plus",
+              color: "cyan",
+            },
+            available: -> { SiteSetting.assign_enabled },
+            unavailable_reason_key: "discourse_workflows.node_unavailable.requires_assign",
+            properties: {
               operation: {
                 type: :options,
                 required: true,
@@ -68,11 +56,8 @@ if defined?(DiscourseWorkflows)
                   operation: "assign",
                 },
               },
-            }
-          end
-
-          def self.output_schema
-            {
+            },
+            output_schema: {
               assignee: {
                 type: :object,
                 fields: DiscourseWorkflows::Schemas::Assignee.fields,
@@ -84,8 +69,8 @@ if defined?(DiscourseWorkflows)
                 type: :object,
                 fields: DiscourseWorkflows::Schemas::Assignee.fields,
               },
-            }
-          end
+            },
+          )
 
           def execute(exec_ctx)
             actor = exec_ctx.user

@@ -5,40 +5,20 @@ if defined?(DiscourseWorkflows)
     module Nodes
       module ChatApproval
         class V1 < NodeType
-          def self.identifier
-            "action:chat_approval"
-          end
-
-          def self.icon
-            "comments"
-          end
-
-          def self.color
-            "cyan"
-          end
-
-          def self.group
-            "human_review"
-          end
-
-          def self.available?
-            SiteSetting.chat_enabled
-          end
-
-          def self.unavailable_reason_key
-            "discourse_workflows.node_unavailable.requires_chat"
-          end
-
-          def self.waits_for_resume?
-            true
-          end
-
-          def self.output_schema
-            { approved: :boolean, channel_id: :integer }
-          end
-
-          def self.property_schema
-            {
+          description(
+            name: "action:chat_approval",
+            version: "1.0",
+            defaults: {
+              icon: "comments",
+              color: "cyan",
+            },
+            group: "human_review",
+            available: -> { SiteSetting.chat_enabled },
+            unavailable_reason_key: "discourse_workflows.node_unavailable.requires_chat",
+            capabilities: {
+              waits_for_resume: true,
+            },
+            properties: {
               message: {
                 type: :string,
                 required: true,
@@ -69,8 +49,12 @@ if defined?(DiscourseWorkflows)
                 default: "deny",
                 no_data_expression: true,
               },
-            }
-          end
+            },
+            output_schema: {
+              approved: :boolean,
+              channel_id: :integer,
+            },
+          )
 
           def execute(exec_ctx)
             message_text = exec_ctx.get_node_parameter("message", 0)

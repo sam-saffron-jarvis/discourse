@@ -5,40 +5,18 @@ if defined?(DiscourseWorkflows)
     module Nodes
       module AiAgent
         class V1 < NodeType
-          def self.identifier
-            "action:ai_agent"
-          end
-
-          def self.icon
-            "robot"
-          end
-
-          def self.color
-            "pink"
-          end
-
-          def self.available?
-            SiteSetting.discourse_ai_enabled
-          end
-
-          def self.unavailable_reason_key
-            "discourse_workflows.node_unavailable.requires_ai"
-          end
-
-          def self.group
-            "ai"
-          end
-
-          def self.group_definition
-            { icon: "robot", label_key: "discourse_workflows.add_node.categories.ai", order: 40 }
-          end
-
-          def self.property_i18n_prefix
-            "discourse_ai.discourse_workflows"
-          end
-
-          def self.property_schema
-            {
+          description(
+            name: "action:ai_agent",
+            version: "1.0",
+            defaults: {
+              icon: "robot",
+              color: "pink",
+            },
+            group: "ai",
+            available: -> { SiteSetting.discourse_ai_enabled },
+            unavailable_reason_key: "discourse_workflows.node_unavailable.requires_ai",
+            property_i18n_prefix: "discourse_ai.discourse_workflows",
+            properties: {
               agent_id: {
                 type: :integer,
                 required: true,
@@ -70,11 +48,14 @@ if defined?(DiscourseWorkflows)
                   control: :textarea,
                 },
               },
-            }
-          end
+            },
+            output_schema: {
+              result: :string,
+            },
+          )
 
-          def self.output_schema
-            { result: :string }
+          def self.group_definition
+            { icon: "robot", label_key: "discourse_workflows.add_node.categories.ai", order: 40 }
           end
 
           def self.load_options_context(context)
@@ -82,10 +63,6 @@ if defined?(DiscourseWorkflows)
             when "agents"
               agent_options.select { |agent| context.matches_filter?(agent[:name]) }
             end
-          end
-
-          def self.metadata
-            { agents: agent_options }
           end
 
           def self.agent_options

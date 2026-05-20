@@ -221,7 +221,7 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
     end
   end
 
-  describe ".metadata" do
+  describe ".queries" do
     it "includes non-hidden queries with their params" do
       query =
         DiscourseDataExplorer::Query.create!(
@@ -237,13 +237,13 @@ RSpec.describe DiscourseDataExplorer::Workflows::SqlAction::V1 do
           hidden: true,
         )
 
-      metadata = described_class.metadata
-      query_ids = metadata[:queries].map { |q| q[:id] }
+      queries = described_class.queries
+      query_ids = queries.map { |q| q[:id] }
 
       expect(query_ids).to include(query.id)
       expect(query_ids).not_to include(hidden_query.id)
 
-      entry = metadata[:queries].find { |q| q[:id] == query.id }
+      entry = queries.find { |q| q[:id] == query.id }
       expect(entry[:name]).to eq("Test query")
       expect(entry[:params].first[:identifier]).to eq("user_id")
       expect(entry[:params].first[:type]).to eq(:int)

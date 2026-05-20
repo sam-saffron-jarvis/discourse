@@ -5,36 +5,17 @@ if defined?(DiscourseWorkflows)
     module Nodes
       module SendChatMessage
         class V1 < NodeType
-          def self.identifier
-            "action:send_chat_message"
-          end
-
-          def self.icon
-            "comment"
-          end
-
-          def self.color
-            "teal"
-          end
-
-          def self.available?
-            SiteSetting.chat_enabled
-          end
-
-          def self.group
-            "discourse_actions"
-          end
-
-          def self.unavailable_reason_key
-            "discourse_workflows.node_unavailable.requires_chat"
-          end
-
-          def self.output_schema
-            { channel_id: :integer, message: :string }
-          end
-
-          def self.property_schema
-            {
+          description(
+            name: "action:send_chat_message",
+            version: "1.0",
+            defaults: {
+              icon: "comment",
+              color: "teal",
+            },
+            group: "discourse_actions",
+            available: -> { SiteSetting.chat_enabled },
+            unavailable_reason_key: "discourse_workflows.node_unavailable.requires_chat",
+            properties: {
               channel_id: {
                 type: :integer,
                 required: true,
@@ -46,8 +27,12 @@ if defined?(DiscourseWorkflows)
                   control: :textarea,
                 },
               },
-            }
-          end
+            },
+            output_schema: {
+              channel_id: :integer,
+              message: :string,
+            },
+          )
 
           def execute(exec_ctx)
             items =
