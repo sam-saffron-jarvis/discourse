@@ -37,11 +37,6 @@ module DiscourseWorkflows
         get_columns.find { |column| column[:name] == name }
       end
 
-      def move_column(_column_id, _options)
-        raise NotImplementedError,
-              "Moving data table columns requires metadata-backed column ordering"
-      end
-
       def delete_column(column_id)
         @columns_resolver.validate_column!(column_id)
         @facade.drop_column!(column_id)

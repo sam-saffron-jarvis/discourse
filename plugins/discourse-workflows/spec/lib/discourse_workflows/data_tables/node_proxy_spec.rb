@@ -127,11 +127,4 @@ RSpec.describe DiscourseWorkflows::DataTables::NodeProxy do
     expect(proxy.delete_column("active")).to eq(true)
     expect(proxy.get_columns.map { |c| c[:name] }).not_to include("active")
   end
-
-  it "exposes move_column as an explicit unsupported contract gap" do
-    expect { proxy.move_column("email", target_index: 1) }.to raise_error(
-      NotImplementedError,
-      /metadata-backed column ordering/,
-    )
-  end
 end
