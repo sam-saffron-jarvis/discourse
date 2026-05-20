@@ -151,7 +151,7 @@ RSpec.describe DiscourseWorkflows::Executor::ErrorWorkflowTrigger do
       )
     end
 
-    it "uses trigger error data when no execution record is available" do
+    it "exposes execution.error with null id/url when no execution record is available" do
       error_wf = build_error_workflow
       workflow = Fabricate(:discourse_workflows_workflow, created_by: user, published: true)
       workflow.update!(error_workflow_id: error_wf.id)
@@ -161,8 +161,11 @@ RSpec.describe DiscourseWorkflows::Executor::ErrorWorkflowTrigger do
 
       trigger_data =
         Jobs::DiscourseWorkflows::ExecuteWorkflow.jobs.last["args"].first["trigger_data"]
-      expect(trigger_data["trigger"]).to include(
+      expect(trigger_data["execution"]).to include(
+        "id" => nil,
+        "url" => nil,
         "error" => include("message" => "trigger broke", "name" => "StandardError"),
+        "lastNodeExecuted" => nil,
         "mode" => "trigger",
       )
       expect(trigger_data["workflow"]).to include("id" => workflow.id.to_s, "name" => workflow.name)

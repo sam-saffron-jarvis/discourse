@@ -48,28 +48,24 @@ module DiscourseWorkflows
       end
 
       def build_error_data(error)
-        data = { "workflow" => { "id" => @workflow.id.to_s, "name" => @workflow.name } }
-
-        if @execution
-          data["execution"] = {
-            "id" => @execution.id.to_s,
+        {
+          "workflow" => {
+            "id" => @workflow.id.to_s,
+            "name" => @workflow.name,
+          },
+          "execution" => {
+            "id" => @execution&.id&.to_s,
             "url" => execution_url,
             "retryOf" => nil,
             "error" => serialized_error(error),
             "lastNodeExecuted" => last_failed_step_node_name,
             "mode" => compatible_execution_mode,
-          }
-        else
-          data["trigger"] = {
-            "error" => serialized_error(error),
-            "mode" => compatible_execution_mode,
-          }
-        end
-
-        data
+          },
+        }
       end
 
       def execution_url
+        return nil unless @execution
         "#{Discourse.base_url}/admin/plugins/discourse-workflows/workflows/" \
           "#{@workflow.id}/executions/#{@execution.id}"
       end
