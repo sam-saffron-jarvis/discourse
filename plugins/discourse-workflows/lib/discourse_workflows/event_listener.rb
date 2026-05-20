@@ -11,6 +11,8 @@ module DiscourseWorkflows
       DiscourseWorkflows::Workflow::Action::FindPublishedTriggers
         .call(trigger_type: trigger_class.identifier)
         .each do |published_trigger|
+          next unless trigger.matches_node?(published_trigger.trigger_node)
+
           DiscourseWorkflows::TriggerDispatcher.enqueue(
             published_trigger,
             trigger_data: trigger.output,

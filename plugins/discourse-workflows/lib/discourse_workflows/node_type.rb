@@ -200,6 +200,10 @@ module DiscourseWorkflows
       true
     end
 
+    def matches_node?(_node)
+      true
+    end
+
     def output
       raise NotImplementedError
     end
