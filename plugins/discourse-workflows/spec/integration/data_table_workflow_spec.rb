@@ -65,6 +65,92 @@ RSpec.describe "Data Table workflow integration" do
     expect(row).to include("topic_id" => topic.id, "author" => admin.username, "logged" => true)
   end
 
+  context "with row_exists operation" do
+    fab!(:exists_workflow) do
+      Fabricate(:discourse_workflows_workflow, published: true, created_by: admin)
+    end
+
+    fab!(:logger_table) do
+      Fabricate(
+        :discourse_workflows_data_table,
+        name: "logged_topics",
+        columns: [{ "name" => "topic_id", "type" => "number" }],
+      )
+    end
+
+    before do
+      graph =
+        build_workflow_graph do |g|
+          g.node "trigger-1",
+                 "trigger:post_created",
+                 name: "trigger",
+                 configuration: {
+                   "category_ids" => [category.id],
+                 }
+          g.node "action-1",
+                 "action:data_table",
+                 name: "row_exists",
+                 configuration: {
+                   "operation" => "row_exists",
+                   "data_table_id" => logger_table.id.to_s,
+                   "filter" => [
+                     {
+                       "columnName" => "topic_id",
+                       "condition" => "equals",
+                       "value" => "={{ $json.topic_id }}",
+                     },
+                   ],
+                 }
+          g.chain "trigger-1", "action-1"
+        end
+
+      exists_workflow.update!(**graph)
+      publish_workflow!(exists_workflow)
+    end
+
+    it "passes the trigger payload through when a matching row exists" do
+      topic = Fabricate(:topic, category: category, user: admin)
+      insert_data_table_row(logger_table, "topic_id" => topic.id)
+
+      trigger_data = {
+        "post_id" => 1,
+        "topic_id" => topic.id,
+        "username" => admin.username,
+        "category_id" => category.id,
+        "raw" => "test post",
+      }
+
+      execution = DiscourseWorkflows::Executor.new(exists_workflow, "trigger-1", trigger_data).run
+
+      expect(execution.status).to eq("success")
+
+      action_step = execution.execution_data.find_step(node_id: "action-1")
+      output_items = action_step["output"]
+      expect(output_items.length).to eq(1)
+      expect(output_items.first["json"]).to include("topic_id" => topic.id, "post_id" => 1)
+      expect(output_items.first["json"]).not_to have_key("id")
+    end
+
+    it "filters out the payload when no row matches" do
+      topic = Fabricate(:topic, category: category, user: admin)
+
+      trigger_data = {
+        "post_id" => 2,
+        "topic_id" => topic.id,
+        "username" => admin.username,
+        "category_id" => category.id,
+        "raw" => "test post",
+      }
+
+      execution = DiscourseWorkflows::Executor.new(exists_workflow, "trigger-1", trigger_data).run
+
+      expect(execution.status).to eq("success")
+
+      action_step = execution.execution_data.find_step(node_id: "action-1")
+      expect(action_step["output"]).to eq([])
+    end
+  end
+
   it "writes to the renamed column once the workflow config is updated to match" do
     DiscourseWorkflows::DataTableColumn::Rename.call(
       params: {

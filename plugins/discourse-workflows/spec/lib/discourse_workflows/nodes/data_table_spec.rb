@@ -318,6 +318,105 @@ RSpec.describe DiscourseWorkflows::Nodes::DataTable::V1 do
     end
   end
 
+  describe "row_exists operation" do
+    before { insert_data_table_row(data_table, "email" => "alice@example.com", "score" => 10) }
+
+    it "emits the input item unchanged when at least one row matches" do
+      items =
+        execute_data_table_with_item(
+          {
+            "operation" => "row_exists",
+            "data_table_id" => data_table.id.to_s,
+            "filter" => [
+              { "columnName" => "email", "condition" => "equals", "value" => "alice@example.com" },
+            ],
+          },
+          { "json" => { "input_marker" => "keep-me" } },
+        )
+
+      expect(items.length).to eq(1)
+      expect(items.first["json"]).to eq("input_marker" => "keep-me")
+      expect(items.first["json"]).not_to have_key("email")
+      expect(items.first["pairedItem"]).to eq("item" => 0)
+    end
+
+    it "drops the input item when no row matches" do
+      items =
+        execute_data_table_with_item(
+          {
+            "operation" => "row_exists",
+            "data_table_id" => data_table.id.to_s,
+            "filter" => [
+              { "columnName" => "email", "condition" => "equals", "value" => "missing@test.com" },
+            ],
+          },
+          { "json" => { "input_marker" => "drop-me" } },
+        )
+
+      expect(items).to eq([])
+    end
+
+    it "raises when the filter is missing" do
+      expect {
+        execute_data_table("operation" => "row_exists", "data_table_id" => data_table.id.to_s)
+      }.to raise_error(ArgumentError, /Filter must not be empty/)
+    end
+
+    it "raises when the filter is an empty array" do
+      expect {
+        execute_data_table(
+          "operation" => "row_exists",
+          "data_table_id" => data_table.id.to_s,
+          "filter" => [],
+        )
+      }.to raise_error(ArgumentError, /Filter must not be empty/)
+    end
+  end
+
+  describe "row_not_exists operation" do
+    before { insert_data_table_row(data_table, "email" => "alice@example.com", "score" => 10) }
+
+    it "emits the input item unchanged when no row matches" do
+      items =
+        execute_data_table_with_item(
+          {
+            "operation" => "row_not_exists",
+            "data_table_id" => data_table.id.to_s,
+            "filter" => [
+              { "columnName" => "email", "condition" => "equals", "value" => "missing@test.com" },
+            ],
+          },
+          { "json" => { "input_marker" => "keep-me" } },
+        )
+
+      expect(items.length).to eq(1)
+      expect(items.first["json"]).to eq("input_marker" => "keep-me")
+      expect(items.first["pairedItem"]).to eq("item" => 0)
+    end
+
+    it "drops the input item when at least one row matches" do
+      items =
+        execute_data_table_with_item(
+          {
+            "operation" => "row_not_exists",
+            "data_table_id" => data_table.id.to_s,
+            "filter" => [
+              { "columnName" => "email", "condition" => "equals", "value" => "alice@example.com" },
+            ],
+          },
+          { "json" => { "input_marker" => "drop-me" } },
+        )
+
+      expect(items).to eq([])
+    end
+
+    it "raises when the filter is missing" do
+      expect {
+        execute_data_table("operation" => "row_not_exists", "data_table_id" => data_table.id.to_s)
+      }.to raise_error(ArgumentError, /Filter must not be empty/)
+    end
+  end
+
   describe "upsert operation" do
     it "requires a filter" do
       insert_data_table_row(data_table, "email" => "existing@test.com", "score" => 1)

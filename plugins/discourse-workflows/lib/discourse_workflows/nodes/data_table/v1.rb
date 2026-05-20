@@ -4,7 +4,7 @@ module DiscourseWorkflows
   module Nodes
     module DataTable
       class V1 < NodeType
-        OPERATIONS = %w[insert get update delete upsert].freeze
+        OPERATIONS = %w[insert get update delete upsert row_exists row_not_exists].freeze
         MAPPING_MODES = %w[manual auto].freeze
         CONDITION_OVERRIDES =
           {
@@ -104,7 +104,7 @@ module DiscourseWorkflows
               default: "and",
               required: false,
               visible_if: {
-                operation: %w[get update delete upsert],
+                operation: %w[get update delete upsert row_exists row_not_exists],
               },
               no_data_expression: true,
             },
@@ -112,7 +112,7 @@ module DiscourseWorkflows
               type: :array,
               required: false,
               visible_if: {
-                operation: %w[get update delete upsert],
+                operation: %w[get update delete upsert row_exists row_not_exists],
               },
               ui: {
                 control: :data_table_condition_builder,
@@ -215,27 +215,38 @@ module DiscourseWorkflows
             config = config.merge("columns" => json.slice(*column_names(node_proxy)))
           end
 
-          result =
-            case operation_name
-            when "insert"
-              node_proxy.insert_rows([config["columns"] || {}], "all")
-            when "get"
-              node_proxy.get_many_rows_and_count(row_query_options(config))[:data]
-            when "update"
-              node_proxy.update_rows(row_mutation_options(config))
-            when "delete"
-              node_proxy.delete_rows(row_delete_options(config))
-            when "upsert"
-              node_proxy.upsert_row(row_mutation_options(config))
-            else
-              raise ArgumentError,
-                    I18n.t(
-                      "discourse_workflows.errors.data_table.unknown_operation",
-                      operation: operation_name,
-                    )
-            end
+          case operation_name
+          when "insert"
+            wrap(node_proxy.insert_rows([config["columns"] || {}], "all"))
+          when "get"
+            wrap(node_proxy.get_many_rows_and_count(row_query_options(config))[:data])
+          when "update"
+            wrap(node_proxy.update_rows(row_mutation_options(config)))
+          when "delete"
+            wrap(node_proxy.delete_rows(row_delete_options(config)))
+          when "upsert"
+            wrap(node_proxy.upsert_row(row_mutation_options(config)))
+          when "row_exists", "row_not_exists"
+            row_existence_items(config, item, operation_name, node_proxy)
+          else
+            raise ArgumentError,
+                  I18n.t(
+                    "discourse_workflows.errors.data_table.unknown_operation",
+                    operation: operation_name,
+                  )
+          end
+        end
 
-          wrap(result)
+        def row_existence_items(config, item, operation_name, node_proxy)
+          filter = normalized_filter(config)
+          if filter.blank?
+            raise ArgumentError, I18n.t("discourse_workflows.errors.data_table.filter_required")
+          end
+
+          count = node_proxy.get_many_rows_and_count(filter: filter, take: 1)[:count].to_i
+          matched = count > 0
+          emit = operation_name == "row_exists" ? matched : !matched
+          emit ? [item] : []
         end
 
         def column_names(node_proxy)

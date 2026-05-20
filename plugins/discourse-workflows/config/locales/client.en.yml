@@ -625,6 +625,8 @@ en:
           update: "Update"
           delete: "Delete"
           upsert: "Upsert"
+          row_exists: "If row exists"
+          row_not_exists: "If row does not exist"
         data_table_id: "Data table"
         data_table_id_placeholder: "Select a data table..."
         mapping_mode: "Mapping column mode"
