@@ -3,6 +3,8 @@ import { module, test } from "qunit";
 import pretender, { response } from "discourse/tests/helpers/create-pretender";
 import ComboBoxField from "discourse/plugins/discourse-workflows/admin/components/workflows/configurators/combo-box";
 import {
+  nodeTypeI18nPrefix,
+  nodeTypeI18nScope,
   nodeTypeInputLabel,
   nodeTypeInputs,
   nodeTypeOperationLabel,
@@ -10,27 +12,25 @@ import {
   nodeTypePaletteGroup,
   nodeTypePortLabel,
   nodeTypePrimaryOutputKey,
-  nodeTypePropertyI18nPrefix,
-  nodeTypePropertyI18nScope,
   nodeTypeVersion,
   resolveNodeTypeVersion,
 } from "discourse/plugins/discourse-workflows/admin/lib/workflows/node-types";
 
 module("Unit | Utility | workflows node types", function () {
-  test("reads property i18n metadata from the descriptor ui", function (assert) {
+  test("reads i18n metadata from the descriptor ui", function (assert) {
     const nodeType = {
       identifier: "action:ai_agent",
       ui: {
-        property_i18n_prefix: "discourse_ai.discourse_workflows",
-        property_i18n_scope: "ai_agent",
+        i18n_prefix: "discourse_ai.discourse_workflows",
+        i18n_scope: "ai_agent",
       },
     };
 
     assert.strictEqual(
-      nodeTypePropertyI18nPrefix(nodeType),
+      nodeTypeI18nPrefix(nodeType),
       "discourse_ai.discourse_workflows"
     );
-    assert.strictEqual(nodeTypePropertyI18nScope(nodeType), "ai_agent");
+    assert.strictEqual(nodeTypeI18nScope(nodeType), "ai_agent");
   });
 
   test("reads operation labels and palette groups from the descriptor", function (assert) {

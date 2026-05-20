@@ -41,6 +41,7 @@ module DiscourseWorkflows
             color: "violet",
           },
           group: "data",
+          i18n_scope: "data_table_node",
           properties: {
             operation: {
               type: :options,
@@ -156,14 +157,6 @@ module DiscourseWorkflows
             },
           },
         )
-
-        def self.property_i18n_scope
-          "data_table_node"
-        end
-
-        def self.operation_label_key(operation)
-          "#{property_i18n_prefix}.#{property_i18n_scope}.operations.#{operation}"
-        end
 
         def self.load_options_context(context)
           case context.method_name

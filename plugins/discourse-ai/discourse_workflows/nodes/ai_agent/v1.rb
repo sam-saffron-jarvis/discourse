@@ -15,7 +15,7 @@ if defined?(DiscourseWorkflows)
             group: "ai",
             available: -> { SiteSetting.discourse_ai_enabled },
             unavailable_reason_key: "discourse_workflows.node_unavailable.requires_ai",
-            property_i18n_prefix: "discourse_ai.discourse_workflows",
+            i18n_prefix: "discourse_ai.discourse_workflows",
             properties: {
               agent_id: {
                 type: :integer,

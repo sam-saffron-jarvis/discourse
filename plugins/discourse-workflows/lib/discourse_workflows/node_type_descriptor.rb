@@ -63,16 +63,16 @@ module DiscourseWorkflows
       group_definition.merge(id: group)
     end
 
-    def property_i18n_prefix
-      description[:property_i18n_prefix] || DEFAULT_I18N_PREFIX
+    def i18n_prefix
+      description[:i18n_prefix] || DEFAULT_I18N_PREFIX
     end
 
-    def property_i18n_scope
-      description[:property_i18n_scope] || identifier.split(":").last
+    def i18n_scope
+      description[:i18n_scope] || identifier.split(":").last
     end
 
     def operation_label_key(operation)
-      "#{property_i18n_prefix}.#{property_i18n_scope}.#{operation}"
+      "#{i18n_prefix}.#{i18n_scope}.operations.#{operation}"
     end
 
     def operations
@@ -118,8 +118,8 @@ module DiscourseWorkflows
         label_key: label_key,
         description_key: description_key,
         palette_group: palette_group,
-        property_i18n_prefix: property_i18n_prefix,
-        property_i18n_scope: property_i18n_scope,
+        i18n_prefix: i18n_prefix,
+        i18n_scope: i18n_scope,
       }.compact
     end
 

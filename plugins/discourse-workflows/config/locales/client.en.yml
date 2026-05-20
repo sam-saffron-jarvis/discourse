@@ -202,8 +202,6 @@ en:
           "false": "is false"
       topic_tags:
         operation: "Operation"
-        add: "Add"
-        remove: "Remove"
         operations:
           add: "Add tag"
           remove: "Remove tag"
@@ -227,9 +225,6 @@ en:
         actor_username: "List as user"
       group:
         operation: "Operation"
-        add: "Add user"
-        remove: "Remove user"
-        get: "Get group"
         operations:
           add: "Add user"
           remove: "Remove user"
@@ -241,8 +236,6 @@ en:
         actor_username: "Performed by"
       badge:
         operation: "Operation"
-        grant: "Grant badge"
-        revoke: "Revoke badge"
         operations:
           grant: "Grant badge"
           revoke: "Revoke badge"

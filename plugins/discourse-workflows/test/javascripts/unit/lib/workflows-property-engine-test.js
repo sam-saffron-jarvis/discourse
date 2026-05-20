@@ -8,30 +8,30 @@ import {
   fieldValue,
   fieldVisible,
   getPropertySchema,
+  i18nPrefix,
+  i18nScope,
   localeKeyPart,
   normalizeOptions,
   propertyDescription,
-  propertyI18nPrefix,
   propertyLabel,
   propertyOptionLabel,
   propertyPlaceholder,
-  propertyScope,
   propertySelectNoneKey,
 } from "discourse/plugins/discourse-workflows/admin/lib/workflows/property-engine";
 
 module("Unit | Utility | workflows property engine", function () {
   const ifNodeType = {
     identifier: "condition:if",
-    ui: { property_i18n_scope: "if" },
+    ui: { i18n_scope: "if" },
   };
   const dataTableNodeType = {
     identifier: "action:data_table",
-    ui: { property_i18n_scope: "data_table_node" },
+    ui: { i18n_scope: "data_table_node" },
   };
 
   test("derives the translation scope from the node identifier", function (assert) {
-    assert.strictEqual(propertyScope("action:create_topic"), "create_topic");
-    assert.strictEqual(propertyScope(dataTableNodeType), "data_table_node");
+    assert.strictEqual(i18nScope("action:create_topic"), "create_topic");
+    assert.strictEqual(i18nScope(dataTableNodeType), "data_table_node");
   });
 
   test("resolves translated labels, descriptions, and placeholders", function (assert) {
@@ -63,12 +63,12 @@ module("Unit | Utility | workflows property engine", function () {
     const nodeDefinition = {
       identifier: "action:ai_agent",
       ui: {
-        property_i18n_prefix: "discourse_ai.discourse_workflows",
+        i18n_prefix: "discourse_ai.discourse_workflows",
       },
     };
 
     assert.strictEqual(
-      propertyI18nPrefix(nodeDefinition),
+      i18nPrefix(nodeDefinition),
       "discourse_ai.discourse_workflows"
     );
     assert.strictEqual(propertyLabel(nodeDefinition, "agent_id"), "Agent");

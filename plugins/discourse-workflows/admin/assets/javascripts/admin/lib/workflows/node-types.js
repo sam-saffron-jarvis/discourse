@@ -2,7 +2,7 @@ import { trustHTML } from "@ember/template";
 import { i18n } from "discourse-i18n";
 
 const DEFAULT_COLOR = "var(--primary-medium)";
-const DEFAULT_PROPERTY_I18N_PREFIX = "discourse_workflows";
+const DEFAULT_I18N_PREFIX = "discourse_workflows";
 
 export function missingTranslation(value) {
   return typeof value === "string" && value.startsWith("[");
@@ -99,24 +99,18 @@ export function nodeTypePaletteGroup(nodeTypeOrIdentifier, typeVersion = null) {
   return nodeTypeUi(nodeTypeOrIdentifier, typeVersion).palette_group || null;
 }
 
-export function nodeTypePropertyI18nPrefix(
-  nodeTypeOrIdentifier,
-  typeVersion = null
-) {
+export function nodeTypeI18nPrefix(nodeTypeOrIdentifier, typeVersion = null) {
   return (
-    nodeTypeUi(nodeTypeOrIdentifier, typeVersion).property_i18n_prefix ||
+    nodeTypeUi(nodeTypeOrIdentifier, typeVersion).i18n_prefix ||
     resolveNodeTypeVersion(nodeTypeOrIdentifier, typeVersion)?.metadata
       ?.i18n_prefix ||
-    DEFAULT_PROPERTY_I18N_PREFIX
+    DEFAULT_I18N_PREFIX
   );
 }
 
-export function nodeTypePropertyI18nScope(
-  nodeTypeOrIdentifier,
-  typeVersion = null
-) {
+export function nodeTypeI18nScope(nodeTypeOrIdentifier, typeVersion = null) {
   return (
-    nodeTypeUi(nodeTypeOrIdentifier, typeVersion).property_i18n_scope ||
+    nodeTypeUi(nodeTypeOrIdentifier, typeVersion).i18n_scope ||
     nodeTypeIdentifier(nodeTypeOrIdentifier)?.split(":").pop() ||
     ""
   );

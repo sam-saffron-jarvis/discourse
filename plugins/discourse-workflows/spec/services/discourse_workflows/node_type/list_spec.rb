@@ -118,8 +118,8 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
         expect(data_table[:ui]).to include(
           icon: "table",
           color: "violet",
-          property_i18n_prefix: "discourse_workflows",
-          property_i18n_scope: "data_table_node",
+          i18n_prefix: "discourse_workflows",
+          i18n_scope: "data_table_node",
           palette_group: a_hash_including(id: "data"),
         )
         expect(data_table[:operations]).to include(

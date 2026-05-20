@@ -1,8 +1,8 @@
 import moment from "moment";
 import { i18n } from "discourse-i18n";
 import {
-  nodeTypePropertyI18nPrefix,
-  nodeTypePropertyI18nScope,
+  nodeTypeI18nPrefix,
+  nodeTypeI18nScope,
   resolveNodeTypeVersion,
   translatedOrNull,
 } from "./node-types";
@@ -82,16 +82,16 @@ export function normalizeSchema(schema = {}) {
   }));
 }
 
-export function propertyI18nPrefix(nodeDefinitionOrType) {
-  return nodeTypePropertyI18nPrefix(nodeDefinitionOrType);
+export function i18nPrefix(nodeDefinitionOrType) {
+  return nodeTypeI18nPrefix(nodeDefinitionOrType);
 }
 
-export function propertyScope(nodeDefinitionOrType) {
-  return nodeTypePropertyI18nScope(nodeDefinitionOrType);
+export function i18nScope(nodeDefinitionOrType) {
+  return nodeTypeI18nScope(nodeDefinitionOrType);
 }
 
 function i18nBase(nodeDefinitionOrType) {
-  return `${propertyI18nPrefix(nodeDefinitionOrType)}.${propertyScope(nodeDefinitionOrType)}`;
+  return `${i18nPrefix(nodeDefinitionOrType)}.${i18nScope(nodeDefinitionOrType)}`;
 }
 
 export function propertyLabel(nodeDefinitionOrType, fieldName) {

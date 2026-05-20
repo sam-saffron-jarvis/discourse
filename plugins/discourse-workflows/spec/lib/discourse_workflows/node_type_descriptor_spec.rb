@@ -38,15 +38,15 @@ RSpec.describe DiscourseWorkflows::NodeTypeDescriptor do
     end
   end
 
-  describe "#property_i18n_prefix" do
+  describe "#i18n_prefix" do
     it "returns the default prefix" do
-      expect(trigger_class.property_i18n_prefix).to eq("discourse_workflows")
+      expect(trigger_class.i18n_prefix).to eq("discourse_workflows")
     end
   end
 
-  describe "#property_i18n_scope" do
+  describe "#i18n_scope" do
     it "extracts the suffix from the identifier" do
-      expect(trigger_class.property_i18n_scope).to eq("test_event")
+      expect(trigger_class.i18n_scope).to eq("test_event")
     end
   end
 
@@ -116,7 +116,9 @@ RSpec.describe DiscourseWorkflows::NodeTypeDescriptor do
 
       ops = klass.operations
       expect(ops.length).to eq(3)
-      expect(ops.first).to eq({ value: "get", label_key: "discourse_workflows.multi_op.get" })
+      expect(ops.first).to eq(
+        { value: "get", label_key: "discourse_workflows.multi_op.operations.get" },
+      )
     end
   end
 
@@ -184,8 +186,8 @@ RSpec.describe DiscourseWorkflows::NodeTypeDescriptor do
         "discourse_workflows.node_descriptions.trigger:test_event",
       )
       expect(result[:palette_group][:id]).to eq("triggers")
-      expect(result[:property_i18n_prefix]).to eq("discourse_workflows")
-      expect(result[:property_i18n_scope]).to eq("test_event")
+      expect(result[:i18n_prefix]).to eq("discourse_workflows")
+      expect(result[:i18n_scope]).to eq("test_event")
     end
 
     it "omits nil values" do
