@@ -66,6 +66,16 @@
     font-weight: bold;
   }
 
+  &__step-operation {
+    font-size: var(--font-down-1);
+    color: var(--primary-medium);
+
+    &::before {
+      content: "›";
+      margin-right: var(--space-1);
+    }
+  }
+
   &__kind-badge {
     font-size: var(--font-down-2);
     font-weight: bold;

@@ -180,6 +180,7 @@ module DiscourseWorkflows
       return handle_node_issues(node, input_items, issues) if issues.any?
 
       step = record_step(node, input_items)
+      capture_operation_metadata(step, node, node_type_class)
       js_elapsed_before = sandbox_budget_tracker.current_elapsed_ms
       node_context = @context.node_context_for(node)
       resolver_ctx = build_resolver_context(node, input_groups, node_context, input_sources)
@@ -564,6 +565,16 @@ module DiscourseWorkflows
     end
 
     # --- Steps ---
+
+    def capture_operation_metadata(step, node, node_type_class)
+      properties = node_type_class.properties
+      return unless properties.is_a?(Hash) && properties.key?(:operation)
+
+      operation_value = node.parameters&.dig("operation") || node.parameters&.dig(:operation)
+      return if operation_value.blank?
+
+      step.add_metadata("operation", operation_value)
+    end
 
     def record_step(node, input_items, output: [], status: Step::RUNNING, error: nil)
       step =

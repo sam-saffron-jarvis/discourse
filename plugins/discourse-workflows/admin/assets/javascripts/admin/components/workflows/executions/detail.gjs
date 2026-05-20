@@ -1,11 +1,16 @@
 import Component from "@glimmer/component";
 import { concat } from "@ember/helper";
 import { action } from "@ember/object";
+import didInsert from "@ember/render-modifiers/modifiers/did-insert";
+import { service } from "@ember/service";
 import DButton from "discourse/ui-kit/d-button";
 import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
-import { localeKeyPart } from "../../../lib/workflows/property-engine";
+import {
+  localeKeyPart,
+  propertyOptionLabel,
+} from "../../../lib/workflows/property-engine";
 
 function formatJson(data) {
   if (!data || Object.keys(data).length === 0) {
@@ -181,6 +186,32 @@ function conditionPassed(step) {
 }
 
 export default class ExecutionDetail extends Component {
+  @service workflowsNodeTypes;
+
+  operationLabel = (step) => {
+    const value = step?.metadata?.operation;
+    if (!value) {
+      return null;
+    }
+
+    // Read tracked state so the template re-renders once node types load.
+    if (!this.workflowsNodeTypes.nodeTypes) {
+      return String(value);
+    }
+
+    const definition = this.workflowsNodeTypes.findNodeType(step.node_type);
+    if (!definition) {
+      return String(value);
+    }
+
+    return propertyOptionLabel(definition, "operation", { value });
+  };
+
+  @action
+  async ensureNodeTypes() {
+    await this.workflowsNodeTypes.load();
+  }
+
   @action
   exportAsText() {
     const execution = this.args.execution;
@@ -204,6 +235,10 @@ export default class ExecutionDetail extends Component {
     execution.steps?.forEach((step, index) => {
       lines.push(`\nStep ${index + 1}: ${step.node_name}`);
       lines.push(`  Type: ${step.node_type}`);
+      const operationLabel = this.operationLabel(step);
+      if (operationLabel) {
+        lines.push(`  Operation: ${operationLabel}`);
+      }
       lines.push(`  Status: ${step.status}`);
       lines.push(
         `  Duration: ${formatDuration(step.started_at, step.finished_at)}${step.metadata?.js_elapsed_ms ? ` (javascript: ${step.metadata.js_elapsed_ms}ms)` : ""}`
@@ -260,7 +295,7 @@ export default class ExecutionDetail extends Component {
   }
 
   <template>
-    <div class="workflows-execution-detail">
+    <div class="workflows-execution-detail" {{didInsert this.ensureNodeTypes}}>
       <div class="workflows-execution-detail__steps">
         {{#each @execution.steps as |step|}}
           <div
@@ -274,6 +309,13 @@ export default class ExecutionDetail extends Component {
               <span class="workflows-execution-detail__step-name">
                 {{step.node_name}}
               </span>
+              {{#let (this.operationLabel step) as |operationLabel|}}
+                {{#if operationLabel}}
+                  <span
+                    class="workflows-execution-detail__step-operation"
+                  >{{operationLabel}}</span>
+                {{/if}}
+              {{/let}}
               <span
                 class="workflows-execution-detail__kind-badge --{{nodeKind
                     step.node_type
