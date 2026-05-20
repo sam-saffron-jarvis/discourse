@@ -55,27 +55,6 @@ RSpec.describe DiscourseWorkflows::Workflow::ManualExecute do
         expect(result[:execution]).to be_manual
       end
 
-      context "when manually testing an Error trigger" do
-        fab!(:workflow) do
-          graph = build_workflow_graph { |g| g.node "trigger-1", "trigger:error" }
-          Fabricate(:discourse_workflows_workflow, created_by: admin, published: true, **graph)
-        end
-
-        it "uses compatible mock error data" do
-          result
-
-          expect(result[:execution].trigger_data).to include(
-            "execution" =>
-              include(
-                "error" => include("message" => "Example Error Message"),
-                "lastNodeExecuted" => "Node With Error",
-                "mode" => "manual",
-              ),
-            "workflow" => include("id" => workflow.id.to_s, "name" => workflow.name),
-          )
-        end
-      end
-
       context "when manually testing a Schedule trigger" do
         fab!(:workflow) do
           graph =

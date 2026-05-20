@@ -48,10 +48,7 @@ module DiscourseWorkflows
         return TriggerRuntime.manual_trigger_data(workflow:, trigger_node:, user:)
       end
 
-      return params.trigger_data unless trigger_node["type"] == "trigger:error"
-      return params.trigger_data if params.trigger_data.present?
-
-      DiscourseWorkflows::Nodes::Error::V1.manual_mock_data(workflow)
+      params.trigger_data
     end
   end
 end

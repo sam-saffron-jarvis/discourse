@@ -179,7 +179,7 @@ RSpec.describe DiscourseWorkflows::NodeType::List do
         expect(manual[:manually_triggerable]).to be(true)
         expect(schedule[:manually_triggerable]).to be(true)
         expect(form[:manually_triggerable]).to be(true)
-        expect(error[:manually_triggerable]).to be(true)
+        expect(error[:manually_triggerable]).to be(false)
         expect(topic_closed[:manually_triggerable]).to be(false)
       end
 
