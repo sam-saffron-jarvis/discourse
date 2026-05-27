@@ -504,25 +504,144 @@ RSpec.configure do |config|
       METHODS_TO_PATCH.each do |method_name|
         define_method(method_name) do |*args, **options|
           result = super(*args, **options)
-          wait_for_ember_boot
-          wait_for_client_settled(method_name)
+          wait_for_navigation_settled(method_name)
           result
         end
       end
 
       private
 
-      # `<discourse-assets>` is only present on Ember pages; `ember-application`
-      # is added to the root element (`#main`) once Ember mounts.
-      def wait_for_ember_boot
+      # Collapses the post-navigation Ember-boot + client-settled waits into
+      # one Playwright IPC. The previous implementation issued three IPC
+      # round-trips per `visit`/`refresh`/`go_back`/`go_forward`/
+      # `resize_window_to`:
+      #
+      #   1. `has_no_css?("discourse-assets", wait: 0)` — non-Ember-page check.
+      #   2. `assert_selector("#main.ember-application")` — wait for Ember mount.
+      #   3. `evaluate_async_script(window.clientSettled(...))` — drain pending
+      #      AJAX/DOM events.
+      #
+      # The ember-mount and pending-events checks both happen entirely
+      # browser-side, so we collapse the three round-trips into a single
+      # `evaluate_async_script` whose JS:
+      #
+      #   - Returns immediately on non-Ember pages (no `<discourse-assets>`).
+      #   - Polls for `window.clientSettled` to be defined; that initializer
+      #     fires after `discourse-bootstrap`, i.e. once Ember has mounted on
+      #     `#main`.
+      #   - Awaits `window.clientSettled(...)` to drain pending AJAX/DOM events.
+      def wait_for_navigation_settled(method_name)
         session = @driver.send(:session)
-        return if session.has_no_css?("discourse-assets", wait: 0, visible: :all)
-        session.assert_selector("#main.ember-application", visible: :all)
+        timeout_ms = Capybara.default_max_wait_time * 1000
+
+        if ENV["CAPYBARA_PLAYWRIGHT_DEBUG_CLIENT_SETTLED"].present?
+          now = Time.now.to_f
+          puts "[#{now}] #{method_name}: START"
+        end
+
+        result = session.evaluate_async_script(<<~JS)
+          const done = arguments[0];
+          const timeoutMs = #{timeout_ms};
+
+          (async () => {
+            try {
+              if (!document.querySelector('discourse-assets')) {
+                done();
+                return;
+              }
+
+              const start = Date.now();
+              while (!window.clientSettled) {
+                if (Date.now() - start > timeoutMs) {
+                  done(`Timeout waiting for Ember boot after ${timeoutMs}ms`);
+                  return;
+                }
+                await new Promise((r) => setTimeout(r, 0));
+              }
+
+              const remaining = Math.max(timeoutMs - (Date.now() - start), 1000);
+              await window.clientSettled(remaining);
+              done();
+            } catch (error) {
+              done(error.message || String(error));
+            }
+          })();
+        JS
+
+        if ENV["CAPYBARA_PLAYWRIGHT_DEBUG_CLIENT_SETTLED"].present?
+          puts "[#{Time.now.to_f}] #{method_name}: END IN #{Time.now.to_f - now}"
+        end
+
+        raise result if result.is_a?(String)
       end
     end
 
     Capybara::Playwright::Node.prepend(CapybaraPlaywrightNodePatch)
     Capybara::Playwright::Browser.prepend(CapybaraPlaywrightBrowserPatch)
+
+    # `capybara-playwright-driver`'s `Browser#evaluate_async_script` wraps the
+    # user script in a `new Promise((resolve) => …)` shim, then calls
+    # Playwright's `evaluate_handle` (which returns a `JSHandle`) followed by
+    # `wrap_node` to dereference the handle into a Ruby value. That's two
+    # Playwright IPC round-trips per call. Playwright's `evaluate` already
+    # awaits a returned Promise and returns the resolved value serialized, in
+    # a single round-trip — and every caller of `evaluate_async_script` in
+    # this repo (`wait_for_navigation_settled` /
+    # `execute_async_client_settled_script` here, plus the clipboard / image
+    # helpers in `spec/system/page_objects/cdp.rb`) only ever resolves with
+    # `null` or a primitive `string`, never an object/element. Substituting
+    # `evaluate` for the `evaluate_handle + wrap_node` pair halves the IPC
+    # cost of the `wait_for_client_settled` call that fires after every
+    # patched Capybara action (click, send_keys, visit, …).
+    module CapybaraPlaywrightBrowserEvaluateAsyncFastPatch
+      def evaluate_async_script(script, *args)
+        assert_page_alive do
+          js = <<~JAVASCRIPT
+          function(_arguments){
+            let args = Array.prototype.slice.call(_arguments);
+            return new Promise((resolve, reject) => {
+              args.push(resolve);
+              (function(){ #{script} }).apply(this, args);
+            });
+          }
+          JAVASCRIPT
+          @playwright_page.capybara_current_frame.evaluate(js, arg: unwrap_node(args))
+        end
+      end
+    end
+    Capybara::Playwright::Browser.prepend(CapybaraPlaywrightBrowserEvaluateAsyncFastPatch)
+
+    # The upstream `capybara-playwright-driver` gem calls `@element.enabled?`
+    # at the top of `assert_element_not_stale` as a defensive pre-check
+    # before every read operation (visible?, visible_text, find_css, [],
+    # value, checked?, etc.). Each call is a Playwright IPC round-trip and
+    # together they account for a measurable share of wall time on
+    # browser-heavy system specs. The pre-check is redundant: every operation
+    # the wrapped block performs (text_content, evaluate, query_selector_all)
+    # hits the same CDP channel and raises `Playwright::Error` with the same
+    # "Element is not attached to the DOM" / "Execution context was
+    # destroyed" / etc. messages that the rescue below already converts to
+    # `StaleReferenceError`. Skipping the explicit `enabled?` check keeps
+    # the staleness detection (via the rescue) but cuts one round-trip per
+    # read.
+    module CapybaraPlaywrightNodeSkipStaleEnabledCheckPatch
+      private def assert_element_not_stale(&block)
+        block.call
+      rescue ::Playwright::Error => err
+        case err.message
+        when /Element is not attached to the DOM/,
+             /Execution context was destroyed, most likely because of a navigation/,
+             /Cannot find context with specified id/,
+             /Unable to adopt element handle from a different document/,
+             /error in channel "content::page": exception while running method "adoptNode"/,
+             /(: Shadow DOM element - no XPath :)/
+          raise Capybara::Playwright::Node::StaleReferenceError.new(err)
+        else
+          raise
+        end
+      end
+    end
+    Capybara::Playwright::Node.prepend(CapybaraPlaywrightNodeSkipStaleEnabledCheckPatch)
 
     module PlaywrightErrorPatch
       def message
