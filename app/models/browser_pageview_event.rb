@@ -11,18 +11,7 @@ class BrowserPageviewEvent < ActiveRecord::Base
   REDIS_FLUSH_BATCH_SIZE = 1000
 
   class << self
-    if Rails.env.test?
-      def enqueue_for_later(payload)
-        push_to_redis(payload)
-        flush_queued!
-      end
-    else
-      def enqueue_for_later(payload)
-        push_to_redis(payload)
-      end
-    end
-
-    def push_to_redis(payload)
+    def enqueue_for_later(payload)
       Discourse.redis.rpush(REDIS_QUEUE_KEY, JSON.generate(serialize_payload(payload)))
     rescue Redis::BaseConnectionError => e
       Rails.logger.warn("Failed to queue BrowserPageviewEvent in Redis: #{e.message}")
