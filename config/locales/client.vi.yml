@@ -120,6 +120,14 @@ vi:
       placeholder: ngày
       from_placeholder: "từ ngày"
       to_placeholder: "đến nay"
+    date_range_picker:
+      apply: "Áp dụng"
+      presets:
+        last_7_days: "7 ngày qua"
+        last_30_days: "30 ngày qua"
+        last_3_months: "3 tháng qua"
+        last_6_months: "6 tháng qua"
+        last_year: "Năm ngoái"
     languages:
       ar:
         name: Tiếng Ả Rập
@@ -359,8 +367,6 @@ vi:
     tos: "Điều khoản dịch vụ"
     rules: "Các quy tắc"
     conduct: "Quy tắc ứng xử"
-    mobile_view: "Xem chế độ điện thoại"
-    desktop_view: "Xem chế độ máy tính"
     now: "vừa xong"
     read_more: "đọc thêm"
     more: "Thêm nữa"
@@ -389,6 +395,8 @@ vi:
       pill: "Đề xuất"
       pm_title: "Tin nhắn gợi ý"
     admin_onboarding_banner:
+      select_theme:
+        enabled: "Đã bật"
       start_posting:
         back: "Quay lại"
     about:
@@ -546,6 +554,8 @@ vi:
           other: "+%{count} bản nháp khác"
     embed_mode:
       editing_post: "Đang chỉnh sửa tút"
+      signin_flow:
+        cancel: "Hủy"
     topic_count_all:
       other: "Xem %{count} chủ đề mới"
     topic_count_categories:
@@ -1347,7 +1357,6 @@ vi:
         normal_option: "Bình thường"
         normal_option_title: "Bạn sẽ được thông báo khi người này trả lời, trích dẫn hoặc nhắc đến bạn."
       notification_schedule:
-        title: "Lịch thông báo"
         label: "Bật lịch thông báo tùy chỉnh"
         tip: "Ngoài những giờ này, thông báo của bạn sẽ tạm dừng."
         midnight: "Nửa đêm"
@@ -1391,13 +1400,8 @@ vi:
       notifications: "Thông báo"
       statistics: "Thống kê"
       desktop_notifications:
-        label: "Thông báo trực tiếp"
         not_supported: "Xin lỗi. Trình duyệt của bạn không hỗ trợ Notification."
-        perm_default: "Mở thông báo"
-        perm_denied_btn: "Không có quyền"
         perm_denied_expl: "Bạn đã từ chối nhận thông báo, để nhận lại bạn cần thiết lập trình duyệt."
-        disable: "Khóa Notification"
-        enable: "Cho phép thông báo"
         each_browser_note: "Lưu ý: Bạn phải thay đổi cài đặt này trên mọi trình duyệt bạn sử dụng. Tất cả thông báo sẽ bị tắt nếu bạn tạm dừng thông báo từ menu người dùng, bất kể cài đặt này như thế nào."
         consent_prompt: "Bạn có muốn thông báo trực tiếp khi mọi người trả lời bài đăng của bạn không?"
       dismiss: "Hủy bỏ"
@@ -3108,6 +3112,7 @@ vi:
           placeholder: Tối đa
           aria_label: lọc theo lượt xem tối đa
     hamburger_menu: "Menu điều hướng"
+    header_panel: "Header"
     new_item: "mới"
     go_back: "quay trở lại"
     not_logged_in_user: "Trang cá nhân với tóm tắt các hoạt động và cấu hình"
@@ -3179,6 +3184,8 @@ vi:
           other: "Loại bỏ (%{count})…"
         dismiss_tooltip: "Chỉ bỏ qua tút mới hoặc dừng theo dõi chủ đề"
         also_dismiss_topics: "Ngừng theo dõi các chủ đề này để không hiển thị lại là chủ đề chưa đọc"
+        dismiss_new_topics: "Bỏ qua các chủ đề mới"
+        dismiss_new_replies: "Bỏ qua các trả lời mới"
         dismiss_new: "Bỏ qua tất cả"
         dismiss_new_modal:
           title: "Bỏ qua mục mới"
@@ -3958,7 +3965,6 @@ vi:
         name_placeholder: "Bạn đánh dấu cái này để làm gì?"
         name_input_label: "Tên đánh dấu"
         set_reminder: "Nhắc nhở tôi"
-        options: "Lựa chọn"
         actions:
           delete_bookmark:
             name: "Xóa đánh dấu"
@@ -4580,12 +4586,7 @@ vi:
       staff_info: "Để thêm các hạn chế, hãy đặt thẻ này vào <a href=%{basePath}/tag_groups>nhóm thẻ</a>."
       category_restricted: "Thẻ này bị giới hạn đối với các chuyên mục bạn không có quyền truy cập."
       synonyms: "Từ đồng nghĩa"
-      synonyms_description: "Khi các thẻ sau được sử dụng, chúng sẽ được thay thế bằng <b>%{base_tag_name}</b>."
       save: "Lưu tên và mô tả của thẻ"
-      tag_groups_info:
-        other: "Thẻ này thuộc các nhóm: %{tag_groups}."
-      category_restrictions:
-        other: "Nó chỉ có thể được sử dụng trong các chuyên mục sau:"
       edit_synonyms: "Chỉnh sửa từ đồng nghĩa"
       add_synonyms_label: "Thêm từ đồng nghĩa:"
       add_synonyms: "Thêm"
@@ -5694,6 +5695,34 @@ vi:
         sections:
           reports:
             title: "Báo cáo"
+          engagement:
+            activity_by_category:
+              category: "Danh mục"
+              topics: "Các chủ đề"
+              posts: "Số lượng tút"
+              share: "Chia sẻ"
+            whos_posting:
+              all_categories: "Tất cả danh mục"
+              staff: "Nhân viên"
+            trust_level_pipeline:
+              trust_levels:
+                "0": "Chủ đề mới"
+                "1": "Cơ Bản"
+                "2": "Nâng Cao"
+                "3": "Tích Cực"
+                "4": "Nhà Lãnh Đạo"
+              trend:
+                stable: "ổn định"
+        reports_section:
+          no_data: "Không có dữ liệu để hiển thị"
+          modal:
+            enabled_heading: "Đã bật"
+            all_heading: "Tất cả các báo cáo"
+            apply: "Áp dụng"
+        site_traffic:
+          series:
+            anonymous: "Ẩn danh"
+            crawlers: "Trình thu thập thông tin"
         period:
           last_7_days: "7 ngày qua"
           last_30_days: "30 ngày qua"

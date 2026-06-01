@@ -141,6 +141,14 @@ da:
       placeholder: dato
       from_placeholder: "fra dato"
       to_placeholder: "til dato"
+    date_range_picker:
+      apply: "Anvend"
+      presets:
+        last_7_days: "Seneste 7 dage"
+        last_30_days: "Seneste 30 dage"
+        last_3_months: "Seneste 3 måneder"
+        last_6_months: "Seneste 6 måneder"
+        last_year: "Sidste år"
     languages:
       ar:
         name: Arabisk
@@ -370,8 +378,6 @@ da:
     tos: "Servicevilkår"
     rules: "Regler"
     conduct: "Adfærdskodeks"
-    mobile_view: "Mobil visning"
-    desktop_view: "Computervisning"
     now: "lige nu"
     read_more: "læs mere"
     more: "Mere"
@@ -403,6 +409,8 @@ da:
       pill: "Foreslået"
       pm_title: "Foreslåede beskeder"
     admin_onboarding_banner:
+      select_theme:
+        enabled: "Aktiveret"
       start_posting:
         back: "Tilbage"
     about:
@@ -530,6 +538,9 @@ da:
       dropdown:
         untitled: "Unavngiven kladde"
         view_all: "se alle kladder"
+    embed_mode:
+      signin_flow:
+        cancel: "Annuller"
     topic_count_all:
       one: "Se %{count} nyt emne"
       other: "Se %{count} nye emner"
@@ -1278,7 +1289,6 @@ da:
         normal_option: "Normal"
         normal_option_title: "Du vil blive underrettet, hvis denne bruger svarer dig, citerer dig eller nævner dig."
       notification_schedule:
-        title: "Tidsplan for notifikation"
         label: "Aktiver brugerdefineret meddelelsesplan"
         tip: "Uden for disse timer vil dine notifikationer blive sat på pause."
         midnight: "Midnat"
@@ -1322,13 +1332,8 @@ da:
       notifications: "Notifikationer"
       statistics: "Statistik"
       desktop_notifications:
-        label: "Live notifikationer"
         not_supported: "Notifikationer understøttes ikke af denne browser. Beklager."
-        perm_default: "Slå notifikationer til"
-        perm_denied_btn: "Tilladelse nægtet"
         perm_denied_expl: "Du nægtede adgang for notifikationer. Tillad notifikationer via indstillingerne i din browser."
-        disable: "Deaktiver notifikationer"
-        enable: "Aktiver notifikationer"
         each_browser_note: "Bemærk: Du skal ændre denne indstilling på hver browser, du bruger. Alle notifikationer vil blive deaktiveret, hvis du pauserer notifikationer fra brugermenuen, uanset denne indstilling."
         consent_prompt: "Ønsker du live notifikationer, når folk svarer på dine indlæg?"
       dismiss: "Ignorer Alle"
@@ -2720,6 +2725,7 @@ da:
           placeholder: minimum
         max_views:
           placeholder: maksimum
+    header_panel: "Sidehoved"
     new_item: "ny"
     go_back: "gå tilbage"
     not_logged_in_user: "bruger side, med oversigt over aktivitet og indstillinger"
@@ -3427,7 +3433,6 @@ da:
         name_placeholder: "Hvad er dette bogmærke til?"
         name_input_label: "Bogmærkenavn"
         set_reminder: "Påmind mig"
-        options: "Indstillinger"
         actions:
           delete_bookmark:
             name: "Slet bogmærke"
@@ -3932,13 +3937,6 @@ da:
       default_info: "Dette mærke er ikke begrænset til nogen kategorier og har ingen synonymer."
       category_restricted: "Dette mærke er begrænset til kategorier, som du ikke har adgang til."
       synonyms: "Synonymer"
-      synonyms_description: "Når følgende tags bruges, vil de blive erstattet med <b>%{base_tag_name}</b>."
-      tag_groups_info:
-        one: 'Dette mærke tilhører gruppen "%{tag_groups}".'
-        other: "Dette mærke tilhører disse grupper: %{tag_groups}."
-      category_restrictions:
-        one: "Den kan kun bruges i denne kategori:"
-        other: "Det kan kun bruges i disse kategorier:"
       edit_synonyms: "Rediger Synonymer"
       add_synonyms_label: "Tilføj synonymer:"
       add_synonyms: "Tilføj"
@@ -4609,6 +4607,32 @@ da:
             title: "Rapporter"
           traffic:
             title: "Webstedstrafik"
+          engagement:
+            activity_by_category:
+              category: "Kategori"
+              topics: "Emner"
+              posts: "Indlæg"
+              share: "Del"
+            whos_posting:
+              all_categories: "Alle kategorier"
+              staff: "Personale"
+            trust_level_pipeline:
+              trust_levels:
+                "0": "Nye"
+                "1": "Basis"
+                "2": "Bruger"
+                "3": "Almindelig"
+                "4": "Leder"
+        reports_section:
+          no_data: "Ingen data at vise"
+          modal:
+            enabled_heading: "Aktiveret"
+            all_heading: "Alle rapporter"
+            apply: "Anvend"
+        site_traffic:
+          series:
+            anonymous: "Anonym"
+            crawlers: "Crawlere"
         period:
           last_7_days: "Seneste 7 dage"
           last_30_days: "Seneste 30 dage"

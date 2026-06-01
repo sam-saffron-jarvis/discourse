@@ -144,6 +144,15 @@ fr:
       placeholder: date
       from_placeholder: "date de début"
       to_placeholder: "date de fin"
+    date_range_picker:
+      apply: "Appliquer"
+      start_date: "Date de début"
+      presets:
+        last_7_days: "Ces 7 derniers jours"
+        last_30_days: "30 derniers jours"
+        last_3_months: "3 derniers mois"
+        last_6_months: "6 derniers mois"
+        last_year: "L'année dernière"
     languages:
       ar:
         name: Arabe
@@ -379,8 +388,6 @@ fr:
     tos: "Conditions générales d'utilisation"
     rules: "Règles"
     conduct: "Code de conduite"
-    mobile_view: "Version mobile"
-    desktop_view: "Version ordinateur"
     now: "à l'instant"
     read_more: "lire la suite"
     more: "Plus"
@@ -412,6 +419,8 @@ fr:
       pill: "Suggérés"
       pm_title: "Messages suggérés"
     admin_onboarding_banner:
+      select_theme:
+        enabled: "Activé"
       start_posting:
         back: "Retour"
     about:
@@ -584,6 +593,9 @@ fr:
         other_drafts:
           one: "+%{count} autre brouillon"
           other: "+%{count} autres brouillons"
+    embed_mode:
+      signin_flow:
+        cancel: "Annuler"
     topic_count_all:
       one: "Voir %{count} nouveau sujet"
       other: "Voir %{count} nouveaux sujets"
@@ -1362,7 +1374,6 @@ fr:
         normal_option: "Normal"
         normal_option_title: "Vous recevrez une notification si cet utilisateur vous répond, vous cite ou vous mentionne."
       notification_schedule:
-        title: "Planification des notifications"
         label: "Activer la planification personnalisée des notifications"
         tip: "En dehors de ces heures, vos notifications seront suspendues."
         midnight: "Minuit"
@@ -1406,13 +1417,8 @@ fr:
       notifications: "Notifications"
       statistics: "Statistiques"
       desktop_notifications:
-        label: "Notifications instantanées"
         not_supported: "Nous sommes désolés, les notifications ne sont pas supportées sur ce navigateur."
-        perm_default: "Activer les notifications"
-        perm_denied_btn: "Permission refusée"
         perm_denied_expl: "Vous n'avez pas autorisé les notifications. Autorisez-les à partir des paramètres de votre navigateur."
-        disable: "Désactiver les notifications"
-        enable: "Activer les notifications"
         each_browser_note: "Remarque : vous devez modifier ce paramètre sur chaque navigateur utilisé. Toutes les notifications seront désactivées si vous suspendez les notifications à partir du menu utilisateur, quel que soit ce paramètre."
         consent_prompt: "Souhaitez-vous recevoir des notifications en temps réel en cas de réponse à vos messages ?"
       dismiss: "Vu"
@@ -3145,6 +3151,7 @@ fr:
           placeholder: maximum
           aria_label: filtrer par nombre de vues maximal
     hamburger_menu: "Menu de navigation"
+    header_panel: "En-tête"
     new_item: "nouveau"
     go_back: "retour"
     not_logged_in_user: "page utilisateur avec un résumé de l'activité et les préférences"
@@ -3222,6 +3229,8 @@ fr:
           other: "Marquer comme lus (%{count})…"
         dismiss_tooltip: "Marquer les nouveaux messages comme vus, ou arrêter de suivre des sujets"
         also_dismiss_topics: "Arrêter de suivre ces sujets pour qu'ils ne soient plus jamais marqués comme non lus"
+        dismiss_new_topics: "Ignorer les nouveaux sujets"
+        dismiss_new_replies: "Ignorer les nouvelles réponses"
         dismiss_new: "Marquer comme vu(s)"
         dismiss_new_modal:
           title: "Ignorer les nouveaux"
@@ -4036,7 +4045,6 @@ fr:
         name_placeholder: "À quoi correspond ce signet ?"
         name_input_label: "Nom du signet"
         set_reminder: "Me le rappeler"
-        options: "Options"
         actions:
           delete_bookmark:
             name: "Supprimer le signet"
@@ -4634,14 +4642,7 @@ fr:
       staff_info: "Pour y définir des restrictions d'utilisation, placez cette étiquette dans un <a href=%{basePath}/tag_groups>groupe d'étiquettes</a>."
       category_restricted: "Cette étiquette est limitée à des catégories auxquelles vous n'avez pas la permission d'accéder."
       synonyms: "Synonymes"
-      synonyms_description: "Quand les étiquettes suivantes sont utilisées, elles seront remplacées par <b>%{base_tag_name}</b>."
       save: "Enregistrer le nom et la description de l'étiquette"
-      tag_groups_info:
-        one: 'Cette étiquette appartient au groupe « %{tag_groups} ».'
-        other: "Cette étiquette appartient aux groupes : %{tag_groups}."
-      category_restrictions:
-        one: "Elle ne peut être utilisée que dans cette catégorie :"
-        other: "Elle ne peut être utilisée que dans ces catégories :"
       edit_synonyms: "Modifier les synonymes"
       add_synonyms_label: "Ajoutez des synonymes :"
       add_synonyms: "Ajouter"
@@ -5652,8 +5653,34 @@ fr:
             title: "Rapports"
           traffic:
             title: "Trafic du site"
+          engagement:
+            activity_by_category:
+              category: "Catégorie"
+              topics: "Sujets"
+              posts: "Publications"
+              share: "Partager"
+            whos_posting:
+              all_categories: "Toutes les catégories"
+              staff: "Responsable"
+            trust_level_pipeline:
+              trust_levels:
+                "0": "Nouveau"
+                "1": "Actif"
+                "2": "Membre"
+                "3": "Normal"
+                "4": "Meneur"
+        reports_section:
+          no_data: "Aucune donnée à afficher"
+          modal:
+            enabled_heading: "Activé"
+            all_heading: "Tous les rapports"
+            apply: "Appliquer"
         configure:
           button: "Configurer"
+        site_traffic:
+          series:
+            anonymous: "Anonymes"
+            crawlers: "Robots d'indexation"
         period:
           last_7_days: "Ces 7 derniers jours"
           last_30_days: "30 derniers jours"

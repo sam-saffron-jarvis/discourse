@@ -270,6 +270,15 @@ ar:
       placeholder: التاريخ
       from_placeholder: "من التاريخ"
       to_placeholder: "إلى التاريخ"
+    date_range_picker:
+      apply: "تطبيق"
+      start_date: "تاريخ البدء"
+      presets:
+        last_7_days: "آخر 7 أيام"
+        last_30_days: "آخر 30 يومًا"
+        last_3_months: "آخر 3 أشهر"
+        last_6_months: "آخر 6 أشهر"
+        last_year: "العام الماضي"
     languages:
       ar:
         name: العربية
@@ -488,7 +497,6 @@ ar:
         since: "(منذ %{version})"
       toggle_safe_mode: "تبديل الوضع الآمن"
       toggle_verbose_localization: "تبديل التوطين المطول"
-      toggle_mobile_view: "تبديل عرض الهاتف المحمول"
       disable_dev_tools: "تعطيل أدوات المطورين"
       toggle_upcoming_changes_debug: "تبديل تصحيح الأخطاء للتغييرات القادمة"
     s3:
@@ -551,8 +559,6 @@ ar:
     tos: "شروط الخدمة"
     rules: "القواعد"
     conduct: "قواعد السلوك"
-    mobile_view: "العرض على الجوَّال"
-    desktop_view: "العرض على كمبيوتر سطح المكتب"
     now: "الآن"
     read_more: "قراءة المزيد"
     more: "المزيد"
@@ -598,6 +604,8 @@ ar:
     admin_onboarding_banner:
       launch_in_easy_steps: "الإطلاق عبر %{step_count} خطوات سهلة"
       congrats_onboarding_complete: "تهانينا على إكمال عملية الانضمام!"
+      select_theme:
+        enabled: "مفعَّلة"
       invite_collaborators:
         title: "دعوة المتعاونين"
         description: "يساهم الأعضاء الأوائل في إثراء مجتمعك"
@@ -891,6 +899,8 @@ ar:
       replying_to: "الرد على %{username}"
       editing_post: "تعديل المنشور"
       reply_placeholder: "اكتب ردًا..."
+      signin_flow:
+        cancel: "ألغِ"
     topic_count_all:
       zero: "عرض %{count} موضوع جديد"
       one: "عرض موضوع واحد (%{count}) جديد"
@@ -1876,7 +1886,6 @@ ar:
         normal_option: "عادية"
         normal_option_title: "سنُرسل إليك إشعارًا في حال ردَّ هذا المستخدم عليك أو اقتبس كلامك أو أشار إليك."
       notification_schedule:
-        title: "جدول الإشعارات"
         label: "تفعيل جدول الإشعارات المخصَّص"
         tip: "سيتم إيقاف إشعاراتك مؤقتًا خارج هذه الساعات."
         midnight: "منتصف الليل"
@@ -1920,13 +1929,8 @@ ar:
       notifications: "الإشعارات"
       statistics: "الإحصاءات"
       desktop_notifications:
-        label: "الإشعارات الفورية"
         not_supported: "عذرًا، لا يدعم هذا المتصفح الإشعارات."
-        perm_default: "تفعيل الإشعارات"
-        perm_denied_btn: "‏‏تم رفض الإذن"
         perm_denied_expl: "لقد رفضت منح الإذن بإرسال الإشعارات. يمكنك السماح بالإشعارات في إعدادات المتصفح."
-        disable: "إيقاف الإشعارات"
-        enable: "تفعيل الإشعارات"
         each_browser_note: "ملاحظة: عليك تغيير هذا الإعداد في كل متصفح تستخدمه. سيتم إيقاف جميع الإشعارات إذا أوقفت الإشعارات من قائمة المستخدم، بغض النظر عن هذا الإعداد."
         consent_prompt: "هل تريد تلقي إشعارات فورية عند رد الأشخاص على منشوراتك؟"
       dismiss: "تجاهل"
@@ -4087,6 +4091,7 @@ ar:
           placeholder: الحد الأقصى
           aria_label: التصفية حسب أقصى عدد من المشاهدات
     hamburger_menu: "قائمة التنقل"
+    header_panel: "الرأس"
     new_item: "جديد"
     go_back: "الرجوع"
     not_logged_in_user: "صفحة المستخدم مع ملخص عن نشاطه الحالي وتفضيلاته"
@@ -4236,6 +4241,8 @@ ar:
           other: "تجاهل (%{count})…"
         dismiss_tooltip: "تجاهل المنشورات الجديدة فقط أو التوقف عن تتبُّع الموضوعات"
         also_dismiss_topics: "التوقف عن تتبُّع هذه الموضوعات حتي لا تظهر لي كغير مقروءة مرة أخرى"
+        dismiss_new_topics: "تجاهل الموضوعات الجديدة"
+        dismiss_new_replies: "تجاهل الردود الجديدة"
         dismiss_new: "تجاهل الجديدة"
         dismiss_new_modal:
           title: "تجاهل الجديدة"
@@ -4481,8 +4488,6 @@ ar:
     nested_replies:
       nested_view: "العرض المتداخل"
       flat_view: "العرض المسطح"
-      view_as_nested: "عرض بشكل متداخل"
-      view_as_flat: "عرض بشكل مسطح"
       sort:
         label: "الترتيب حسب"
         top: "الأكثر نشاطًا"
@@ -5490,7 +5495,6 @@ ar:
         name_placeholder: "ما استخدام هذه الإشارة المرجعية؟"
         name_input_label: "اسم الإشارة المرجعية"
         set_reminder: "تذكيري"
-        options: "الخيارات"
         actions:
           delete_bookmark:
             name: "حذف الإشارة المرجعية"
@@ -6265,30 +6269,8 @@ ar:
       staff_info: "لإضافة قيود، ضَع هذا الوسم في <a href=%{basePath}/tag_groups>مجموعة الوسوم</a>."
       category_restricted: "هذا الوسم مقيَّد بالفئات التي ليس لديك إذن بالوصول إليها."
       synonyms: "المرادفات"
-      synonyms_description: "عند استخدام الوسوم التالية، سيتم استبدالها بالوسم <b>%{base_tag_name}</b>."
       synonyms_inline: "سيتم استبدال هذه المرادفات بـ %{base_tag_name}:"
       save: "حفظ اسم الوسم ووصفه"
-      tag_groups_info:
-        zero: "هذا الوسم ينتمي إلى المجموعة: %{tag_groups}."
-        one: 'هذا الوسم ينتمي إلى المجموعة: %{tag_groups}.'
-        two: "هذا الوسم ينتمي إلى المجموعتين: %{tag_groups}."
-        few: "هذا الوسم ينتمي إلى المجموعات: %{tag_groups}."
-        many: "هذا الوسم ينتمي إلى المجموعات: %{tag_groups}."
-        other: "هذا الوسم ينتمي إلى المجموعات: %{tag_groups}."
-      tag_groups_info_prefix:
-        zero: "هذا الوسم ينتمي إلى المجموعة "
-        one: "هذا الوسم ينتمي إلى المجموعة "
-        two: "هذا الوسم ينتمي إلى المجموعتين: "
-        few: "هذا الوسم ينتمي إلى المجموعات: "
-        many: "هذا الوسم ينتمي إلى المجموعات: "
-        other: "هذا الوسم ينتمي إلى المجموعات: "
-      category_restrictions:
-        zero: "لا يمكن استخدامه إلا في هذه الفئة:"
-        one: "لا يمكن استخدامه إلا في هذه الفئة:"
-        two: "لا يمكن استخدامه إلا في هاتين الفئتين:"
-        few: "لا يمكن استخدامه إلا في هذه الفئات:"
-        many: "لا يمكن استخدامه إلا في هذه الفئات:"
-        other: "لا يمكن استخدامه إلا في هذه الفئات:"
       restricted_to: "مقيد إلى"
       no_synonyms: "هذا الوسم ليست له مرادفات."
       edit_synonyms: "تعديل المرادفات"
@@ -7570,6 +7552,29 @@ ar:
             title: "حركة زيارات الموقع"
           engagement:
             title: "التفاعل"
+            activity_by_category:
+              category: "الفئة"
+              topics: "الموضوعات"
+              posts: "المنشورات"
+              share: "مشاركة"
+            whos_posting:
+              all_categories: "كل الفئات"
+              staff: "فريق العمل"
+            trust_level_pipeline:
+              trust_levels:
+                "0": "جديدة"
+                "1": "أولي"
+                "2": "عضو"
+                "3": "منتظمة"
+                "4": "قائد"
+              trend:
+                stable: "مستقر"
+        reports_section:
+          no_data: "لا توجد بيانات لعرضها"
+          modal:
+            enabled_heading: "مفعَّلة"
+            all_heading: "جميع التقارير"
+            apply: "تطبيق"
         configure:
           button: "التهيئة"
         highlights:
@@ -7589,6 +7594,11 @@ ar:
             last_30_days: "مقارنةً بآخر 30 يومًا"
             last_3_months: "مقارنةً بآخر 3 أشهر"
             previous_period: "مقارنةً بالفترة السابقة"
+        site_traffic:
+          series:
+            anonymous: "مجهول"
+            embedded: "مشاهدات مضمّنة داخل الصفحة"
+            crawlers: "متتبعات ارتباطات الويب"
         period:
           last_7_days: "آخر 7 أيام"
           last_30_days: "آخر 30 يومًا"

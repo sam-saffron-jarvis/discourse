@@ -153,6 +153,13 @@ ug:
       placeholder: چېسلا
       from_placeholder: "باشلانغان ۋاقىت"
       to_placeholder: "ئاخىرلىشىدىغان ۋاقىت"
+    date_range_picker:
+      apply: "قوللان"
+      start_date: "باشلىنىش ۋاقتى"
+      presets:
+        last_3_months: "ئۆتكەن 3 ئاي"
+        last_6_months: "ئۆتكەن 6 ئاي"
+        last_year: "ئۆتكەن يىل"
     languages:
       ar:
         name: ئەرەبچە
@@ -395,8 +402,6 @@ ug:
     tos: "مۇلازىمەت شەرتلىرى"
     rules: "قائىدە"
     conduct: "ھەرىكەت قائىدىسى"
-    mobile_view: "كۆچمە كۆرۈنۈش"
-    desktop_view: "ئۈستەل يۈزى كۆرۈنۈشى"
     now: "ھازىر"
     read_more: "تېخىمۇ كۆپ بىلدۈرگۈ"
     more: "تېخىمۇ كۆپ"
@@ -428,6 +433,8 @@ ug:
       pill: "تەۋسىيە"
       pm_title: "تەۋسىيە ئۇچۇر"
     admin_onboarding_banner:
+      select_theme:
+        enabled: "قوزغىتىلدى"
       invite_collaborators:
         action: "تەكلىپ قۇر"
       start_posting:
@@ -611,6 +618,8 @@ ug:
           other: "+%{count} باشقا دەسلەپكى نۇسخا"
     embed_mode:
       editing_post: "يازما تەھرىرلىنىۋاتىدۇ"
+      signin_flow:
+        cancel: "ۋاز كەچ"
     topic_count_all:
       one: "%{count} يېڭى تېمىنى كۆرۈڭ"
       other: "%{count} يېڭى تېمىنى كۆرۈڭ"
@@ -1438,7 +1447,6 @@ ug:
         normal_option: "ئادەتتىكى"
         normal_option_title: "ئەگەر بۇ ئىشلەتكۈچى سىزگە جاۋاب قايتۇرسا، نەقىل كەلتۈرسە ياكى سىزنى تىلغا ئالسا سىزگە ئۇقتۇرۇلىدۇ."
       notification_schedule:
-        title: "ئۇقتۇرۇش كۈنتەرتىپى"
         label: "ئىختىيارى ئۇقتۇرۇش كۈنتەرتىپىنى قوزغات"
         tip: "بۇ ۋاقىتتىن باشقا ۋاقىتتا ئۇقتۇرۇشىڭىز ۋاقىتلىق توختىتىلىدۇ."
         midnight: "يېرىم كېچە"
@@ -1482,13 +1490,8 @@ ug:
       notifications: "ئۇقتۇرۇش"
       statistics: "ئىستاتىستىكا"
       desktop_notifications:
-        label: "شۇئان ئۇقتۇرۇش"
         not_supported: "كەچۈرۈڭ. بۇ توركۆرگۈ ئۇقتۇرۇشنى قوللىمايدۇ."
-        perm_default: "ئۇقتۇرۇشنى ئاچ"
-        perm_denied_btn: "ئىجازەت رەت قىلىندى"
         perm_denied_expl: "ئۇقتۇرۇش ئىجازىتىنى رەت قىلدىڭىز. توركۆرگۈ تەڭشىكىڭىز ئارقىلىق ئۇقتۇرۇشقا يول قويالايسىز."
-        disable: "ئۇقتۇرۇشنى چەكلە"
-        enable: "ئۇقتۇرۇشنى قوزغات"
         each_browser_note: "ئەسكەرتىش: سىز ئىشلىتىدىغان ھەر بىر توركۆرگۈدە بۇ تەڭشەكنى ئۆزگەرتىشىڭىز كېرەك. بۇ تەڭشەكنىڭ قانداق بولۇشىدىن قەتئىينەزەر، ئەگەر ئىشلەتكۈچى تىزىملىكىدىن ئۇقتۇرۇشنى توختاتسىڭىز بارلىق ئۇقتۇرۇشلار چەكلىنىدۇ."
         consent_prompt: "كىشىلەر يازمىڭىزغا ئىنكاس قايتۇرغاندا شۇئان ئۇقتۇرۇشى تاپشۇرۇۋېلىشنى خالامسىز؟"
       dismiss: "پەرۋا قىلما"
@@ -3277,6 +3280,7 @@ ug:
           placeholder: ئەڭ كۆپ
           aria_label: ئەڭ كۆپ كۆرۈلۈشى بويىچە سۈزىدۇ
     hamburger_menu: "يولباشچى تىزىملىك"
+    header_panel: "بەت قاش"
     new_item: "يېڭى"
     go_back: "قايت"
     not_logged_in_user: "نۆۋەتتىكى پائالىيەت ۋە مايىللىقنىڭ ئىشلەتكۈچى بېتىدىكى خۇلاسىسى"
@@ -3361,6 +3365,8 @@ ug:
           other: "پەرۋا قىلما (%{count})…"
         dismiss_tooltip: "يېڭى يازمىغىلا پەرۋا قىلما ياكى تېما ئىزلاشنى توختات"
         also_dismiss_topics: "بۇ تېمىلارنى ئىزلاشنى توختىتىپ ئۇلارنى ئوقۇلمىغانلاردا قايتا كۆرسەتمەيدۇ"
+        dismiss_new_topics: "يېڭى تېمىغا پەرۋا قىلما"
+        dismiss_new_replies: "يېڭى جاۋابقا پەرۋا قىلما"
         dismiss_new: "يېڭىغا پەرۋا قىلما"
         dismiss_new_modal:
           title: "يېڭىغا پەرۋا قىلما"
@@ -4186,7 +4192,6 @@ ug:
         name_placeholder: "بۇ خەتكۈچ نېمىگە ئىشلىتىلىدۇ؟"
         name_input_label: "خەتكۈچ ئىسمى"
         set_reminder: "مېنى ئەسكەرت"
-        options: "تاللانما"
         actions:
           delete_bookmark:
             name: "خەتكۈچنى ئۆچۈر"
@@ -4822,14 +4827,7 @@ ug:
       staff_info: "چەكلىمە قوشۇشتا، بەلگىنى <a href=%{basePath}/tag_groups>بەلگە گۇرۇپپا</a>غا قوشۇش كېرەك."
       category_restricted: "بۇ بەلگە سىز زىيارەت قىلالمايدىغان سەھىپە بىلەن چەكلىنىدۇ."
       synonyms: "مەنىداش سۆز"
-      synonyms_description: "تۆۋەندىكى بەلگە ئىشلىتىلگەندە، ئۇلار <b>%{base_tag_name}</b> غا ئالماشتۇرۇلىدۇ."
       save: "بەلگە ئىسمى ۋە چۈشەندۈرۈشىنى ساقلايدۇ"
-      tag_groups_info:
-        one: 'بۇ بەلگە تەۋە گۇرۇپپا «%{tag_groups}».'
-        other: "بۇ بەلگە تەۋە گۇرۇپپا «%{tag_groups}»."
-      category_restrictions:
-        one: "ئۇنى پەقەت تۆۋەندىكى سەھىپىدىلا ئىشلەتكىلى بولىدۇ:"
-        other: "ئۇنى پەقەت تۆۋەندىكى سەھىپىدىلا ئىشلەتكىلى بولىدۇ:"
       edit_synonyms: "مەنىداش سۆز تەھرىر"
       add_synonyms_label: "مەنىداش سۆز قوش:"
       add_synonyms: "قوش"
@@ -5904,8 +5902,36 @@ ug:
             title: "دوكلات"
           traffic:
             title: "بېكەت ئېقىمى"
+          engagement:
+            activity_by_category:
+              category: "سەھىپە"
+              topics: "تېما"
+              posts: "يازما"
+              share: "ھەمبەھىر"
+            whos_posting:
+              all_categories: "ھەممە سەھىپە"
+              staff: "باشقۇرغۇچى خادىم"
+            trust_level_pipeline:
+              trust_levels:
+                "0": "يېڭى"
+                "1": "ئاساسىي"
+                "2": "ئەزا"
+                "3": "ئادەتتىكى"
+                "4": "باشلىق"
+              trend:
+                stable: "مۇقىم"
+        reports_section:
+          no_data: "كۆرسىتىدىغان سانلىق مەلۇمات يوق"
+          modal:
+            enabled_heading: "قوزغىتىلدى"
+            all_heading: "بارلىق دوكلات"
+            apply: "قوللان"
         configure:
           button: "سەپلە"
+        site_traffic:
+          series:
+            anonymous: "نامسىز"
+            crawlers: "ئۆمىلىگۈچ"
         period:
           last_3_months: "ئۆتكەن 3 ئاي"
           custom: "ئىختىيارى"
