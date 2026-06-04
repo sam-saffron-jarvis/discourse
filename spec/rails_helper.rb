@@ -61,22 +61,7 @@ class PlaywrightLogger
 end
 
 ENV["RAILS_ENV"] ||= "test"
-# Skip Lograge boot in CI system-test runs that pin the log level to
-# error/fatal. Lograge attaches to `process_action.action_controller` and
-# computes the full structured log event (custom_payload, custom_options,
-# Logstash JSON.dump) for every HTTP request before handing it to the
-# logger, where the level filter then drops it. The default
-# ActionController::LogSubscriber uses block-form `info { ... }` and pays
-# nothing when the level is too high, so dropping lograge here leaves
-# request-log output identical (none, at error level) while skipping the
-# per-request JSON-build + custom_payload work. System specs make many
-# Rails-handled requests per example (page loads + API calls), so this
-# is the dominant per-request CPU tax under RAILS_TEST_LOG_LEVEL=error.
-if ENV["CI"] && %w[error fatal unknown].include?(ENV["RAILS_TEST_LOG_LEVEL"].to_s.downcase)
-  ENV["ENABLE_LOGSTASH_LOGGER"] = "0"
-else
-  ENV["ENABLE_LOGSTASH_LOGGER"] ||= "1"
-end
+ENV["ENABLE_LOGSTASH_LOGGER"] ||= "1"
 require File.expand_path("../../config/environment", __FILE__)
 Discourse.singleton_class.prepend(RspecWarnExceptionCapture)
 
