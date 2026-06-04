@@ -293,7 +293,15 @@ RSpec.configure do |config|
 
     DiscoursePluginRegistry.reset! if ENV["LOAD_PLUGINS"] != "1"
     Discourse.current_user_provider = TestCurrentUserProvider
-    Discourse::Application.load_tasks
+
+    # Skip the rake task autoload when the run is gated as such by the
+    # caller (e.g. the Core System Tests CI step, whose `spec/system/**`
+    # input never invokes `Rake::Task[...]`). `load_tasks` re-parses ~50
+    # `lib/tasks/*.rake` files per worker — pure cost on the boot path.
+    # Specs that actually need rake (the `spec/tasks/**` files) load it
+    # themselves at the top of the file, so unconditional load here is
+    # only required when those specs share a worker with non-rake specs.
+    Discourse::Application.load_tasks if ENV["DISCOURSE_SKIP_LOAD_TASKS"] != "1"
 
     SystemThemesManager.clear_system_theme_user_history!
     ThemeField.delete_all
