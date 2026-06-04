@@ -82,6 +82,22 @@ if ENV["CI"] && !ENV["DISCOURSE_KEEP_AR_QUERY_LOGS"]
   end
 end
 
+# Each `SiteSetting.set` / `remove_override!` in `TestSetup.test_setup` ends
+# with `clear_cache!`, which fires `Discourse.cache.delete(...)` (a redis DEL
+# round-trip) and `Site.clear_anon_cache!` (a `MessageBus.publish("/site_json", "")`).
+# The batch writes ~16 settings per spec, so the same cache key is invalidated
+# 16+ times before the example body even starts. Allow `test_setup` to flag
+# itself as the active writer and skip the per-call invalidation; it issues
+# one `clear_cache!` at the end of the batch so the post-condition is
+# identical to the unbatched flow.
+module SuppressSiteSettingClearCache
+  def clear_cache!(**args)
+    return if Thread.current[:_test_setup_suppress_clear_cache]
+    super
+  end
+end
+SiteSetting.singleton_class.prepend(SuppressSiteSettingClearCache)
+
 require "rspec/rails"
 require "shoulda-matchers"
 require "sidekiq/testing"
@@ -133,26 +149,32 @@ module TestSetup
     WordWatcher.disable_cache
     UpcomingChanges.clear_caches!
 
-    SiteSetting.provider.all.each { |setting| SiteSetting.remove_override!(setting.name) }
+    Thread.current[:_test_setup_suppress_clear_cache] = true
+    begin
+      SiteSetting.provider.all.each { |setting| SiteSetting.remove_override!(setting.name) }
 
-    # Set some standard overrides for tests. Some for performance, some to make the tests easier,
-    # and some because their default was changed, and we didn't want to refactor all the relevant specs.
-    {
-      s3_upload_bucket: "bucket",
-      min_post_length: 5,
-      min_first_post_length: 5,
-      min_personal_message_post_length: 10,
-      download_remote_images_to_local: false,
-      unique_posts_mins: 0,
-      max_consecutive_replies: 0,
-      allow_uncategorized_topics: true,
-    }.each { |k, v| SiteSetting.set(k, v) }
+      # Set some standard overrides for tests. Some for performance, some to make the tests easier,
+      # and some because their default was changed, and we didn't want to refactor all the relevant specs.
+      {
+        s3_upload_bucket: "bucket",
+        min_post_length: 5,
+        min_first_post_length: 5,
+        min_personal_message_post_length: 10,
+        download_remote_images_to_local: false,
+        unique_posts_mins: 0,
+        max_consecutive_replies: 0,
+        allow_uncategorized_topics: true,
+      }.each { |k, v| SiteSetting.set(k, v) }
 
-    SiteSetting.refresh!(refresh_site_settings: false, refresh_theme_site_settings: true)
-    SiteSetting.refresh_site_setting_group_ids!
+      SiteSetting.refresh!(refresh_site_settings: false, refresh_theme_site_settings: true)
+      SiteSetting.refresh_site_setting_group_ids!
 
-    # very expensive IO operations
-    SiteSetting.automatically_download_gravatars = false
+      # very expensive IO operations
+      SiteSetting.automatically_download_gravatars = false
+    ensure
+      Thread.current[:_test_setup_suppress_clear_cache] = false
+    end
+    SiteSetting.send(:clear_cache!, expire_theme_site_setting_cache: true)
 
     Discourse.clear_readonly!
     Sidekiq::Worker.clear_all
