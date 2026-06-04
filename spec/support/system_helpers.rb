@@ -64,30 +64,18 @@ module SystemHelpers
   end
 
   def setup_system_test
-    # Batch the 8 back-to-back SiteSetting writes so they share one final
-    # cache invalidation instead of paying a Redis DEL + MessageBus publish
-    # per write. See SuppressSiteSettingClearCacheDuringBatch in rails_helper.rb.
-    site_setting_writes =
-      proc do
-        SiteSetting.login_required = false
-        SiteSetting.has_login_hint = false
-        SiteSetting.global_notice = ""
-        SiteSetting.force_hostname = Capybara.server_host
-        SiteSetting.port = Capybara.server_port
-        SiteSetting.external_system_avatars_url = ""
-        SiteSetting.enable_user_tips = false
-        SiteSetting.allowed_internal_hosts =
-          (
-            SiteSetting.allowed_internal_hosts.to_s.split("|") +
-              MinioRunner.config.minio_urls.map { |url| URI.parse(url).host }
-          ).join("|")
-      end
-
-    if ENV["CI"] && defined?(BatchedSiteSettingCacheClearHelper)
-      BatchedSiteSettingCacheClearHelper.batch(&site_setting_writes)
-    else
-      site_setting_writes.call
-    end
+    SiteSetting.login_required = false
+    SiteSetting.has_login_hint = false
+    SiteSetting.global_notice = ""
+    SiteSetting.force_hostname = Capybara.server_host
+    SiteSetting.port = Capybara.server_port
+    SiteSetting.external_system_avatars_url = ""
+    SiteSetting.enable_user_tips = false
+    SiteSetting.allowed_internal_hosts =
+      (
+        SiteSetting.allowed_internal_hosts.to_s.split("|") +
+          MinioRunner.config.minio_urls.map { |url| URI.parse(url).host }
+      ).join("|")
   end
 
   def try_until_success(timeout: Capybara.default_max_wait_time, frequency: 0.01, reason: nil)

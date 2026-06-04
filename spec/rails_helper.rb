@@ -82,40 +82,6 @@ if ENV["CI"] && !ENV["DISCOURSE_KEEP_AR_QUERY_LOGS"]
   end
 end
 
-# Batch the per-spec SiteSetting cache invalidations issued from `TestSetup
-# .test_setup` and `SystemHelpers#setup_system_test`. Each of those methods
-# performs ~10-20 `SiteSetting.set` / `remove_override!` calls back-to-back;
-# every one of them ends in `clear_cache!`, which does
-# `Discourse.cache.delete(client_settings_cache_key)` (a Redis DEL on the
-# same key each time) + `Site.clear_anon_cache!` (a MessageBus.publish to
-# `/site_json`). The intermediate invalidations have no observers — the
-# Rails app server reads SiteSetting values from the in-memory `current[]`
-# hash, which `add_override!` always updates before `clear_cache!` is
-# called. Suppress the intermediate calls; the wrapping methods issue one
-# `clear_cache!(expire_theme_site_setting_cache: true)` after the batch, so
-# the post-condition is identical.
-if ENV["CI"]
-  module SuppressSiteSettingClearCacheDuringBatch
-    def clear_cache!(**args)
-      return if Thread.current[:_suppress_site_setting_clear_cache]
-      super
-    end
-  end
-  SiteSetting.singleton_class.prepend(SuppressSiteSettingClearCacheDuringBatch)
-
-  module BatchedSiteSettingCacheClearHelper
-    def self.batch
-      Thread.current[:_suppress_site_setting_clear_cache] = true
-      begin
-        yield
-      ensure
-        Thread.current[:_suppress_site_setting_clear_cache] = false
-      end
-      SiteSetting.send(:clear_cache!, expire_theme_site_setting_cache: true)
-    end
-  end
-end
-
 require "rspec/rails"
 require "shoulda-matchers"
 require "sidekiq/testing"
@@ -167,35 +133,26 @@ module TestSetup
     WordWatcher.disable_cache
     UpcomingChanges.clear_caches!
 
-    site_setting_writes =
-      proc do
-        SiteSetting.provider.all.each { |setting| SiteSetting.remove_override!(setting.name) }
+    SiteSetting.provider.all.each { |setting| SiteSetting.remove_override!(setting.name) }
 
-        # Set some standard overrides for tests. Some for performance, some to make the tests easier,
-        # and some because their default was changed, and we didn't want to refactor all the relevant specs.
-        {
-          s3_upload_bucket: "bucket",
-          min_post_length: 5,
-          min_first_post_length: 5,
-          min_personal_message_post_length: 10,
-          download_remote_images_to_local: false,
-          unique_posts_mins: 0,
-          max_consecutive_replies: 0,
-          allow_uncategorized_topics: true,
-        }.each { |k, v| SiteSetting.set(k, v) }
+    # Set some standard overrides for tests. Some for performance, some to make the tests easier,
+    # and some because their default was changed, and we didn't want to refactor all the relevant specs.
+    {
+      s3_upload_bucket: "bucket",
+      min_post_length: 5,
+      min_first_post_length: 5,
+      min_personal_message_post_length: 10,
+      download_remote_images_to_local: false,
+      unique_posts_mins: 0,
+      max_consecutive_replies: 0,
+      allow_uncategorized_topics: true,
+    }.each { |k, v| SiteSetting.set(k, v) }
 
-        SiteSetting.refresh!(refresh_site_settings: false, refresh_theme_site_settings: true)
-        SiteSetting.refresh_site_setting_group_ids!
+    SiteSetting.refresh!(refresh_site_settings: false, refresh_theme_site_settings: true)
+    SiteSetting.refresh_site_setting_group_ids!
 
-        # very expensive IO operations
-        SiteSetting.automatically_download_gravatars = false
-      end
-
-    if ENV["CI"] && defined?(BatchedSiteSettingCacheClearHelper)
-      BatchedSiteSettingCacheClearHelper.batch(&site_setting_writes)
-    else
-      site_setting_writes.call
-    end
+    # very expensive IO operations
+    SiteSetting.automatically_download_gravatars = false
 
     Discourse.clear_readonly!
     Sidekiq::Worker.clear_all
