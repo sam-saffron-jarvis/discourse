@@ -579,29 +579,66 @@ RSpec.configure do |config|
     end
 
     if ENV["CI"].present?
+      # Collapse the 9 per-column ALTERs into a single multi-statement
+      # round-trip (same-table columns are grouped into one ALTER TABLE so
+      # PG only walks each pg_class entry once). The original loop issued
+      # 9 separate DB.exec calls, each paying a PG round-trip + statement
+      # parse on top of the underlying column rewrite.
+      DB.exec(<<~SQL)
+        ALTER TABLE post_actions ALTER post_action_type_id TYPE bigint;
+        ALTER TABLE reviewables ALTER target_id TYPE bigint;
+        ALTER TABLE reviewable_histories ALTER reviewable_id TYPE bigint;
+        ALTER TABLE reviewable_scores
+          ALTER reviewable_id TYPE bigint,
+          ALTER reviewable_score_type TYPE bigint;
+        ALTER TABLE sidebar_section_links
+          ALTER linkable_id TYPE bigint,
+          ALTER sidebar_section_id TYPE bigint;
+        ALTER TABLE users
+          ALTER last_seen_reviewable_id TYPE bigint,
+          ALTER required_fields_version TYPE bigint;
+      SQL
+
       [
-        [PostAction, :post_action_type_id],
-        [Reviewable, :target_id],
-        [ReviewableHistory, :reviewable_id],
-        [ReviewableScore, :reviewable_id],
-        [ReviewableScore, :reviewable_score_type],
-        [SidebarSectionLink, :linkable_id],
-        [SidebarSectionLink, :sidebar_section_id],
-        [User, :last_seen_reviewable_id],
-        [User, :required_fields_version],
-      ].each do |model, column|
-        DB.exec("ALTER TABLE #{model.table_name} ALTER #{column} TYPE bigint")
-        model.reset_column_information
-      end
+        PostAction,
+        Reviewable,
+        ReviewableHistory,
+        ReviewableScore,
+        SidebarSectionLink,
+        User,
+      ].each(&:reset_column_information)
 
       # Sets sequence's value to be greater than the max value that an INT column can hold. This is done to prevent
       # type mismatches for foreign keys that references a column of type BIGINT. We set the value to 10_000_000_000
       # instead of 2**31-1 so that the values are easier to read.
-      DB
-        .query("SELECT sequence_name FROM information_schema.sequences WHERE data_type = 'bigint'")
-        .each do |row|
-          DB.exec "SELECT setval('#{row.sequence_name}', GREATEST((SELECT last_value FROM #{row.sequence_name}), 10000000000))"
-        end
+      #
+      # Fan out the per-sequence `setval` inside a single server-side
+      # PL/pgSQL DO block instead of issuing one client/server round-trip
+      # per bigint sequence. Discourse's schema has ~250 bigserial-backed
+      # sequences, so the previous loop made ~250 round-trips per worker
+      # (an information_schema scan plus one `SELECT setval(...)` apiece);
+      # the DO variant collapses them into one round-trip while keeping
+      # the post-condition identical (every bigint sequence's last_value
+      # >= 10^10). `format(... %L %I ...)` quotes the sequence name as a
+      # literal for `setval`'s first arg and as an identifier for the
+      # inner `FROM`, matching PG's safe-identifier conventions.
+      DB.exec(<<~SQL)
+        DO $$
+        DECLARE
+          seq_name TEXT;
+        BEGIN
+          FOR seq_name IN
+            SELECT sequence_name
+            FROM information_schema.sequences
+            WHERE data_type = 'bigint'
+          LOOP
+            EXECUTE format(
+              'SELECT setval(%L, GREATEST((SELECT last_value FROM %I), 10000000000))',
+              seq_name, seq_name
+            );
+          END LOOP;
+        END $$;
+      SQL
     end
 
     # Prevents 500 errors for site setting URLs pointing to test.localhost in system specs.
