@@ -882,7 +882,46 @@ def apply_base_chrome_args(args = [])
     --disable-smooth-scrolling
   ]
 
-  if !ENV["CI"]
+  if ENV["CI"]
+    # 10 system-test workers each launch a Chromium instance on the same host.
+    # Only one window can have focus at a time, so the other 9 are treated as
+    # backgrounded/occluded — Chrome then throttles JS timers to 1 Hz, drops
+    # renderer process priority, and pauses paint scheduling on them. Tests
+    # that rely on `setTimeout`, `requestAnimationFrame`, MessageBus long-poll
+    # reconnects, or Ember's runloop in non-focused workers stall on the
+    # throttled scheduler instead of running at full speed. Disabling the
+    # three backgrounding heuristics keeps every worker's renderer scheduling
+    # JS timers and paints at full clock regardless of focus state.
+    #
+    # The remaining flags drop Chromium subsystems that run on every browser
+    # startup and on every navigation but are not exercised by any spec:
+    # background-networking (component updater, metrics, telemetry, field
+    # trials), Translate/OptimizationHints/MediaRouter/InterestFeed (all do
+    # background work + add CPU per page load), default-apps and sync
+    # service init, the first-run + default-browser-check UX, hyperlink
+    # auditing pings, client-side phishing detection, and domain reliability
+    # monitoring. None of these are reachable from any Discourse system spec.
+    # See https://playwright.dev/docs/api/class-browsertype for the
+    # equivalent flag set Playwright/Puppeteer use by default in their own
+    # browser-launch paths.
+    base_args.concat(
+      %w[
+        --disable-background-timer-throttling
+        --disable-backgrounding-occluded-windows
+        --disable-renderer-backgrounding
+        --disable-background-networking
+        --disable-default-apps
+        --disable-sync
+        --no-first-run
+        --no-default-browser-check
+        --no-pings
+        --disable-component-update
+        --disable-domain-reliability
+        --disable-client-side-phishing-detection
+        --disable-features=Translate,OptimizationHints,MediaRouter,InterestFeedContentSuggestions,InterestFeedV2,CalculateNativeWinOcclusion
+      ],
+    )
+  else
     base_args << "--remote-debugging-port=" + CHROME_REMOTE_DEBUGGING_PORT
     base_args << "--remote-debugging-address=" + CHROME_REMOTE_DEBUGGING_ADDRESS
   end
