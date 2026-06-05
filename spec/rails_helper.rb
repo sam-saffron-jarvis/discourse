@@ -568,86 +568,10 @@ RSpec.configure do |config|
 
       # `<discourse-assets>` is only present on Ember pages; `ember-application`
       # is added to the root element (`#main`) once Ember mounts.
-      #
-      # The upstream implementation paid one `has_no_css?` IPC plus, on Ember
-      # pages, a Capybara-side `assert_selector` poll that fires a fresh
-      # element-lookup IPC every ~50 ms until `#main.ember-application` shows
-      # up. While Ember is still booting that's typically tens of round-trips
-      # over the Playwright pipe; each Visit/Refresh/Go_Back/Go_Forward/
-      # Resize_Window_To call ends up paying ~50-100 ms of pure IPC overhead
-      # for what is conceptually a single browser-side wait.
-      #
-      # Both checks happen client-side and have no cross-IPC observable state,
-      # so they can be fused into a single `evaluate_async_script`. The JS
-      # uses a `MutationObserver` on `#main`'s attribute changes (Ember adds
-      # the `ember-application` class once mounted, so attributeFilter is
-      # tight) and falls back to a `setTimeout` poll only if `#main` itself
-      # is not in the DOM yet. The string-returns-as-error convention matches
-      # the existing client-settled helper so error surfacing is unchanged.
       def wait_for_ember_boot
         session = @driver.send(:session)
-        timeout_ms = (Capybara.default_max_wait_time * 1000).to_i
-        result = session.evaluate_async_script(<<~JS)
-            const done = arguments[0];
-            const timeoutMs = #{timeout_ms};
-            const start = Date.now();
-
-            if (!document.querySelector("discourse-assets")) {
-              done();
-              return;
-            }
-
-            if (document.querySelector("#main.ember-application")) {
-              done();
-              return;
-            }
-
-            let observer = null;
-            let pollTimer = null;
-            const deadlineTimer = setTimeout(() => {
-              if (observer) observer.disconnect();
-              if (pollTimer) clearTimeout(pollTimer);
-              done("Timed out waiting for #main.ember-application");
-            }, timeoutMs);
-
-            function finish() {
-              if (observer) observer.disconnect();
-              if (pollTimer) clearTimeout(pollTimer);
-              clearTimeout(deadlineTimer);
-              done();
-            }
-
-            function attachObserver(mainEl) {
-              observer = new MutationObserver(() => {
-                if (mainEl.classList.contains("ember-application")) finish();
-              });
-              observer.observe(mainEl, { attributes: true, attributeFilter: ["class"] });
-              // Re-check after attaching to close the race between the
-              // initial query and observer setup.
-              if (mainEl.classList.contains("ember-application")) finish();
-            }
-
-            const mainEl = document.querySelector("#main");
-            if (mainEl) {
-              attachObserver(mainEl);
-            } else {
-              // #main not in the DOM yet (very early in boot); short-interval
-              // poll until it appears, then hand off to the MutationObserver.
-              function pollForMain() {
-                const el = document.querySelector("#main");
-                if (el) {
-                  attachObserver(el);
-                } else if (Date.now() - start > timeoutMs) {
-                  done("Timed out waiting for #main.ember-application");
-                } else {
-                  pollTimer = setTimeout(pollForMain, 25);
-                }
-              }
-              pollForMain();
-            }
-          JS
-
-        raise result if result.is_a?(String)
+        return if session.has_no_css?("discourse-assets", wait: 0, visible: :all)
+        session.assert_selector("#main.ember-application", visible: :all)
       end
     end
 
