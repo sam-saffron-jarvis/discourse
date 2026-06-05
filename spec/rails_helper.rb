@@ -640,6 +640,36 @@ RSpec.configure do |config|
     Capybara::Playwright::Node.prepend(CapybaraPlaywrightNodePatch)
     Capybara::Playwright::Browser.prepend(CapybaraPlaywrightBrowserPatch)
 
+    # In CI, resolve Playwright navigations (Capybara `visit`/`go_back`/etc.) at
+    # `domcontentloaded` instead of Playwright's default `load`. Capybara's
+    # `visit` calls `capybara_current_frame.goto(url)` with no `waitUntil`, so
+    # Playwright blocks the Ruby thread until the `load` event fires — and for a
+    # Discourse page `load` waits on every sub-resource the initial HTML pulls in
+    # (web fonts, avatars/emoji/logo images, async CSS) before `goto` returns.
+    # None of that gates the test: the `CapybaraPlaywrightBrowserPatch` wrapper
+    # above already waits for `#main.ember-application` (Ember mount, which itself
+    # can't happen until the JS bundles load and execute) and then for
+    # `window.clientSettled` (Ember runloop idle + in-flight AJAX drained), so
+    # page readiness is fully established regardless of `goto`'s wait condition.
+    # `domcontentloaded` still guarantees the document is parsed, so the
+    # server-rendered `<discourse-assets>` element is present and
+    # `wait_for_ember_boot` takes its real (assert Ember mounted) branch — we
+    # just stop paying the DCL→load tail (background font/image loads no spec
+    # blocks on) on every navigation. Capybara matchers retry, so the rare
+    # assertion that does depend on a late-loading resource still resolves once
+    # it lands. Set DISCOURSE_PLAYWRIGHT_GOTO_WAIT_UNTIL to override.
+    if ENV["CI"] && defined?(::Playwright::Frame)
+      goto_wait_until = ENV["DISCOURSE_PLAYWRIGHT_GOTO_WAIT_UNTIL"].presence || "domcontentloaded"
+
+      ::Playwright::Frame.prepend(
+        Module.new do
+          define_method(:goto) do |url, referer: nil, timeout: nil, waitUntil: nil|
+            super(url, referer: referer, timeout: timeout, waitUntil: waitUntil || goto_wait_until)
+          end
+        end,
+      )
+    end
+
     module PlaywrightErrorPatch
       def message
         msg = super
