@@ -596,39 +596,10 @@ RSpec.configure do |config|
 
       # `<discourse-assets>` is only present on Ember pages; `ember-application`
       # is added to the root element (`#main`) once Ember mounts.
-      #
-      # `wait_for_ember_boot` runs after *every* navigation (visit, refresh,
-      # go_back, go_forward, resize_window_to), so its cost is paid on the
-      # critical path of every spec. The upstream `assert_selector` drives
-      # Capybara's Ruby-side synchronize loop, which re-issues a fresh
-      # `query_selector_all` IPC every `default_retry_interval` (50ms) until
-      # `#main.ember-application` appears — typically a dozen-plus blocking
-      # round-trips over the Playwright pipe while Ember is still booting, plus
-      # up to a full retry interval of quantization slop before the just-mounted
-      # node is noticed. Drive Playwright's native `wait_for_selector` through
-      # the same `@driver.with_playwright_page` path the client-settled helper
-      # already uses: it blocks *inside* the browser and returns on a single IPC
-      # the instant `#main` gains the `ember-application` class. That removes
-      # both the per-poll round-trips (less pipe + CPU contention across the ~10
-      # oversubscribed CI workers, which also tightens run-to-run variance) and
-      # the up-to-50ms quantization slop per navigation. `state: "attached"`
-      # mirrors the prior `visible: :all` (present in the DOM regardless of
-      # visibility), and a genuine boot timeout is re-raised as the same
-      # `Capybara::ElementNotFound` `assert_selector` produced, so failure
-      # surfacing is unchanged.
       def wait_for_ember_boot
         session = @driver.send(:session)
         return if session.has_no_css?("discourse-assets", wait: 0, visible: :all)
-
-        @driver.with_playwright_page do |pw_page|
-          pw_page.capybara_current_frame.wait_for_selector(
-            "#main.ember-application",
-            state: "attached",
-            timeout: Capybara.default_max_wait_time * 1000,
-          )
-        end
-      rescue Playwright::TimeoutError => e
-        raise Capybara::ElementNotFound, e.message
+        session.assert_selector("#main.ember-application", visible: :all)
       end
     end
 
