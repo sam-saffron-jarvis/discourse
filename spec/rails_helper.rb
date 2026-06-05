@@ -116,6 +116,32 @@ if ENV["CI"] && !ENV["DISCOURSE_KEEP_AR_QUERY_LOGS"]
     end
   end
   UpcomingChanges.singleton_class.prepend(UpcomingChangesBatchedClearCaches)
+
+  # `TestSetup.test_setup` (the `config.before :each` hook) writes ~19
+  # SiteSettings per spec: a `provider.all.each { remove_override! }` loop
+  # over the prior spec's overrides (typically 9), the 8-setting standard
+  # overrides hash, `refresh!(refresh_theme_site_settings: true)`, and
+  # `automatically_download_gravatars = false`. Every one of those
+  # terminates in `clear_cache!`, which does
+  # `Discourse.cache.delete(client_settings_cache_key)` (the same Redis
+  # DEL every time) plus `Site.clear_anon_cache!`
+  # (`MessageBus.publish("/site_json", "")` through
+  # `MessageBusTestSync::PublishHook`'s mutex). The intermediate
+  # invalidations have no observers — in-process callers read
+  # `SiteSetting.x` from `current[]`, which is updated before
+  # `clear_cache!`, and `Middleware::AnonymousCache` is
+  # `disable_anon_cache`'d in the same `test_setup`. Short-circuit
+  # `clear_cache!` while a thread-local flag is set; `TestSetup.test_setup`
+  # sets the flag around its batch and issues one trailing
+  # `clear_cache!(expire_theme_site_setting_cache: true)`, preserving the
+  # union of suppressed invalidations.
+  module SiteSettingSuppressClearCacheDuringTestSetup
+    def clear_cache!(expire_theme_site_setting_cache: false)
+      return if Thread.current[:_test_setup_batch_clear_cache]
+      super
+    end
+  end
+  SiteSetting.singleton_class.prepend(SiteSettingSuppressClearCacheDuringTestSetup)
 end
 
 require "rspec/rails"
@@ -169,26 +195,32 @@ module TestSetup
     WordWatcher.disable_cache
     UpcomingChanges.clear_caches!
 
-    SiteSetting.provider.all.each { |setting| SiteSetting.remove_override!(setting.name) }
+    Thread.current[:_test_setup_batch_clear_cache] = true
+    begin
+      SiteSetting.provider.all.each { |setting| SiteSetting.remove_override!(setting.name) }
 
-    # Set some standard overrides for tests. Some for performance, some to make the tests easier,
-    # and some because their default was changed, and we didn't want to refactor all the relevant specs.
-    {
-      s3_upload_bucket: "bucket",
-      min_post_length: 5,
-      min_first_post_length: 5,
-      min_personal_message_post_length: 10,
-      download_remote_images_to_local: false,
-      unique_posts_mins: 0,
-      max_consecutive_replies: 0,
-      allow_uncategorized_topics: true,
-    }.each { |k, v| SiteSetting.set(k, v) }
+      # Set some standard overrides for tests. Some for performance, some to make the tests easier,
+      # and some because their default was changed, and we didn't want to refactor all the relevant specs.
+      {
+        s3_upload_bucket: "bucket",
+        min_post_length: 5,
+        min_first_post_length: 5,
+        min_personal_message_post_length: 10,
+        download_remote_images_to_local: false,
+        unique_posts_mins: 0,
+        max_consecutive_replies: 0,
+        allow_uncategorized_topics: true,
+      }.each { |k, v| SiteSetting.set(k, v) }
 
-    SiteSetting.refresh!(refresh_site_settings: false, refresh_theme_site_settings: true)
-    SiteSetting.refresh_site_setting_group_ids!
+      SiteSetting.refresh!(refresh_site_settings: false, refresh_theme_site_settings: true)
+      SiteSetting.refresh_site_setting_group_ids!
 
-    # very expensive IO operations
-    SiteSetting.automatically_download_gravatars = false
+      # very expensive IO operations
+      SiteSetting.automatically_download_gravatars = false
+    ensure
+      Thread.current[:_test_setup_batch_clear_cache] = false
+      SiteSetting.send(:clear_cache!, expire_theme_site_setting_cache: true)
+    end
 
     Discourse.clear_readonly!
     Sidekiq::Worker.clear_all
