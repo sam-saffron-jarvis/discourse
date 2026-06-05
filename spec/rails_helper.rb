@@ -980,7 +980,34 @@ def apply_base_chrome_args(args = [])
     --disable-smooth-scrolling
   ]
 
-  if !ENV["CI"]
+  if ENV["CI"]
+    # The Core System Tests step launches ~10 Chromium instances in parallel
+    # on a 16-core runner. Only one OS window can hold focus at a time, so
+    # Chrome's scheduler treats the other ~9 as backgrounded/occluded and
+    # throttles them: `setTimeout`/`setInterval` are clamped toward 1 Hz, the
+    # renderer process is dropped into a low-priority CPU group, and paint
+    # scheduling is paused for occluded windows. Discourse's client leans on
+    # timers and the Ember runloop in the `clientSettled` wait that gates
+    # every Capybara action, so a throttled worker's navigations and settles
+    # stretch out. Crucially, *which* worker is unfocused shifts
+    # non-deterministically as the runner load moves around, so the throttle
+    # penalty lands on a different worker each run and inflates the slowest
+    # worker — which sets the step's wall-clock — by a variable amount. That
+    # is exactly the long-tail variance we see (e.g. an odd 599-600s sample
+    # against a ~545s median). These three flags pin every renderer to
+    # foreground scheduling regardless of focus/occlusion state. They only
+    # change scheduling/priority, never page behaviour (Puppeteer and
+    # Playwright ship the same trio in their default launch args), so no
+    # spec's outcome changes — they just stop unfocused workers from running
+    # slow. Gated on CI so local single-browser dev runs are untouched.
+    base_args.concat(
+      %w[
+        --disable-background-timer-throttling
+        --disable-backgrounding-occluded-windows
+        --disable-renderer-backgrounding
+      ],
+    )
+  else
     base_args << "--remote-debugging-port=" + CHROME_REMOTE_DEBUGGING_PORT
     base_args << "--remote-debugging-address=" + CHROME_REMOTE_DEBUGGING_ADDRESS
   end
