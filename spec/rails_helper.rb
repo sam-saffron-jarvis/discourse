@@ -620,79 +620,20 @@ RSpec.configure do |config|
       METHODS_TO_PATCH.each do |method_name|
         define_method(method_name) do |*args, **options|
           result = super(*args, **options)
-          wait_for_ember_boot_and_client_settled
+          wait_for_ember_boot
+          wait_for_client_settled(method_name)
           result
         end
       end
 
       private
 
-      # Each navigation (`visit`/`refresh`/`go_back`/`go_forward`/
-      # `resize_window_to`) used to wait for the page to be ready in two
-      # separate Playwright round-trips:
-      #
-      #   1. `wait_for_ember_boot` — a `has_no_css?` probe plus, on Ember
-      #      pages, a Capybara-side `assert_selector("#main.ember-application")`
-      #      that fires a fresh element-lookup IPC every retry interval until
-      #      Ember mounts. While Ember is still booting that is typically
-      #      *tens* of Ruby<->browser round-trips over the Playwright pipe.
-      #   2. `wait_for_client_settled` — one `evaluate_async_script` that awaits
-      #      `window.clientSettled`.
-      #
-      # Both waits are pure client-side observations with no cross-IPC state
-      # between them, so they fold into a single `evaluate_async_script`: the
-      # Ember-mount wait runs as an in-browser poll, then chains straight into
-      # `window.clientSettled`. The whole "page is ready" wait costs one IPC
-      # round-trip instead of `1 + N + 1`, and the mount poll no longer pays
-      # the per-iteration pipe latency + retry-interval quantization. Every
-      # system spec performs at least one navigation, so this is paid on the
-      # common path on every worker.
-      #
-      # Semantics are preserved: `document.querySelector` matches the original
-      # `visible: :all` lookups; non-Ember pages (no `<discourse-assets>`) skip
-      # the boot wait exactly as the old early return did; each phase keeps its
-      # own full `default_max_wait_time` budget; and the string-return =>
-      # `raise` convention matches `execute_async_client_settled_script`, so a
-      # boot/settle timeout still surfaces as a Ruby error.
-      def wait_for_ember_boot_and_client_settled
+      # `<discourse-assets>` is only present on Ember pages; `ember-application`
+      # is added to the root element (`#main`) once Ember mounts.
+      def wait_for_ember_boot
         session = @driver.send(:session)
-        timeout_ms = (Capybara.default_max_wait_time * 1000).to_i
-
-        result = session.evaluate_async_script(<<~JS)
-            const done = arguments[0];
-            const timeoutMs = #{timeout_ms};
-
-            const settle = () => {
-              if (window.clientSettled) {
-                window.clientSettled(timeoutMs).then(() => done()).catch((e) => done(e.message));
-              } else {
-                done();
-              }
-            };
-
-            // `<discourse-assets>` is only present on Ember pages; `#main`
-            // gains the `ember-application` class once Ember mounts.
-            if (
-              !document.querySelector("discourse-assets") ||
-              document.querySelector("#main.ember-application")
-            ) {
-              settle();
-            } else {
-              const start = Date.now();
-              const poll = () => {
-                if (document.querySelector("#main.ember-application")) {
-                  settle();
-                } else if (Date.now() - start > timeoutMs) {
-                  done("Timed out waiting for #main.ember-application");
-                } else {
-                  setTimeout(poll, 10);
-                }
-              };
-              poll();
-            }
-          JS
-
-        raise result if result.is_a?(String)
+        return if session.has_no_css?("discourse-assets", wait: 0, visible: :all)
+        session.assert_selector("#main.ember-application", visible: :all)
       end
     end
 
