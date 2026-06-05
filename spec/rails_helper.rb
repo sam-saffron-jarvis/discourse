@@ -116,48 +116,6 @@ if ENV["CI"] && !ENV["DISCOURSE_KEEP_AR_QUERY_LOGS"]
     end
   end
   UpcomingChanges.singleton_class.prepend(UpcomingChangesBatchedClearCaches)
-
-  # Per-worker process caches for the two non-trivial values that populate
-  # `driver_options` in the `before(:each, type: :system)` hook below:
-  # `apply_base_chrome_args` (a ~10-element array assembled from frozen
-  # `%w[...]` strings + a `Capybara.server_port`-interpolated resolver-rules
-  # string + a couple of conditional pushes) and `Logger.new(IO::NULL)`
-  # (allocates a `Logger` + a `LogDevice` wrapping `IO::NULL`).
-  #
-  # Neither value varies across specs within a worker:
-  #   * `Capybara.server_port` is set during `before(:suite)` (line 350-ish)
-  #     and never reassigned — the resolver-rules string is constant after.
-  #   * The other ENV vars the function reads (`CI`, `CHROME_LOAD_EXTENSIONS_MANIFEST`,
-  #     `CHROME_DISABLE_FORCE_DEVICE_SCALE_FACTOR`) don't change mid-run.
-  #   * `Logger.new(IO::NULL)` produces a thread-safe sink that just discards
-  #     writes; a single instance is safe to share across all
-  #     `Capybara::Playwright::Driver` invocations in a worker.
-  #
-  # The `driver_options` hash these populate is closed over by the proc
-  # passed to `Capybara.register_driver` for `:playwright_chrome` and
-  # `:playwright_mobile_chrome`. Capybara's `session_pool` memoizes the
-  # `Capybara::Playwright::Driver` instance per `(driver, session_name,
-  # app)` key, so the registered proc is invoked exactly once per worker;
-  # `Capybara.reset_session!` only calls `driver.reset!`, it does not destroy
-  # the session-pool entry. Allocating these values per spec is therefore
-  # bookkeeping that targets a closure body which never re-runs.
-  #
-  # Memoizing them eliminates ~10 string/array allocations + 1 `Logger` and
-  # 1 `LogDevice` allocation per system spec on the worker's serial
-  # critical path between the prior spec's `Capybara.reset_session!` and
-  # the spec body's first `visit`. Tiny per-spec; meaningful at the
-  # young-gen / minor-GC level across hundreds of specs per worker.
-  module SystemSpecDriverOptionsCache
-    class << self
-      def chrome_args
-        @chrome_args ||= apply_base_chrome_args
-      end
-
-      def null_logger
-        @null_logger ||= Logger.new(IO::NULL)
-      end
-    end
-  end
 end
 
 require "rspec/rails"
@@ -702,26 +660,12 @@ RSpec.configure do |config|
       browser_type: :chromium,
       channel: :chromium,
       headless: (ENV["PLAYWRIGHT_HEADLESS"].presence || ENV["SELENIUM_HEADLESS"].presence) != "0",
-      args:
-        (
-          if defined?(SystemSpecDriverOptionsCache)
-            SystemSpecDriverOptionsCache.chrome_args
-          else
-            apply_base_chrome_args
-          end
-        ),
+      args: apply_base_chrome_args,
       acceptDownloads: true,
       downloadsPath: Downloads::FOLDER,
       slowMo: ENV["PLAYWRIGHT_SLOW_MO_MS"].to_i, # https://playwright.dev/docs/api/class-browsertype#browser-type-launch-option-slow-mo
       playwright_cli_executable_path: "./node_modules/.bin/playwright",
-      logger:
-        (
-          if defined?(SystemSpecDriverOptionsCache)
-            SystemSpecDriverOptionsCache.null_logger
-          else
-            Logger.new(IO::NULL)
-          end
-        ),
+      logger: Logger.new(IO::NULL),
       # NOTE: timezoneId is NOT set here because the driver is cached and reused,
       # so only the first test's timezone would be applied. Instead, we use CDP
       # to override the timezone per-test in the before(:each) hook below.
