@@ -537,20 +537,71 @@ RSpec.configure do |config|
       METHODS_TO_PATCH.each do |method_name|
         define_method(method_name) do |*args, **options|
           result = super(*args, **options)
-          wait_for_ember_boot
-          wait_for_client_settled(method_name)
+          wait_for_navigation_settled(method_name)
           result
         end
       end
 
       private
 
-      # `<discourse-assets>` is only present on Ember pages; `ember-application`
-      # is added to the root element (`#main`) once Ember mounts.
-      def wait_for_ember_boot
+      # Collapses the post-navigation Ember-boot + client-settled waits into
+      # a single Playwright IPC. The previous split implementation issued at
+      # least two Capybara round-trips per `visit`/`refresh`/`go_back`/
+      # `go_forward`/`resize_window_to`: one `has_no_css?("discourse-assets")`,
+      # one or more `assert_selector("#main.ember-application")` (Capybara
+      # polls until Ember mounts, fanning the wait into multiple IPCs when
+      # Ember is still booting), then one `evaluate_async_script` for
+      # `window.clientSettled`. All three checks happen browser-side and have
+      # no observable cross-IPC state, so a single `evaluate_async_script`
+      # whose JS performs them in sequence is strictly equivalent — and pays
+      # one Playwright round-trip instead of two-to-many. `<discourse-assets>`
+      # is only present on Ember pages; `ember-application` is added to the
+      # root element (`#main`) once Ember mounts. `visible: :all` semantics
+      # are preserved because `querySelector` ignores CSS visibility.
+      def wait_for_navigation_settled(method_name)
         session = @driver.send(:session)
-        return if session.has_no_css?("discourse-assets", wait: 0, visible: :all)
-        session.assert_selector("#main.ember-application", visible: :all)
+        timeout_ms = Capybara.default_max_wait_time * 1000
+
+        if ENV["CAPYBARA_PLAYWRIGHT_DEBUG_CLIENT_SETTLED"].present?
+          now = Time.now.to_f
+          puts "[#{now}] #{method_name}: START"
+          execute_async_navigation_settled_script(session, timeout_ms)
+          puts "[#{Time.now.to_f}] #{method_name}: END IN #{Time.now.to_f - now}"
+        else
+          execute_async_navigation_settled_script(session, timeout_ms)
+        end
+      end
+
+      def execute_async_navigation_settled_script(session, timeout_ms)
+        result = session.evaluate_async_script(<<~JS)
+            const done = arguments[0];
+            const timeoutMs = #{timeout_ms};
+            const start = Date.now();
+
+            (async () => {
+              try {
+                if (document.querySelector('discourse-assets')) {
+                  while (!document.querySelector('#main.ember-application')) {
+                    if (Date.now() - start > timeoutMs) {
+                      done('Timed out waiting for #main.ember-application');
+                      return;
+                    }
+                    await new Promise((r) => setTimeout(r, 0));
+                  }
+                }
+
+                if (window.clientSettled) {
+                  const remaining = Math.max(timeoutMs - (Date.now() - start), 1000);
+                  await window.clientSettled(remaining);
+                }
+                done();
+              } catch (error) {
+                done(error.message || String(error));
+              }
+            })();
+          JS
+
+        raise result if result.is_a?(String)
       end
     end
 
