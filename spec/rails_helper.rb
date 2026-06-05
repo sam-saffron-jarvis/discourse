@@ -389,23 +389,6 @@ RSpec.configure do |config|
     Capybara.threadsafe = true
     Capybara.disable_animation = true
 
-    # In CI, raise the Capybara Puma test server's worker-thread cap above its
-    # `0:4` default. A single Discourse page load fans out into a burst of
-    # concurrent browser requests — the HTML document, several JS/CSS chunk
-    # fetches, a held-open MessageBus long-poll and a presence channel — and
-    # Chrome opens up to ~6 connections per host. With only 4 server threads
-    # (one of them parked on the long-poll), that burst queues at the server,
-    # stalling every navigation while `clientSettled` waits for the trailing
-    # requests to drain. Transactional system tests pin the whole connection
-    # pool to a single mutex-serialized connection
-    # (`ActiveRecord::TestFixtures#setup_fixtures` -> `pool.pin_connection!`
-    # with `lock_threads = true`), so the extra threads never check out more
-    # DB connections — `pool: 2` is irrelevant and DB-bound requests stay
-    # serialized exactly as before. Only the non-DB requests (static chunks,
-    # redis-backed message-bus / presence) gain real parallelism, so first-hit
-    # page loads stop blocking on a 4-thread queue.
-    Capybara.server = :puma, { Threads: "0:8" } if ENV["CI"]
-
     # Click offsets is calculated from top left of element
     Capybara.w3c_click_offset = false
 
