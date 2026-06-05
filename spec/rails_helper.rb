@@ -568,31 +568,10 @@ RSpec.configure do |config|
 
       # `<discourse-assets>` is only present on Ember pages; `ember-application`
       # is added to the root element (`#main`) once Ember mounts.
-      #
-      # Wait for the mount with Playwright's native `wait_for_selector` rather
-      # than Capybara's `assert_selector`. Capybara polls Ruby-side every
-      # `default_retry_interval` (50ms): each post-navigation boot costs a
-      # dozen-plus one-shot `query_selector_all` IPC round-trips, plus up to a
-      # full interval of quantization slop before the just-mounted node is
-      # noticed. Playwright instead waits inside the browser (mutation observer)
-      # and returns on a single blocking IPC the instant `#main` gains the
-      # class. That removes the polling round-trips (less CPU contention across
-      # the ~10 oversubscribed CI workers) and the quantization slop (lower
-      # wall-clock per navigation). `state: "attached"` mirrors the previous
-      # `visible: :all` (present in the DOM regardless of visibility), and a
-      # genuine boot timeout is re-raised as the same `Capybara::ElementNotFound`
-      # that `assert_selector` produced, so failure handling is unchanged.
       def wait_for_ember_boot
         session = @driver.send(:session)
         return if session.has_no_css?("discourse-assets", wait: 0, visible: :all)
-
-        @playwright_page.wait_for_selector(
-          "#main.ember-application",
-          state: "attached",
-          timeout: (Capybara.default_max_wait_time * 1000).to_i,
-        )
-      rescue Playwright::TimeoutError => e
-        raise Capybara::ElementNotFound, e.message
+        session.assert_selector("#main.ember-application", visible: :all)
       end
     end
 
