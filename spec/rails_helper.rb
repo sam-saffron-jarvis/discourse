@@ -633,32 +633,7 @@ RSpec.configure do |config|
       def wait_for_ember_boot
         session = @driver.send(:session)
         return if session.has_no_css?("discourse-assets", wait: 0, visible: :all)
-
-        # Wait for Ember to mount with Playwright's native in-browser
-        # `wait_for_selector` rather than Capybara's Ruby-side `assert_selector`.
-        # `assert_selector` polls from Ruby: it fires a `query_selector_all` IPC,
-        # and while `#main.ember-application` isn't there yet it sleeps one
-        # `default_retry_interval` and fires another — so a single post-navigation
-        # boot wait burns a burst of Ruby<->Node<->browser round-trips during the
-        # ~hundreds-of-ms Ember takes to mount, plus up to one retry interval of
-        # overshoot after the class actually lands. `wait_for_selector` blocks
-        # inside the browser and returns in one IPC the instant the node attaches,
-        # which both shortens the per-navigation wait and frees the round-trip CPU
-        # those polls would otherwise contend for on the oversubscribed CI runner
-        # (every visit/refresh/go_back/go_forward pays this). `state: "attached"`
-        # mirrors Capybara's `visible: :all` (present in the DOM regardless of
-        # visibility). On a genuine boot failure this raises a Playwright timeout
-        # instead of `Capybara::ElementNotFound`, but the spec fails either way and
-        # the `discourse-assets` guard above already short-circuits non-Ember
-        # pages. `window.clientSettled` is installed by an application initializer
-        # that runs before the instance mounts and adds `ember-application`, so it
-        # is already defined when this returns and `wait_for_client_settled` is
-        # unaffected.
-        @playwright_page.capybara_current_frame.wait_for_selector(
-          "#main.ember-application",
-          state: "attached",
-          timeout: Capybara.default_max_wait_time * 1000,
-        )
+        session.assert_selector("#main.ember-application", visible: :all)
       end
     end
 
