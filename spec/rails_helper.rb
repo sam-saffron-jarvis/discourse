@@ -307,26 +307,10 @@ RSpec.configure do |config|
   config.before(:suite) do
     CachedCounting.disable
 
-    # In CI the `Create and migrate databases` workflow step has already run
-    # `parallel:create parallel:migrate` for every worker DB before this step
-    # starts, so the post-condition this check guards (no pending migrations)
-    # is already guaranteed. Re-checking it here makes each of the ~10 system
-    # workers glob + parse all ~1700 `db/migrate`/`db/post_migrate` filenames
-    # and run a `schema_migrations` query at boot — pure redundant work on the
-    # per-worker boot prefix, and ~10 simultaneous 1700-file globs add an
-    # avoidable FS/CPU contention spike to the step's serial startup phase.
-    #
-    # The Core System Tests step opts out via TURBO_RSPEC_SKIP_MIGRATIONS_CHECK=1
-    # (tests.yml) — the same gate the turbo_rspec parent already uses for its own
-    # redundant `check_for_migrations` (lib/turbo_tests/runner.rb), inherited by
-    # workers through `Open3.popen3(env, ...)`. Local/dev runs leave it unset and
-    # pay the full check.
-    if ENV["TURBO_RSPEC_SKIP_MIGRATIONS_CHECK"] != "1"
-      begin
-        ActiveRecord::Migration.check_all_pending!
-      rescue ActiveRecord::PendingMigrationError
-        raise "There are pending migrations, run RAILS_ENV=test bin/rake db:migrate"
-      end
+    begin
+      ActiveRecord::Migration.check_all_pending!
+    rescue ActiveRecord::PendingMigrationError
+      raise "There are pending migrations, run RAILS_ENV=test bin/rake db:migrate"
     end
 
     Sidekiq.default_configuration.error_handlers.clear
