@@ -606,6 +606,67 @@ RSpec.configure do |config|
 
     # Prevents 500 errors for site setting URLs pointing to test.localhost in system specs.
     SiteIconManager.clear_cache!
+
+    # The two `Capybara.register_driver` calls below previously ran inside the
+    # per-spec `before(:each, type: :system)` hook so that
+    # `example.metadata[:color_scheme]` could be plumbed through `driver_options`.
+    # In practice, no spec sets `color_scheme` as metadata (the few specs whose
+    # name mentions a color scheme set it on the `Theme` record, not on the
+    # RSpec example), and Capybara's `session_pool` memoizes the `Driver`
+    # instance per `(current_driver, session_name, app)` key — `reset_session!`
+    # only calls `driver.reset!`, it does not destroy the session. So the
+    # registered blocks are evaluated exactly once per worker on the first
+    # `Capybara.current_session` access; every subsequent per-spec
+    # re-registration replaces a block that will never be re-invoked.
+    #
+    # Hoisting registration to `before(:suite)` removes the per-spec hash
+    # allocation, `Logger.new(IO::NULL)`, `apply_base_chrome_args` string
+    # construction, and the two `register_driver` block-store calls — pure
+    # bookkeeping overhead that ran on every system spec's critical path.
+    playwright_driver_options = {
+      browser_type: :chromium,
+      channel: :chromium,
+      headless: (ENV["PLAYWRIGHT_HEADLESS"].presence || ENV["SELENIUM_HEADLESS"].presence) != "0",
+      args: apply_base_chrome_args,
+      acceptDownloads: true,
+      downloadsPath: Downloads::FOLDER,
+      slowMo: ENV["PLAYWRIGHT_SLOW_MO_MS"].to_i, # https://playwright.dev/docs/api/class-browsertype#browser-type-launch-option-slow-mo
+      playwright_cli_executable_path: "./node_modules/.bin/playwright",
+      logger: Logger.new(IO::NULL),
+      # NOTE: timezoneId is NOT set here because the driver is cached and
+      # reused, so only the first test's timezone would be applied. Instead,
+      # we use CDP to override the timezone per-test in the
+      # `before(:each, type: :system)` hook below.
+    }
+
+    if ENV["CAPYBARA_REMOTE_DRIVER_URL"].present?
+      playwright_driver_options[:browser] = :remote
+      playwright_driver_options[:url] = ENV["CAPYBARA_REMOTE_DRIVER_URL"]
+    end
+
+    Capybara.register_driver(:playwright_mobile_chrome) do |app|
+      Capybara::Playwright::Driver.new(
+        app,
+        **playwright_driver_options,
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+        userAgent:
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Mobile/15E148 Safari/604.1",
+        defaultBrowserType: "webkit",
+        viewport: ENV["PLAYWRIGHT_NO_VIEWPORT"] == "1" ? nil : { width: 390, height: 664 },
+      )
+    end
+
+    Capybara.register_driver(:playwright_chrome) do |app|
+      Capybara::Playwright::Driver.new(
+        app,
+        **playwright_driver_options,
+        viewport: ENV["PLAYWRIGHT_NO_VIEWPORT"] == "1" ? nil : { width: 1400, height: 1400 },
+      )
+    end
+
+    Capybara.default_driver = :playwright_chrome
   end
 
   config.after(:suite) { Downloads.clear }
@@ -635,50 +696,9 @@ RSpec.configure do |config|
       system_tests_initialized = true
     end
 
-    driver_options = {
-      browser_type: :chromium,
-      channel: :chromium,
-      headless: (ENV["PLAYWRIGHT_HEADLESS"].presence || ENV["SELENIUM_HEADLESS"].presence) != "0",
-      args: apply_base_chrome_args,
-      acceptDownloads: true,
-      downloadsPath: Downloads::FOLDER,
-      slowMo: ENV["PLAYWRIGHT_SLOW_MO_MS"].to_i, # https://playwright.dev/docs/api/class-browsertype#browser-type-launch-option-slow-mo
-      playwright_cli_executable_path: "./node_modules/.bin/playwright",
-      logger: Logger.new(IO::NULL),
-      # NOTE: timezoneId is NOT set here because the driver is cached and reused,
-      # so only the first test's timezone would be applied. Instead, we use CDP
-      # to override the timezone per-test in the before(:each) hook below.
-      colorScheme: example.metadata[:color_scheme],
-    }
-
-    if ENV["CAPYBARA_REMOTE_DRIVER_URL"].present?
-      driver_options[:browser] = :remote
-      driver_options[:url] = ENV["CAPYBARA_REMOTE_DRIVER_URL"]
-    end
-
-    Capybara.register_driver(:playwright_mobile_chrome) do |app|
-      Capybara::Playwright::Driver.new(
-        app,
-        **driver_options,
-        deviceScaleFactor: 3,
-        isMobile: true,
-        hasTouch: true,
-        userAgent:
-          "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Mobile/15E148 Safari/604.1",
-        defaultBrowserType: "webkit",
-        viewport: ENV["PLAYWRIGHT_NO_VIEWPORT"] == "1" ? nil : { width: 390, height: 664 },
-      )
-    end
-
-    Capybara.register_driver(:playwright_chrome) do |app|
-      Capybara::Playwright::Driver.new(
-        app,
-        **driver_options,
-        viewport: ENV["PLAYWRIGHT_NO_VIEWPORT"] == "1" ? nil : { width: 1400, height: 1400 },
-      )
-    end
-
-    Capybara.default_driver = :playwright_chrome
+    # Driver registration is hoisted to `before(:suite)` — it never varied
+    # per-spec in practice and Capybara memoizes the resulting `Driver`
+    # instance in its session pool, so re-registering per spec was a no-op.
 
     driver = [:playwright]
     driver << :mobile if example.metadata[:mobile]
