@@ -732,22 +732,6 @@ RSpec.configure do |config|
       # so only the first test's timezone would be applied. Instead, we use CDP
       # to override the timezone per-test in the before(:each) hook below.
       colorScheme: example.metadata[:color_scheme],
-      # Emulate `prefers-reduced-motion: reduce` in the test browser. Discourse
-      # gates its CSS animations/transitions behind this query — the
-      # `d-animation` mixin (common/foundation/mixins.scss) and ~30 other rules
-      # collapse `animation-duration`/transitions to `0s` under reduced motion,
-      # and the matching JS paths (header/user menus, animation-utils) skip their
-      # animated branch via `prefersReducedMotion()`. With animations zeroed,
-      # Playwright's per-action actionability check (an element must hold a
-      # stable bounding box across two animation frames before it's clicked)
-      # stops waiting out every modal/dialog/menu/sidebar transition, so each
-      # interaction with an animating element settles immediately instead of
-      # after its 200-300ms tween. Final DOM/visual states are unchanged — only
-      # the in-between motion is removed — so assertions are unaffected; this is
-      # the same first-class mode a reduced-motion user gets. Reused across the
-      # cached driver for every system spec, this trims animation-wait wall-clock
-      # broadly across the suite and also tightens variance (no animation races).
-      reducedMotion: "reduce",
     }
 
     if ENV["CAPYBARA_REMOTE_DRIVER_URL"].present?
