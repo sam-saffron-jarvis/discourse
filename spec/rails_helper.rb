@@ -556,44 +556,17 @@ RSpec.configure do |config|
       private
 
       def execute_async_client_settled_script(session)
-        # `Capybara::Session#evaluate_async_script` routes through the
-        # capybara-playwright driver's `evaluate_async_script`, which calls
-        # `evaluate_handle` (returning a JSHandle) and then, in `wrap_node`,
-        # makes TWO further round-trips per call to materialize the value: one
-        # `evaluate('obj => [typeof obj, Array.isArray(obj)]')` to probe the
-        # type and one `json_value` to read it. So every settled-wait — fired
-        # after *each* patched click/set/send_keys/hover and after each
-        # visit/refresh/go_back/go_forward/resize_window_to — costs three
-        # Ruby->Node->CDP->browser round-trips even though the script returns a
-        # single primitive (nil on settle / an error string on timeout).
-        #
-        # Playwright's `Frame#evaluate` natively awaits a returned Promise and
-        # serializes the resolved value in ONE round-trip, with no handle to
-        # probe or dispose. Drive `window.clientSettled` through a direct
-        # `capybara_current_frame.evaluate` of an async function instead: the
-        # frame is the same one the driver uses for `evaluate_async_script`,
-        # the timeout is still `clientSettled`'s own internal cap, and the
-        # return contract is byte-identical — `nil` on settle (or no
-        # `clientSettled`) and the error message string on timeout, which we
-        # re-raise. Net: two fewer browser round-trips per UI action across the
-        # whole system suite (the IPC the system specs are bottlenecked on).
-        result =
-          session.driver.with_playwright_page do |page|
-            page.capybara_current_frame.evaluate(<<~JS)
-              async () => {
-                if (!window.clientSettled) {
-                  return null;
-                }
+        result = session.evaluate_async_script(<<~JS)
+            const done = arguments[0];
 
-                try {
-                  await window.clientSettled(#{Capybara.default_max_wait_time * 1000});
-                  return null;
-                } catch (error) {
-                  return error.message;
-                }
-              }
-            JS
-          end
+            if (window.clientSettled) {
+              window.clientSettled(#{Capybara.default_max_wait_time * 1000})
+                .then(done)
+                .catch((error) => { done(error.message) });
+            } else {
+              done();
+            }
+          JS
 
         raise result if result.is_a? String
       end
