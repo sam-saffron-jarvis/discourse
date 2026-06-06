@@ -630,65 +630,10 @@ RSpec.configure do |config|
 
       # `<discourse-assets>` is only present on Ember pages; `ember-application`
       # is added to the root element (`#main`) once Ember mounts.
-      #
-      # The mount wait used to be `session.assert_selector("#main.ember-application")`,
-      # which polls from Ruby: it fires a `query_selector_all` IPC, and while the
-      # class isn't there yet it sleeps one `default_retry_interval` and fires
-      # another. So a single post-navigation boot wait burns a burst of
-      # Ruby<->Node<->browser round-trips during the ~hundreds-of-ms Ember takes to
-      # mount, plus up to one retry interval of overshoot after the class actually
-      # lands. Every `visit`/`refresh`/`go_back`/`go_forward`/`resize_window_to`
-      # pays this, and on the CPU-oversubscribed CI runner each of those round-trips
-      # is slower (and more variable) the more loaded the box is — so the polling
-      # burst both inflates the median and widens the tail.
-      #
-      # Replace it with a single `evaluate_async_script` that resolves in-browser
-      # the instant `#main.ember-application` attaches, via a `MutationObserver`
-      # (with an initial synchronous check for the already-mounted case). This is
-      # the same proven async-IPC mechanism `wait_for_client_settled` already uses
-      # here, so it pays exactly one round-trip instead of a poll-loop, returns at
-      # mount time with no retry-interval overshoot, and frees the CPU those polls
-      # would contend for. On a genuine boot failure it resolves with a message at
-      # the same `default_max_wait_time` deadline and we raise, so a broken boot
-      # still fails loudly.
       def wait_for_ember_boot
         session = @driver.send(:session)
         return if session.has_no_css?("discourse-assets", wait: 0, visible: :all)
-
-        result = session.evaluate_async_script(<<~JS)
-            const done = arguments[0];
-            const selector = "#main.ember-application";
-
-            if (document.querySelector(selector)) {
-              done(null);
-            } else {
-              let settled = false;
-              const finish = (value) => {
-                if (settled) return;
-                settled = true;
-                observer.disconnect();
-                clearTimeout(timer);
-                done(value);
-              };
-
-              const observer = new MutationObserver(() => {
-                if (document.querySelector(selector)) finish(null);
-              });
-              observer.observe(document.documentElement, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ["id", "class"],
-              });
-
-              const timer = setTimeout(
-                () => finish("Timed out waiting for #main.ember-application"),
-                #{Capybara.default_max_wait_time * 1000},
-              );
-            }
-          JS
-
-        raise result if result.is_a?(String)
+        session.assert_selector("#main.ember-application", visible: :all)
       end
     end
 
