@@ -555,8 +555,28 @@ RSpec.configure do |config|
     module CapybaraPlaywrightBasePatch
       private
 
+      # The clientSettled wait fires after *every* patched UI action (click,
+      # set, send_keys, hover, visit, ...), so it is the single hottest
+      # cross-process path in the system suite. `session.evaluate_async_script`
+      # routes through `Capybara::Playwright::Browser#evaluate_async_script`,
+      # which pays THREE Ruby->Node->CDP->browser round-trips per call:
+      #
+      #   1. `capybara_current_frame.evaluate_handle(js)` — returns a JSHandle,
+      #      resolved once the promise settles.
+      #   2. `wrap_node(handle)` -> `handle.evaluate('obj => [typeof obj, ...]')`
+      #      — a probe round-trip just to classify the handle's type.
+      #   3. `handle.json_value` — a third round-trip to read the value.
+      #
+      # The script only ever resolves a primitive (`undefined` on settle / the
+      # error-message String on timeout), never a DOM node, so the typeof probe
+      # in step 2 is pure overhead. We replicate the driver's exact
+      # `evaluate_handle` + Promise-wrapper call (the proven, unchanged path)
+      # and read the resolved primitive with `json_value` directly — skipping
+      # the probe. Result is byte-identical (`wrap_node` itself falls through to
+      # `json_value` for any non-object), so this is a transport-only change:
+      # two round-trips per UI action instead of three.
       def execute_async_client_settled_script(session)
-        result = session.evaluate_async_script(<<~JS)
+        script = <<~JS
             const done = arguments[0];
 
             if (window.clientSettled) {
@@ -567,6 +587,24 @@ RSpec.configure do |config|
               done();
             }
           JS
+
+        # Byte-for-byte the wrapper `Capybara::Playwright::Browser
+        # #evaluate_async_script` builds around the script, so the in-browser
+        # semantics (frame, Promise resolution, timeout) are identical.
+        wrapped = <<~JAVASCRIPT
+          function(_arguments){
+            let args = Array.prototype.slice.call(_arguments);
+            return new Promise((resolve, reject) => {
+              args.push(resolve);
+              (function(){ #{script} }).apply(this, args);
+            });
+          }
+          JAVASCRIPT
+
+        result =
+          session.driver.with_playwright_page do |page|
+            page.capybara_current_frame.evaluate_handle(wrapped, arg: []).json_value
+          end
 
         raise result if result.is_a? String
       end
