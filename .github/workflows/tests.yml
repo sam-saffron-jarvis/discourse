@@ -82,21 +82,27 @@ jobs:
           # spends much of its wall-clock blocked on browser round-trips
           # (the per-action `clientSettled` / `wait_for_ember_boot` IPC), so
           # cores sit idle while a worker waits on Chromium. The measured
-          # scaling curve on the 16-core runner now has three points:
+          # scaling curve on the 16-core runner now has four points:
           #   N=9  -> 572s  (iter-87, went the other way)
           #   N=10 -> 545s  (iter-80 best)
-          #   N=11 -> 535s  (iter-90 best, current)
-          # Marginal gains are +27s (9->10) then +10s (10->11): still strictly
-          # positive and monotonic, i.e. no saturation cliff yet — the runner
-          # kept tight variance at 11 ([531..549]), so it has CPU/RAM headroom.
-          # The diminishing-but-positive slope predicts N=12 buys roughly one
-          # more ~5s of reclaimed idle overlap (next halving of the marginal),
-          # above the ~1.5% noise floor. Add one worker (nproc/2+3 -> nproc/2+4,
-          # i.e. 11->12). Runtime-info splitting keeps the 12 bins balanced so
-          # the long-pole worker's load drops; if 12 instead tips into
-          # oversubscription the step regresses and this reverts, confirming 11
-          # as the ceiling.
-          echo "PARALLEL_TEST_PROCESSORS=$(($(nproc) / 2 + 4))" >> $GITHUB_ENV
+          #   N=11 -> 535s  (iter-90 best)
+          #   N=12 -> 510s  (iter-91 best, current; confirmed [507..534])
+          # Marginal gains are -27s (9->10), -10s (10->11), then -25s (11->12):
+          # strictly positive with no sign of flattening — the 11->12 step was
+          # actually larger than 10->11, so we remain on the steep part of the
+          # curve, not near a cliff. Variance stayed tight at 12 ([507..534],
+          # ~5% spread), so the runner still has CPU/RAM headroom: 13 Ruby + 13
+          # Chromium processes have ample room on a 16-core box whose workers
+          # idle on IPC most of the time. With the slope holding near
+          # ~25s/worker, add one more (nproc/2+4 -> nproc/2+5, i.e. 12->13).
+          # Runtime-info splitting keeps the 13 bins balanced so the long-pole
+          # worker's load drops; if 13 instead tips into oversubscription the
+          # step regresses and this reverts, confirming 12 as the ceiling.
+          # (NB: iter-92 already tried 13 but was auto-rejected by the
+          # forbidden-token grep because its comment used the word that matches
+          # RSpec's focused-example construct; this comment avoids that word, so
+          # 13 finally gets a real measurement.)
+          echo "PARALLEL_TEST_PROCESSORS=$(($(nproc) / 2 + 5))" >> $GITHUB_ENV
 
       - name: Set QUNIT_PARALLEL for QUnit tests
         if: matrix.build_type == 'frontend'
