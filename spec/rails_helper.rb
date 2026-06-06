@@ -706,6 +706,32 @@ RSpec.configure do |config|
 
   config.before(:each, type: :system) do |example|
     if !system_tests_initialized
+      # In CI, `config.active_record.use_schema_cache_dump` is false and
+      # `db:migrate` only regenerates db/schema_cache.yml in development, so the
+      # `schema_cache.add` preload below would fan out into thousands of
+      # pg_catalog introspection queries (columns/indexes/pkeys for ~600
+      # tables) on each worker's first system spec — a Postgres-contention
+      # spike across ~12 workers in the same post-boot window. The CI workflow
+      # dumps a *fresh* cache after migrations; adopt it so the preload reads
+      # the metadata from that local file instead of from Postgres. Guarded on
+      # a matching schema version (and rescued) so a stale dump or any
+      # Rails-version API drift can never feed wrong columns — it simply falls
+      # back to the live introspection that follows.
+      begin
+        cache_path = Rails.root.join("db/schema_cache.yml")
+        if ENV["CI"].present? && File.exist?(cache_path)
+          pool = ActiveRecord::Base.connection_pool
+          reflection = ActiveRecord::ConnectionAdapters::SchemaReflection.new(cache_path.to_s)
+          dump_version = reflection.version(pool)
+          db_version = pool.migration_context.current_version
+          if dump_version && db_version && dump_version == db_version
+            pool.schema_reflection = reflection
+          end
+        end
+      rescue StandardError
+        # Any incompatibility leaves the live-introspection preload in charge.
+      end
+
       # On Rails 7, we have seen instances of deadlocks between the lock in [ActiveRecord::ConnectionAdapters::AbstractAdapter](https://github.com/rails/rails/blob/9d1673853f13cd6f756315ac333b20d512db4d58/activerecord/lib/active_record/connection_adapters/abstract_adapter.rb#L86)
       # and the lock in [ActiveRecord::ModelSchema](https://github.com/rails/rails/blob/9d1673853f13cd6f756315ac333b20d512db4d58/activerecord/lib/active_record/model_schema.rb#L550).
       # To work around this problem, we are going to preload all the model schemas before running any system tests so that

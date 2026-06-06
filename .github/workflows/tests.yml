@@ -186,6 +186,23 @@ jobs:
             bin/rake db:create db:migrate
           fi
 
+      # `db:migrate` only regenerates db/schema_cache.yml in the development
+      # environment (lib/tasks/db.rake), so under RAILS_ENV=test the committed
+      # dump is stale and `config.active_record.use_schema_cache_dump` is false.
+      # Without a fresh dump, every `bin/turbo_rspec` worker introspects the
+      # full schema from Postgres on its first system spec (~thousands of
+      # pg_catalog column/index/pkey queries via the `schema_cache.add` preload
+      # in rails_helper). With ~12 workers hitting Postgres in the same
+      # post-boot window that is a contention spike on the step's critical
+      # path. Dump the cache once here (outside the measured step, so the cost
+      # lands in job_sec not step_sec) so each worker loads it from a local
+      # file instead. continue-on-error: a failed dump just leaves the workers
+      # on the existing live-introspection path — never blocks the run.
+      - name: Dump schema cache for system test workers
+        if: matrix.build_type == 'system' && matrix.target == 'core'
+        continue-on-error: true
+        run: bin/rake db:schema:cache:dump
+
       - name: Fetch turbo_rspec_runtime.log cache
         uses: actions/cache@v5
         id: test-runtime-cache
