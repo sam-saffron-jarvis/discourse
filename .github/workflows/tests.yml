@@ -81,17 +81,22 @@ jobs:
           # System-test workers are IPC-bound, not CPU-bound: each worker
           # spends much of its wall-clock blocked on browser round-trips
           # (the per-action `clientSettled` / `wait_for_ember_boot` IPC), so
-          # cores sit idle while a worker waits on Chromium. iter-87 measured
-          # the scaling curve by going the other way — dropping 10->9 workers
-          # raised the Core System Tests step from 545s to 572s (+5%). Fitting
-          # `step = F + W/N` to those two points (N=10->545, N=9->572) gives
-          # F~=302s fixed and W~=2430s of balanced work, which predicts
-          # N=11 -> ~523s. Add one worker (nproc/2+2 -> nproc/2+3, i.e. 10->11
-          # on the 16-core runner) to claw back that idle overlap. Runtime-info
-          # splitting keeps the bins balanced, so 11 bins lowers the long-pole
-          # worker's load; the runner has CPU/RAM headroom at 10, so 11 stays
-          # below saturation.
-          echo "PARALLEL_TEST_PROCESSORS=$(($(nproc) / 2 + 3))" >> $GITHUB_ENV
+          # cores sit idle while a worker waits on Chromium. The measured
+          # scaling curve on the 16-core runner now has three points:
+          #   N=9  -> 572s  (iter-87, went the other way)
+          #   N=10 -> 545s  (iter-80 best)
+          #   N=11 -> 535s  (iter-90 best, current)
+          # Marginal gains are +27s (9->10) then +10s (10->11): still strictly
+          # positive and monotonic, i.e. no saturation cliff yet — the runner
+          # kept tight variance at 11 ([531..549]), so it has CPU/RAM headroom.
+          # The diminishing-but-positive slope predicts N=12 buys roughly one
+          # more ~5s of reclaimed idle overlap (next halving of the marginal),
+          # above the ~1.5% noise floor. Add one worker (nproc/2+3 -> nproc/2+4,
+          # i.e. 11->12). Runtime-info splitting keeps the 12 bins balanced so
+          # the long-pole worker's load drops; if 12 instead tips into
+          # oversubscription the step regresses and this reverts, confirming 11
+          # as the ceiling.
+          echo "PARALLEL_TEST_PROCESSORS=$(($(nproc) / 2 + 4))" >> $GITHUB_ENV
 
       - name: Set QUNIT_PARALLEL for QUnit tests
         if: matrix.build_type == 'frontend'
