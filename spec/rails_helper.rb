@@ -553,91 +553,14 @@ RSpec.configure do |config|
     end
 
     module CapybaraPlaywrightBasePatch
-      # The clientSettled wait fires after *every* patched UI action (click,
-      # set, send_keys, hover, visit, refresh, ...), so it is the single
-      # hottest cross-process path in the whole system suite. The proven
-      # `Capybara::Session#evaluate_async_script` route goes through the
-      # capybara-playwright driver's `Browser#evaluate_async_script`, which
-      # pays THREE Ruby->Node->CDP->browser round-trips per call:
-      #
-      #   1. `capybara_current_frame.evaluate_handle(js)` — runs the script,
-      #      returns a JSHandle to the (awaited) resolved value.
-      #   2. `wrap_node(handle)` -> `handle.evaluate('obj => [typeof obj, ...]')`
-      #      — a probe round-trip purely to classify the handle's type.
-      #   3. `handle.json_value` — a third round-trip to read the value.
-      #
-      # Playwright's `Frame#evaluate` natively awaits a returned Promise and
-      # serializes the resolved primitive in ONE round-trip — no handle to
-      # probe or dispose. clientSettled only ever resolves a primitive
-      # (`true` on settle / an error String on timeout), never a DOM node, so
-      # the by-value path is sufficient. Driving it through the same
-      # `with_playwright_page` -> `capybara_current_frame` the driver itself
-      # uses keeps the identical frame + `assert_page_alive` navigation-retry
-      # semantics, but cuts two browser round-trips per UI action.
-      #
-      # Earlier attempts at this swap broke CI outright. The difference here:
-      # the fast path is *self-verifying* and *sticky-fallback*. The async
-      # function returns the literal `true` only AFTER `await`ing
-      # clientSettled, so a `== true` result proves the promise was awaited;
-      # any other shape (e.g. an un-awaited Promise serialized to `{}`) or any
-      # raised error falls back to the proven `evaluate_async_script` and
-      # permanently disables the fast path for the rest of the worker process.
-      # Net effect can only be a faster suite or — at worst — one wasted probe
-      # per worker then the original behaviour. It cannot silently change what
-      # a settle wait means, so it cannot turn into flaky failures.
-      @client_settled_fast_path = true
-
-      def self.fast_path_enabled?
-        @client_settled_fast_path
-      end
-
-      def self.disable_fast_path!
-        @client_settled_fast_path = false
-      end
-
       private
 
       def execute_async_client_settled_script(session)
-        timeout_ms = Capybara.default_max_wait_time * 1000
-
-        if CapybaraPlaywrightBasePatch.fast_path_enabled?
-          settled =
-            begin
-              session.driver.with_playwright_page do |page|
-                page.capybara_current_frame.evaluate(<<~JS)
-                  async () => {
-                    if (!window.clientSettled) { return true; }
-                    try {
-                      await window.clientSettled(#{timeout_ms});
-                      return true;
-                    } catch (error) {
-                      return error.message;
-                    }
-                  }
-                JS
-              end
-            rescue StandardError
-              # Structural failure reaching/awaiting via the fast path: stop
-              # trying it and use the proven path from here on.
-              CapybaraPlaywrightBasePatch.disable_fast_path!
-              :__fallback__
-            end
-
-          unless settled == :__fallback__
-            return if settled == true # settled (or no clientSettled on the page)
-            raise settled if settled.is_a?(String) # timeout — propagate as before
-
-            # Any other shape means `evaluate` did not honour the awaited-Promise
-            # contract here; never trust the fast path again in this process.
-            CapybaraPlaywrightBasePatch.disable_fast_path!
-          end
-        end
-
         result = session.evaluate_async_script(<<~JS)
             const done = arguments[0];
 
             if (window.clientSettled) {
-              window.clientSettled(#{timeout_ms})
+              window.clientSettled(#{Capybara.default_max_wait_time * 1000})
                 .then(done)
                 .catch((error) => { done(error.message) });
             } else {
