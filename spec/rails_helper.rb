@@ -556,19 +556,34 @@ RSpec.configure do |config|
       private
 
       def execute_async_client_settled_script(session)
-        result = session.evaluate_async_script(<<~JS)
-            const done = arguments[0];
-
-            if (window.clientSettled) {
-              window.clientSettled(#{Capybara.default_max_wait_time * 1000})
-                .then(done)
-                .catch((error) => { done(error.message) });
-            } else {
-              done();
-            }
-          JS
-
-        raise result if result.is_a? String
+        # This settle-wait fires after *every* patched UI action
+        # (click/set/send_keys/hover/...) and after every navigation, so it is
+        # the hottest cross-process path in the whole system suite.
+        #
+        # `Capybara::Session#evaluate_async_script` routes through the
+        # capybara-playwright driver's `Browser#evaluate_async_script`, which
+        # pays THREE Ruby->Node->CDP->browser round-trips per call:
+        # `capybara_current_frame.evaluate_handle(js)` (RT1) returns a JSHandle,
+        # then `wrap_node` materializes it with an
+        # `evaluate('obj => [typeof obj, Array.isArray(obj)]')` type probe (RT2)
+        # and a `json_value` read (RT3) — even though clientSettled only ever
+        # resolves a primitive we discard.
+        #
+        # `Capybara::Session#execute_script` instead routes through the driver's
+        # `Browser#execute_script`, which is a single `Frame#evaluate` (RT1):
+        # Playwright natively awaits a Promise returned by the page function and
+        # the (unused) resolved value is dropped, so there is no handle to probe
+        # or read back. Returning `window.clientSettled(...)` from the script
+        # lets that one round-trip cover the whole settle wait. The call still
+        # runs inside the driver's `assert_page_alive` navigation-retry wrapper
+        # (identical to the `evaluate_async_script` path), and on a genuine
+        # settle timeout `clientSettled` rejects, surfacing as a raised error
+        # that fails the example exactly as the prior `raise result` did.
+        session.execute_script(<<~JS)
+          if (window.clientSettled) {
+            return window.clientSettled(#{Capybara.default_max_wait_time * 1000});
+          }
+        JS
       end
 
       def wait_for_client_settled(method_name)
