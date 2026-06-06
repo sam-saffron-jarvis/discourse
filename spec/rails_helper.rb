@@ -974,27 +974,13 @@ def apply_base_chrome_args(args = [])
   base_args = %w[
     --disable-search-engine-choice-screen
     --no-sandbox
+    --disable-dev-shm-usage
     --mute-audio
     --remote-allow-origins=*
     --disable-smooth-scrolling
   ]
 
-  if ENV["CI"]
-    # `--disable-dev-shm-usage` is deliberately NOT added in CI. The CI
-    # container is launched with an enlarged, RAM-backed `/dev/shm` (see
-    # `--shm-size` in .github/workflows/tests.yml), so Chromium keeps its
-    # shared-memory transport (renderer<->browser frame/IPC transfers,
-    # screenshot capture) in RAM. The flag would instead force that traffic
-    # into memory-mapped files under the container's disk-backed overlay
-    # `/tmp`. With ~12 Chromium instances running in parallel on the
-    # oversubscribed 16-core system-test runner, that disk path serializes
-    # under shared I/O and shows up as bursty long-tail variance on the
-    # slowest worker (the step's long pole). Default `/dev/shm` (RAM) avoids
-    # both the latency and the contention.
-  else
-    # Locally a default Docker `/dev/shm` is only 64MB and would crash
-    # Chromium, so keep the disk fallback for non-CI runs.
-    base_args << "--disable-dev-shm-usage"
+  if !ENV["CI"]
     base_args << "--remote-debugging-port=" + CHROME_REMOTE_DEBUGGING_PORT
     base_args << "--remote-debugging-address=" + CHROME_REMOTE_DEBUGGING_ADDRESS
   end

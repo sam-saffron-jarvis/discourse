@@ -29,16 +29,7 @@ jobs:
         )
         || 'ubuntu-latest'
       }}
-    container:
-      image: discourse/discourse_test:release
-      # Enlarge the container's shared-memory mount from Docker's 64MB default
-      # to 2g of RAM-backed `/dev/shm`. This lets the parallel Chromium
-      # instances in the system-test step keep their renderer<->browser
-      # shared-memory IPC in RAM instead of disk-backed `/tmp` files (we drop
-      # `--disable-dev-shm-usage` in CI accordingly; see spec/rails_helper.rb's
-      # apply_base_chrome_args), removing a slow, contended I/O path that
-      # inflates the slowest worker under parallel load.
-      options: --shm-size=2g
+    container: discourse/discourse_test:release
     timeout-minutes: >-
       ${{
         matrix.build_type == 'system' && (matrix.target == 'core-plugins' || matrix.target == 'official-plugins' || matrix.target == 'core')
