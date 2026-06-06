@@ -125,37 +125,6 @@ jobs:
           sudo -E -u postgres script/start_test_db.rb
           sudo -u postgres psql -c "CREATE ROLE $PGUSER LOGIN SUPERUSER PASSWORD '$PGPASSWORD';"
 
-      - name: Disable Postgres background maintenance for system tests
-        if: matrix.build_type == 'system'
-        run: |
-          # The Core System Tests step runs 12 IPC-bound workers (each with an
-          # in-process Puma server + a Chromium instance) on a 16-core runner,
-          # so the box is CPU-oversubscribed during the active request bursts —
-          # that contention is what the worker-count scaling curve bottomed out
-          # against. Postgres's own background maintenance adds to that load:
-          #   * autovacuum runs up to 3 workers that cycle every naptime across
-          #     all 12 parallel worker DBs (~600 tables each), vacuuming and
-          #     auto-analyzing tables that cross their dead-tuple threshold. With
-          #     `use_transactional_fixtures = true` every spec's inserts are
-          #     rolled back, so each rolled-back row is a dead tuple — hot tables
-          #     (users/posts/topics/...) cross the threshold repeatedly over a
-          #     run, firing autovacuum at non-deterministic moments and injecting
-          #     CPU/IO spikes into the same window the test workers are racing in.
-          #   * time- and WAL-triggered checkpoints scan the 500MB shared_buffers
-          #     and write dirty pages mid-run.
-          # The test DBs are thrown away at job end, so none of this maintenance
-          # has any value here — disabling autovacuum and deferring checkpoints
-          # past the run frees those cores/IO for the workers and removes a
-          # source of run-to-run variance. This is orthogonal to iter-41's
-          # rejected planner/memory PGOPTIONS: it changes no query plan, and
-          # because live data stays at the tiny committed seed baseline the
-          # planner's missing stats keep selecting the correct seq scans for
-          # near-empty tables, so there's no stale-statistics regression risk.
-          sudo -u postgres psql -c "ALTER SYSTEM SET autovacuum = off;"
-          sudo -u postgres psql -c "ALTER SYSTEM SET checkpoint_timeout = '60min';"
-          sudo -u postgres psql -c "ALTER SYSTEM SET max_wal_size = '8GB';"
-          sudo -u postgres psql -c "SELECT pg_reload_conf();"
-
       - name: Symlink vendor/bundle from image
         run: |
           ln -s /var/www/discourse/vendor/bundle vendor/bundle
