@@ -637,49 +637,8 @@ RSpec.configure do |config|
       end
     end
 
-    # The capybara-playwright driver implements `evaluate_async_script` with
-    # `capybara_current_frame.evaluate_handle(...)` followed by `wrap_node`.
-    # `wrap_node` materializes the resolved value with TWO extra browser
-    # round-trips per call: an `evaluate('obj => [typeof obj, Array.isArray(obj)]')`
-    # type probe and a `json_value` read. So every settled-wait — fired after
-    # *each* patched click/set/send_keys/hover and after each
-    # visit/refresh/go_back/go_forward — costs three Ruby->Node->CDP->browser
-    # round-trips, and the system suite drives thousands of these.
-    #
-    # Playwright's `Frame#evaluate` natively awaits a returned Promise and
-    # serializes the resolved value *by value* in a single round-trip, with no
-    # handle to probe or dispose. Swap `evaluate_handle` + `wrap_node` for a
-    # direct `evaluate` of the byte-identical wrapper script the upstream
-    # driver already uses (so arg unwrapping and the `arguments[…]` callback
-    # contract are unchanged). Every `evaluate_async_script` caller in the suite
-    # resolves a JSON-serializable value — `wait_for_client_settled` -> `true`
-    # on settle / the error-message string on timeout / `undefined` when
-    # `clientSettled` is absent, `MessageBusTestSync.flush!` -> an array of
-    # `{channel,lastId,expectedId}` hashes, and CDP clipboard reads/writes ->
-    # a string or `undefined`. None resolves a DOM node (the only value
-    # `evaluate` cannot serialize and `wrap_node` would have boxed), so the
-    # return contract is identical while two browser round-trips per UI action
-    # disappear across the whole system run.
-    module CapybaraPlaywrightAsyncEvalPatch
-      def evaluate_async_script(script, *args)
-        assert_page_alive do
-          js = <<~JAVASCRIPT
-          function(_arguments){
-            let args = Array.prototype.slice.call(_arguments);
-            return new Promise((resolve, reject) => {
-              args.push(resolve);
-              (function(){ #{script} }).apply(this, args);
-            });
-          }
-          JAVASCRIPT
-          @playwright_page.capybara_current_frame.evaluate(js, arg: unwrap_node(args))
-        end
-      end
-    end
-
     Capybara::Playwright::Node.prepend(CapybaraPlaywrightNodePatch)
     Capybara::Playwright::Browser.prepend(CapybaraPlaywrightBrowserPatch)
-    Capybara::Playwright::Browser.prepend(CapybaraPlaywrightAsyncEvalPatch)
 
     module PlaywrightErrorPatch
       def message
