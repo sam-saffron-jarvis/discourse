@@ -553,62 +553,9 @@ RSpec.configure do |config|
     end
 
     module CapybaraPlaywrightBasePatch
-      # Sticky, per-worker flag. The single-round-trip `clientSettled` fast
-      # path below reuses only documented driver internals, but if it ever
-      # turns out to be incompatible with the installed capybara-playwright /
-      # playwright-ruby-client build we disable it permanently for this worker
-      # and revert to the proven `evaluate_async_script` path, so a broken fast
-      # path can only cost one wasted round-trip on the very first action — it
-      # can never fail CI.
-      class << self
-        attr_accessor :client_settled_fast_path_disabled
-      end
-
       private
 
-      # `wait_for_client_settled` runs after *every* patched Capybara action
-      # (click/set/send_keys/hover/visit/...), so its per-call browser-IPC cost
-      # is paid thousands of times per worker. The driver's
-      # `evaluate_async_script` resolves `window.clientSettled` in THREE browser
-      # round-trips: `evaluate_handle` (run the promise) + `wrap_node`'s
-      # `typeof`/`Array.isArray` probe + `json_value` to read back the resolved
-      # primitive. Since `clientSettled` resolves to a boolean, all the handle
-      # machinery is pure overhead. Playwright's `Frame#evaluate` returns the
-      # value by reference-free serialization and auto-awaits the promise, so we
-      # get the same wait in ONE round-trip. Under the CPU-contended 16-core
-      # runner each saved round-trip (Ruby <-> node <-> Chromium, two process
-      # hops) is worth several ms, and there are far more settle waits than any
-      # other browser op — so this both lowers the median and, because the
-      # saving grows with contention, compresses the slow-runner tail.
       def execute_async_client_settled_script(session)
-        unless CapybaraPlaywrightBasePatch.client_settled_fast_path_disabled
-          fast_path_result =
-            begin
-              execute_client_settled_fast_path(session)
-            rescue StandardError
-              # The fast path is incompatible with this driver build (or the
-              # page genuinely died mid-call). Disable it for the rest of this
-              # worker and fall through to the proven path, which reproduces any
-              # real page error identically.
-              CapybaraPlaywrightBasePatch.client_settled_fast_path_disabled = true
-              nil
-            end
-
-          if fast_path_result == "settled"
-            return
-          elsif fast_path_result.is_a?(String) && fast_path_result.start_with?("error:")
-            # `clientSettled` rejected (a genuine settle timeout) — raise the
-            # message, exactly like the legacy path does on a String resolve.
-            raise fast_path_result.delete_prefix("error:")
-          elsif !CapybaraPlaywrightBasePatch.client_settled_fast_path_disabled
-            # An unexpected shape (e.g. a Playwright build whose `evaluate`
-            # didn't auto-await our promise and serialized it to an object).
-            # Never skip the wait on an ambiguous result: disable the fast path
-            # and fall back to the proven implementation below.
-            CapybaraPlaywrightBasePatch.client_settled_fast_path_disabled = true
-          end
-        end
-
         result = session.evaluate_async_script(<<~JS)
             const done = arguments[0];
 
@@ -622,29 +569,6 @@ RSpec.configure do |config|
           JS
 
         raise result if result.is_a? String
-      end
-
-      # One browser round-trip. Returns the exact String "settled" once the
-      # client has settled (or immediately when `window.clientSettled` is
-      # absent, e.g. inside a non-Ember frame), or "error:<message>" on a settle
-      # timeout. The distinctive sentinels make the result unambiguous: the
-      # caller only skips the wait on a literal "settled", so a Playwright build
-      # that failed to await the promise (serializing it to some other value)
-      # can never silently bypass the settle wait — it falls back instead.
-      def execute_client_settled_fast_path(session)
-        session.driver.with_playwright_page do |pw_page|
-          pw_page.capybara_current_frame.evaluate(<<~JS)
-            async () => {
-              if (!window.clientSettled) { return "settled"; }
-              try {
-                await window.clientSettled(#{Capybara.default_max_wait_time * 1000});
-                return "settled";
-              } catch (error) {
-                return "error:" + ((error && error.message) || "Timeout waiting for client to settle.");
-              }
-            }
-          JS
-        end
       end
 
       def wait_for_client_settled(method_name)
