@@ -985,6 +985,23 @@ def apply_base_chrome_args(args = [])
     base_args << "--remote-debugging-address=" + CHROME_REMOTE_DEBUGGING_ADDRESS
   end
 
+  if ENV["CI"]
+    # In CI the system-test step runs ~12 headless Chromium instances in
+    # parallel on a CPU-saturated 16-core runner (the proven worker-count knee).
+    # Playwright's headless Chromium spins up a separate GPU process per browser
+    # that rasterizes/composites via SwiftShader (software GL) — 12 of those
+    # processes contend for the same cores that the renderers and the in-process
+    # Puma servers need. `--disable-gpu` drops the GPU process entirely and moves
+    # compositing onto the renderer's own CPU raster path, which for Discourse's
+    # non-WebGL functional pages is comparable per-frame while removing the
+    # per-instance GPU-process + GL-IPC overhead that only bites under the
+    # 12-way parallel load. Functional assertions don't depend on GPU and 2D
+    # canvas still rasterizes on the CPU, so this is render-path-neutral for the
+    # specs; the only effect is freeing contended CPU on the saturated runner.
+    # Kept CI-only so local visual debugging still uses the GPU.
+    base_args << "--disable-gpu"
+  end
+
   resolver_rules = ["MAP test.localhost:80 127.0.0.1:#{Capybara.server_port}"]
   if ENV["CI"]
     # Bypass the OS resolver for localhost lookups inside the browser.
