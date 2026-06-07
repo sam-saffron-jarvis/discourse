@@ -974,11 +974,21 @@ def apply_base_chrome_args(args = [])
   base_args = %w[
     --disable-search-engine-choice-screen
     --no-sandbox
-    --disable-dev-shm-usage
     --mute-audio
     --remote-allow-origins=*
     --disable-smooth-scrolling
   ]
+
+  # `--disable-dev-shm-usage` forces Chromium to put its renderer<->browser
+  # shared-memory IPC into memory-mapped files under the temp dir instead of
+  # `/dev/shm`. It exists only to dodge the tiny 64MB default `/dev/shm` in
+  # containers. In CI we enlarge `/dev/shm` to 2g via the job's
+  # `container.options: --shm-size=2g` (see .github/workflows/tests.yml), so we
+  # drop the flag there and let the ~12 parallel Chromium instances keep that
+  # IPC in RAM rather than serializing through the disk-backed overlay `/tmp`,
+  # which is a bursty long-tail-variance source under parallel load. Local runs
+  # keep the flag since the host `/dev/shm` size is not controlled here.
+  base_args << "--disable-dev-shm-usage" if !ENV["CI"]
 
   if !ENV["CI"]
     base_args << "--remote-debugging-port=" + CHROME_REMOTE_DEBUGGING_PORT

@@ -29,7 +29,21 @@ jobs:
         )
         || 'ubuntu-latest'
       }}
-    container: discourse/discourse_test:release
+    container:
+      image: discourse/discourse_test:release
+      # Enlarge the container's shared-memory mount from Docker's 64MB default
+      # to a 2g RAM-backed `/dev/shm`. The system-test step runs ~12 parallel
+      # Chromium instances on the saturated 16-core runner; with this headroom
+      # we drop `--disable-dev-shm-usage` in CI (see spec/rails_helper.rb's
+      # apply_base_chrome_args) so each browser keeps its renderer<->browser
+      # shared-memory IPC (frame/IPC transfer, screenshot capture) in RAM
+      # instead of memory-mapped files under the disk-backed overlay `/tmp`.
+      # That disk path serializes under shared I/O when ~12 browsers churn at
+      # once and shows up as bursty long-tail variance on the slowest worker;
+      # 2g is ample for 12 functional-test browsers (well clear of the SIGBUS
+      # cliff that motivated `--disable-dev-shm-usage`) and negligible against
+      # the runner's RAM.
+      options: --shm-size=2g
     timeout-minutes: >-
       ${{
         matrix.build_type == 'system' && (matrix.target == 'core-plugins' || matrix.target == 'official-plugins' || matrix.target == 'core')
