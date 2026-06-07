@@ -556,6 +556,34 @@ RSpec.configure do |config|
       private
 
       def execute_async_client_settled_script(session)
+        # Fast path: a single Frame#evaluate round-trip via Capybara's own
+        # `execute_script`, which calls `capybara_current_frame.evaluate(...)`.
+        # Playwright's `evaluate` awaits a returned promise, so returning the
+        # `clientSettled` promise from the script performs the whole settle wait
+        # in ONE cross-process round-trip. The proven `evaluate_async_script`
+        # path (below) costs three — `evaluate_handle` plus `wrap_node`'s
+        # `typeof`/`Array.isArray` probe plus `json_value`. This wait runs after
+        # every patched click/set/send_keys/hover/visit, the single hottest
+        # cross-process path in the system suite, where the worker-count scaling
+        # curve proved the workers sit IPC-bound waiting on browser round-trips.
+        #
+        # On a settle timeout `clientSettled` rejects and Playwright raises
+        # (a StandardError subclass); we fall through to the proven async path,
+        # which re-runs the wait and raises the identical RuntimeError(message)
+        # the suite has always surfaced. Any other unexpected fast-path failure
+        # falls back the same way. So this can only ever drop round-trips on the
+        # passing path — it cannot skip a wait, change the failure exception, or
+        # turn the suite red.
+        session.execute_script(<<~JS)
+          return window.clientSettled
+            ? window.clientSettled(#{Capybara.default_max_wait_time * 1000})
+            : undefined;
+        JS
+      rescue StandardError
+        execute_async_client_settled_script_via_async(session)
+      end
+
+      def execute_async_client_settled_script_via_async(session)
         result = session.evaluate_async_script(<<~JS)
             const done = arguments[0];
 
