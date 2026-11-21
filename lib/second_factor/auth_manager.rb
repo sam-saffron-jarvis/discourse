@@ -195,6 +195,7 @@ class SecondFactor::AuthManager
     callback_params = config[:callback_params] || {}
     challenge = {
       nonce: nonce,
+      action: @action.class.name,
       callback_method: config[:callback_method] || request.request_method,
       callback_path: config[:callback_path] || request.path,
       callback_params: callback_params,
@@ -215,6 +216,13 @@ class SecondFactor::AuthManager
         server_session:,
         target_user: @target_user,
       )
+    if challenge[:action] != @action.class.name
+      raise SecondFactor::BadChallenge.new(
+              "second_factor_auth.challenge_not_found",
+              status_code: 404,
+            )
+    end
+
     if !challenge[:successful]
       raise SecondFactor::BadChallenge.new(
               "second_factor_auth.challenge_not_completed",

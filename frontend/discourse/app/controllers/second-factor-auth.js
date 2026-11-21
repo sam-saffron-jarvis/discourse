@@ -273,6 +273,11 @@ export default class SecondFactorAuthController extends Controller {
         },
       });
 
+      // The callback may have already redirected via Discourse-Xhr-Redirect.
+      if (callbackResponse === undefined) {
+        return;
+      }
+
       this.displaySuccess(i18n("second_factor_auth.redirect_after_success"));
 
       DiscourseURL.routeTo(

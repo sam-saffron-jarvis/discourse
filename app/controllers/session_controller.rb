@@ -27,7 +27,8 @@ class SessionController < ApplicationController
                                   :forgot_password,
                                   :redeem_password_reset_code,
                                   :create_login_code,
-                                  :verify_login_code
+                                  :verify_login_code,
+                                  :second_factor_auth_perform
 
   # Every SessionController action is part of auth. An archived site permits
   # all of them so existing users can log in, log out, and reset passwords.
@@ -673,6 +674,8 @@ class SessionController < ApplicationController
       render json: failed_json.merge(json), status: status_code
       return
     end
+
+    raise Discourse::ReadOnly if @staff_writes_only_mode && !current_user&.staff? && !user.staff?
 
     # no proper error messages for these cases because the only way they can
     # happen is if someone is messing with us.
