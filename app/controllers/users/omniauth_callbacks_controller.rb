@@ -6,15 +6,15 @@ class Users::OmniauthCallbacksController < ApplicationController
   layout "no_ember"
 
   # need to be able to call this
-  skip_before_action :check_xhr
+  skip_before_action :check_xhr, except: :complete_second_factor
 
   # this is the only spot where we allow CSRF, our openid / oauth redirect
   # will not have a CSRF token, however the payload is all validated so its safe
   skip_before_action :verify_authenticity_token, only: :complete
 
   # These are usually GET requests but some providers use POST requests
-  allow_in_staff_writes_only_mode :complete
-  allow_when_archived :complete
+  allow_in_staff_writes_only_mode :complete, :complete_second_factor
+  allow_when_archived :complete, :complete_second_factor
 
   def confirm_request
     self.class.find_authenticator(params[:provider])
@@ -85,8 +85,7 @@ class Users::OmniauthCallbacksController < ApplicationController
       client_hash[:associate_url] = persist_auth_token(auth)
     end
 
-    cookies["_bypass_cache"] = true
-    cookies[:authentication_data] = { value: client_hash.to_json, path: Discourse.base_path("/") }
+    store_authentication_data(client_hash)
 
     # If the user account doesn't already exist, and this signup is part of a user-api-key request, direct
     # the user to the homepage first so that signup can be completed. They'll be redirected to the user-api-key
@@ -98,8 +97,32 @@ class Users::OmniauthCallbacksController < ApplicationController
     end
   end
 
+  def complete_second_factor
+    challenge =
+      SecondFactor::AuthManager.find_second_factor_challenge(
+        nonce: params.require(:second_factor_nonce),
+        server_session:,
+        target_user: current_user,
+      )
+    user = User.find(challenge[:target_user_id])
+    raise Discourse::InvalidAccess if user.staged?
+    raise Discourse::ReadOnly if @staff_writes_only_mode && !user.staff?
+
+    result = run_second_factor!(SecondFactor::Actions::OmniauthLogin, target_user: user)
+    data = result.data
+    @auth_result = Auth::Result.from_session_data(data[:auth_result], user:)
+    self.class.find_authenticator(@auth_result.authenticator_name)
+    @auth_result.destination_url = data[:destination_url]
+
+    handle_account_activation(user) unless user.suspended?
+    return render_json_error(@auth_result.failed_reason) if @auth_result.failed?
+
+    store_authentication_data(@auth_result.to_client_hash)
+    redirect_with_client_support(@auth_result.destination_url)
+  end
+
   def valid_origin?(uri)
-    return false if uri.nil?
+    return false if !uri&.path&.start_with?("/") || uri.path.start_with?("//")
     return false if uri.host.present? && uri.host != Discourse.current_hostname
     return false if uri.path.start_with?("#{Discourse.base_path}/auth/")
     return false if uri.path.start_with?("#{Discourse.base_path}/login")
@@ -165,11 +188,21 @@ class Users::OmniauthCallbacksController < ApplicationController
   end
 
   def user_found(user)
-    if user.has_any_second_factor_methods_enabled? &&
-         SiteSetting.enforce_second_factor_on_external_auth
-      @auth_result.omniauth_disallow_totp = true
-      @auth_result.email = user.email
-      return
+    if SiteSetting.enforce_second_factor_on_external_auth &&
+         (user.has_any_second_factor_methods_enabled? || user.passkeys_available_as_second_factor?)
+      raise Discourse::InvalidAccess if current_user && current_user != user
+      if params[:second_factor_nonce].present?
+        raise Discourse::InvalidParameters.new(:second_factor_nonce)
+      end
+
+      run_second_factor!(
+        SecondFactor::Actions::OmniauthLogin,
+        target_user: user,
+        action_data: {
+          auth_result: @auth_result.session_data,
+          destination_url: @origin,
+        },
+      ) { |manager| manager.allow_backup_codes! }
     end
     handle_account_activation(user)
   end
@@ -218,6 +251,11 @@ class Users::OmniauthCallbacksController < ApplicationController
         @auth_result.awaiting_activation = true
       end
     end
+  end
+
+  def store_authentication_data(client_hash)
+    cookies["_bypass_cache"] = true
+    cookies[:authentication_data] = { value: client_hash.to_json, path: Discourse.base_path("/") }
   end
 
   def persist_auth_token(auth)

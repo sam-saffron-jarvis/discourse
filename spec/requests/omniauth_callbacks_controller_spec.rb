@@ -762,60 +762,125 @@ RSpec.describe Users::OmniauthCallbacksController do
         end
       end
 
-      context "when user has TOTP enabled" do
-        before { user.create_totp(enabled: true) }
-
-        it "requires second factor for a user with TOTP enabled" do
-          get "/auth/google_oauth2/callback.json"
-
-          expect(response.status).to eq(302)
-
-          data = JSON.parse(cookies[:authentication_data])
-
-          expect(data["email"]).to eq(user.email)
-          expect(data["omniauth_disallow_totp"]).to eq(true)
-
-          user.update!(email: "different@user.email")
-          get "/auth/google_oauth2/callback.json"
-
-          expect(response.status).to eq(302)
-          expect(JSON.parse(cookies[:authentication_data])["email"]).to eq(user.email)
+      context "with a linked account" do
+        before do
+          Fabricate(
+            :user_associated_account,
+            user: user,
+            provider_name: "google_oauth2",
+            provider_uid: uid,
+          )
         end
-      end
 
-      context "when user has TOTP enabled but enforce_second_factor_on_external_auth is false" do
-        before { user.create_totp(enabled: true) }
+        it "signs in without a challenge when the user has no enrolled factor" do
+          get "/auth/google_oauth2/callback"
 
-        it "authenticates without TOTP when external authentication is exempt" do
+          expect(response).to redirect_to("/")
+          get "/session/current.json"
+          expect(response.parsed_body.dig("current_user", "id")).to eq(user.id)
+        end
+
+        it "signs in an enrolled user without a challenge when external authentication is exempt" do
           SiteSetting.enforce_second_factor_on_external_auth = false
-          get "/auth/google_oauth2/callback.json"
+          Fabricate(:user_second_factor_totp, user: user)
 
-          expect(response.status).to eq(302)
+          get "/auth/google_oauth2/callback"
 
-          data = JSON.parse(cookies[:authentication_data])
-
-          expect(data["authenticated"]).to eq(true)
+          expect(response).to redirect_to("/")
+          get "/session/current.json"
+          expect(response.parsed_body.dig("current_user", "id")).to eq(user.id)
         end
-      end
 
-      context "when user has security key enabled" do
-        before { Fabricate(:user_security_key_with_random_credential, user: user) }
+        it "offers security keys and backup codes in the second-factor challenge" do
+          Fabricate(:user_security_key_with_random_credential, user: user)
+          Fabricate(:user_second_factor_backup, user: user)
 
-        it "requires second factor for a user with a security key" do
-          get "/auth/google_oauth2/callback.json"
+          get "/auth/google_oauth2/callback"
+          expect(URI(response.location).path).to eq("/session/2fa")
 
-          expect(response.status).to eq(302)
+          nonce = Rack::Utils.parse_query(URI(response.location).query).fetch("nonce")
+          get "/session/2fa.json", params: { nonce: nonce }
+          expect(response.parsed_body).to include(
+            "security_keys_enabled" => true,
+            "backup_enabled" => true,
+          )
+        end
 
-          data = JSON.parse(cookies[:authentication_data])
+        it "offers a passkey when passkeys are enabled as second factors" do
+          SiteSetting.enable_passkeys = true
+          SiteSetting.allow_passkeys_for_2fa = true
+          Fabricate(:passkey_with_random_credential, user: user)
 
-          expect(data["email"]).to eq(user.email)
-          expect(data["omniauth_disallow_totp"]).to eq(true)
+          get "/auth/google_oauth2/callback"
+          expect(URI(response.location).path).to eq("/session/2fa")
 
-          user.update!(email: "different@user.email")
-          get "/auth/google_oauth2/callback.json"
+          nonce = Rack::Utils.parse_query(URI(response.location).query).fetch("nonce")
+          get "/session/2fa.json", params: { nonce: nonce }
+          expect(response.parsed_body["passkeys_enabled"]).to eq(true)
+        end
 
-          expect(response.status).to eq(302)
-          expect(JSON.parse(cookies[:authentication_data])["email"]).to eq(user.email)
+        it "only completes a verified login once and in the original browser session" do
+          totp = Fabricate(:user_second_factor_totp, user: user)
+          get "/auth/google_oauth2/callback",
+              env: {
+                "omniauth.origin" => "//example.com/redirection",
+              }
+          nonce = Rack::Utils.parse_query(URI(response.location).query).fetch("nonce")
+          callback = "/auth/second-factor/complete.json"
+
+          post callback, params: { second_factor_nonce: nonce }, xhr: true
+          expect(response.status).to eq(401)
+          get "/session/current.json"
+          expect(response.status).to eq(404)
+
+          post "/session/2fa.json",
+               params: {
+                 nonce: nonce,
+                 second_factor_method: UserSecondFactor.methods[:totp],
+                 second_factor_token: totp.totp_object.now,
+               }
+          expect(response.status).to eq(200)
+
+          other_browser = open_session
+          other_browser.post(callback, params: { second_factor_nonce: nonce }, xhr: true)
+          expect(other_browser.response.status).to eq(404)
+
+          post callback, params: { second_factor_nonce: nonce }, xhr: true
+          expect(response.headers["Discourse-Xhr-Redirect"]).to eq("true")
+          expect(response.body).to eq("/")
+          get "/session/current.json"
+          expect(response.parsed_body.dig("current_user", "id")).to eq(user.id)
+
+          post callback, params: { second_factor_nonce: nonce }, xhr: true
+          expect(response.status).to eq(404)
+        end
+
+        it "rechecks account approval after verification" do
+          SiteSetting.must_approve_users = true
+          user.activate
+          user.update!(approved: true)
+          totp = Fabricate(:user_second_factor_totp, user: user)
+          get "/auth/google_oauth2/callback"
+          nonce = Rack::Utils.parse_query(URI(response.location).query).fetch("nonce")
+
+          post "/session/2fa.json",
+               params: {
+                 nonce: nonce,
+                 second_factor_method: UserSecondFactor.methods[:totp],
+                 second_factor_token: totp.totp_object.now,
+               }
+          expect(response.status).to eq(200)
+
+          user.revoke_approval!
+          post "/auth/second-factor/complete.json",
+               params: {
+                 second_factor_nonce: nonce,
+               },
+               xhr: true
+
+          expect(JSON.parse(cookies[:authentication_data])["awaiting_approval"]).to eq(true)
+          get "/session/current.json"
+          expect(response.status).to eq(404)
         end
       end
 

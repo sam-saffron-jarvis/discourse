@@ -166,6 +166,18 @@ RSpec.describe SecondFactor::AuthManager do
       end
     end
 
+    it "rejects a verified challenge issued for another action" do
+      nonce, server_session = stage_challenge(successful: true)
+      request = create_request(request_method: "POST")
+      action = SecondFactor::Actions::OmniauthLogin.new(guardian, request, target_user: user)
+
+      expect {
+        create_manager(action).run!(request, { second_factor_nonce: nonce }, server_session)
+      }.to raise_error(SecondFactor::BadChallenge) do |error|
+        expect(error.error_translation_key).to eq("second_factor_auth.challenge_not_found")
+      end
+    end
+
     it "does not call the second_factor_auth_completed! method of the action if the challenge is expired" do
       nonce, server_session = stage_challenge(successful: true)
 
